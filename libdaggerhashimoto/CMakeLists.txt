@@ -1,0 +1,4 @@
+set(CMAKE_BUILD_TYPE Release)
+set(LIBRARY daggerhashimoto)
+
+add_library(${LIBRARY} sha3.c byte_order.c daggerhashimoto.c)
