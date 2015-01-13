@@ -41,7 +41,7 @@ std::string hashToHex(const unsigned char str[HASH_CHARS]) {
 
 BOOST_AUTO_TEST_CASE(num_from_string_and_back) {
     unsigned char result[HASH_CHARS];
-    //sha3_1(result, defaults.diff);
+    sha3_1(result, defaults.diff);
 
     const unsigned char expected[HASH_CHARS] = {
             43, 93, 223, 111, 77, 33, 194, 61, 226, 22, 244, 77, 94, 75, 220,

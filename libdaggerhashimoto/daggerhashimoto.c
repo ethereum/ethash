@@ -25,6 +25,7 @@
 #include "daggerhashimoto.h"
 #include "sha3.h"
 
+
 void sha3_1(unsigned char *result, const unsigned char prevhash[HASH_CHARS]) {
     struct sha3_ctx ctx;
     sha3_init(&ctx, 256);
@@ -173,6 +174,3 @@ void quick_hashimoto(
   params.n = original_n;
   return quick_hashimoto_cached(result, cache, params, prevhash, nonce);
 }
-
-
-
