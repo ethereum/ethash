@@ -25,6 +25,7 @@
 #ifndef BITFN_H
 #define BITFN_H
 #include <stdint.h>
+#include "compiler.h"
 
 #ifndef NO_INLINE_ASM
 /**********************************************************/
@@ -132,7 +133,7 @@ static inline void memory_zero(void *ptr, uint32_t len)
 {
     uint32_t *ptr32 = ptr;
     uint8_t *ptr8;
-    int i;
+    uint32_t i;
 
     for (i = 0; i < len / 4; i++)
         *ptr32++ = 0;
@@ -158,7 +159,7 @@ static inline void array_copy64(uint64_t *d, uint64_t *s, uint32_t nb)
 }
 #endif
 
-#ifdef __MINGW32__
+#if defined(__MINGW32__) || defined(_WIN32)
   # define LITTLE_ENDIAN 1234
   # define BYTE_ORDER    LITTLE_ENDIAN
 #elif defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__)

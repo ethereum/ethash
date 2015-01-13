@@ -22,6 +22,7 @@
 
 #ifndef DAGGERHASHIMOTO_H
 #define DAGGERHASHIMOTO_H
+#include "compiler.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,26 +40,28 @@ typedef struct {
     unsigned char diff[HASH_CHARS]; // Difficulty (adjusted during block evaluation)
     int epoch_time;                 // Length of an epoch in blocks (how often the dataset is updated)
     int n_inc;                      // Increment in value of n per period epoch
-    uint64_t cache_size;            // How big should the light client's cache be?
+    size_t cache_size;				// How big should the light client's cache be?
     int w;                          // Work factor for memory free mining
     int width;                      // How much memory state to use in hashimoto
     int accesses;                   // Number of dataset accesses during hashimoto
     int trials;                     // Number of times to run hashimoto
   } parameters;
 
+/* C99 initialisers not supported by Visual Studio or C++ */
 const parameters defaults = {
-        .n = (uint64_t) (4000055296 * 8 / NUM_BITS),
-        .n_inc = 65536,
-        // .diff = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-        .diff = {
-                126, 126, 126, 126, 126, 126, 126, 126,
-                126, 126, 126, 126, 126, 126, 126, 126,
-                126, 126, 126, 126, 126, 126, 126, 126,
-                126, 126, 126, 126, 126, 126, 126, 126,},
-        .cache_size = 4,  // CANNOT BE LESS THAN 4!
-        .epoch_time = 1000,
-        .w = 3,
-        .accesses = 200,
+        /*.n          = */ ((uint64_t)4000055296 * 8) / NUM_BITS,
+        /*.diff		  = */ {
+                             126, 126, 126, 126, 126, 126, 126, 126,
+                             126, 126, 126, 126, 126, 126, 126, 126,
+                             126, 126, 126, 126, 126, 126, 126, 126,
+                             126, 126, 126, 126, 126, 126, 126, 126,},
+		/*.epoch_time = */ 1000,
+		/*.n_inc      = */ 65536,
+        /*.cache_size = */ 4,  // CANNOT BE LESS THAN 4!
+		/*.w          = */ 3,
+        /*.width      = */ 1,
+		/*.accesses   = */ 200,
+		/*.trials     = */ 1
 };
 
 void sha3_1(unsigned char *result, const unsigned char prevhash[HASH_CHARS]);

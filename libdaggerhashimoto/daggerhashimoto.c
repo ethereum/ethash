@@ -22,6 +22,7 @@
 */
 
 #include <stdlib.h>
+#include <malloc.h>
 #include "daggerhashimoto.h"
 #include "sha3.h"
 
@@ -70,12 +71,11 @@ void produce_dag(
         const unsigned char seed[HASH_CHARS]) {
   const int w = params.w;
   sha3_dag(dag, seed);
-  const uint32_t init = dag[0];
+  const uint32_t init = (uint32_t)dag[0];
   uint32_t x, picker = init;
   uint64_t temp;
-  long long int i;
   int j;
-  for (i = 8; i < params.n; ++i) {
+  for (uint64_t i = 8; i < params.n; ++i) {
     temp = init * picker;
     x = picker = (uint32_t) (temp % SAFE_PRIME);
     x ^= dag[x % i];
@@ -102,9 +102,9 @@ uint32_t pow_mod(const uint32_t a, int b)
 
 uint32_t quick_calc_cached(uint64_t *cache, const parameters params, uint64_t pos) {
   if (pos < params.cache_size)
-    return cache[pos];
+    return cache[pos]; // todo, 64->32 bit truncation
   else {
-    uint32_t x = pow_mod(cache[0], pos+1);
+    uint32_t x = pow_mod(cache[0], pos+1);  // todo, 64->32 bit truncation
     for (int j = 0; j < params.w; ++j)
       x ^= cube_mod_safe_prime(x);
     return x;
@@ -115,7 +115,7 @@ uint32_t quick_calc(
         parameters params, 
         const unsigned char seed[HASH_CHARS],
         const uint64_t pos) {
-  uint64_t cache[params.cache_size];
+  uint64_t* cache = alloca(sizeof(uint64_t) * params.cache_size); // might be too large for stack?
   params.n = params.cache_size;
   produce_dag(cache, params, seed);
   return quick_calc_cached(cache, params, pos);
@@ -168,9 +168,9 @@ void quick_hashimoto(
         const unsigned char prevhash[32],
         const uint64_t nonce) {
   const uint64_t original_n = params.n;
-  uint64_t cache[params.cache_size];
+  uint64_t* cache = alloca(sizeof(uint64_t) * params.cache_size); // might be too large for stack?
   params.n = params.cache_size;
   produce_dag(cache, params, prevhash);
   params.n = original_n;
-  return quick_hashimoto_cached(result, cache, params, prevhash, nonce);
+  quick_hashimoto_cached(result, cache, params, prevhash, nonce);
 }
