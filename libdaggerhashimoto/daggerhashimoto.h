@@ -61,7 +61,8 @@ const parameters defaults = {
         .accesses = 200,
 };
 
-void sha3_1(unsigned char *result, const unsigned char prevhash[HASH_CHARS]);
+void sha3_1(uint8_t *result, const unsigned char prevhash[HASH_CHARS]);
+void sha3_dag(uint64_t *dag, const unsigned char prevhash[HASH_CHARS]);
 
 #ifdef __cplusplus
 }

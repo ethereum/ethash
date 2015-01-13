@@ -30,7 +30,7 @@
 #include <iomanip>
 
 
-std::string hashToHex(const unsigned char str[HASH_CHARS]) {
+std::string hashToHex(const uint8_t str[HASH_CHARS]) {
     std::ostringstream ret;
 
     for (int i = 0; i < HASH_CHARS; ++i)
@@ -39,18 +39,35 @@ std::string hashToHex(const unsigned char str[HASH_CHARS]) {
     return ret.str();
 }
 
-BOOST_AUTO_TEST_CASE(num_from_string_and_back) {
-    unsigned char result[HASH_CHARS];
-    sha3_1(result, defaults.diff);
+BOOST_AUTO_TEST_CASE(sha3_1_check) {
+    uint8_t input[32], result[HASH_CHARS];
+    memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+    sha3_1(result, input);
 
-    const unsigned char expected[HASH_CHARS] = {
-            43, 93, 223, 111, 77, 33, 194, 61, 226, 22, 244, 77, 94, 75, 220,
-            104, 224, 68, 183, 24, 151, 131, 126, 167, 76, 131, 144, 139, 231, 3, 124, 215};
+    const std::string
+            expected = "2b5ddf6f4d21c23de216f44d5e4bdc68e044b71897837ea74c83908be7037cd7",
+            actual = hashToHex(result);
 
-    BOOST_REQUIRE_MESSAGE(
-            !memcmp(result, expected, HASH_CHARS),
-            "\nExpected : " + hashToHex(expected) + "\n" +
-                    "Actual : " + hashToHex(result) + "\n"
-    );
+    BOOST_REQUIRE_MESSAGE(expected == actual,
+            "\nexpected: " << expected.c_str() << "\n"
+                    << "actual: " << actual.c_str() << "\n");
+}
+
+BOOST_AUTO_TEST_CASE(sha3_dag_check) {
+    unsigned char input[32];
+    memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+    uint64_t actual[4],
+            expected[4] = {
+            3124899385593414205U,
+            16291477315191037032U,
+            16160242679161257639U,
+            5513409299382238423U};
+    sha3_dag(actual, input);
+    for (int i = 0; i < 4; i++) {
+
+        BOOST_REQUIRE_MESSAGE(actual[i] == expected[i],
+                "\nexpected: " << expected[i] << "\n"
+                        << "actual: " << actual[i] << "\n");
+    }
 }
 
