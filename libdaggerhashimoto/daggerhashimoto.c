@@ -22,44 +22,28 @@
 */
 
 #include <stdlib.h>
-#include <ForceFeedback/ForceFeedback.h>
 #include "daggerhashimoto.h"
 #include "sha3.h"
 
-#define SAFE_PRIME 4294967087U
-#define NUM_BITS 32U
-#define WIDTH 32
-
-const parameters defaults = {
-        .n = (uint64_t) (4000055296 * 8 / NUM_BITS),
-        .n_inc = 65536,
-        .diff = (unsigned char[32]) "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
-        .cache_size = 8,  // CANNOT BE LESS THAN 8!
-        .epoch_time = 1000,
-        .w = 3,
-        .accesses = 200,
-};
-
-
-void sha3_1(unsigned char *result, const unsigned char prevhash[32]) {
-    sha3_ctx ctx;
-    sha3_256_init(&ctx);
-    sha3_update(&ctx, prevhash, sizeof(prevhash));
-    sha3_final(&ctx, result);
+void sha3_1(unsigned char *result, const unsigned char prevhash[HASH_CHARS]) {
+    struct sha3_ctx ctx;
+    sha3_init(&ctx, 256);
+    sha3_update(&ctx, prevhash, HASH_CHARS);
+    sha3_finalize(&ctx, result);
 }
 
-void sha3_dag(uint32_t *dag, const unsigned char prevhash[32]) {
+void sha3_dag(uint64_t *dag, const unsigned char prevhash[HASH_CHARS]) {
     // DAG must be at least 256 bits long!
-    sha3_1((unsigned char *) dag,prevhash);
+    sha3_1((unsigned char *) dag, prevhash);
 }
 
-uint64_t sha3_nonce(const unsigned char prevhash[32], const uint64_t nonce) {
+uint64_t sha3_nonce(const unsigned char prevhash[HASH_CHARS], const uint64_t nonce) {
   unsigned char result[32];
-  sha3_ctx ctx;
-  sha3_256_init(&ctx);
-  sha3_update(&ctx, prevhash, sizeof(prevhash));
-  sha3_update(&ctx, (unsigned char const *) &nonce, sizeof(nonce));
-  sha3_final(&ctx, result);
+  struct sha3_ctx ctx;
+  sha3_init(&ctx, 256);
+  sha3_update(&ctx, prevhash, HASH_CHARS);
+  sha3_update(&ctx, (uint8_t *) &nonce, sizeof(nonce));
+  sha3_finalize(&ctx, result);
   uint64_t mix = 0;
   for(int i = 0; i < 4; ++i)
     mix ^= ((uint64_t *) result)[i];
@@ -67,10 +51,10 @@ uint64_t sha3_nonce(const unsigned char prevhash[32], const uint64_t nonce) {
 }
 
 void sha3_mix(unsigned char result[32], uint32_t *const mix) {
-  sha3_ctx ctx;
-  sha3_256_init(&ctx);
-  sha3_update(&ctx, (unsigned char const *) mix, sizeof(mix));
-  sha3_final(&ctx, result);
+  struct sha3_ctx ctx;
+  sha3_init(&ctx, 256);
+  sha3_update(&ctx, (uint8_t *) mix, sizeof(mix));
+  sha3_finalize(&ctx, result);
 }
 
 inline uint32_t cube_mod_safe_prime(uint32_t x) {
@@ -80,9 +64,9 @@ inline uint32_t cube_mod_safe_prime(uint32_t x) {
 }
 
 void produce_dag(
-        uint32_t * dag,
+        uint64_t * dag,
         const parameters params,
-        const unsigned char seed[32]) {
+        const unsigned char seed[HASH_CHARS]) {
   const int w = params.w;
   sha3_dag(dag, seed);
   const uint32_t init = dag[0];
@@ -115,7 +99,7 @@ uint32_t pow_mod(const uint32_t a, int b)
 }
 
 
-uint32_t quick_calc_cached(const uint32_t * cache, const parameters params, uint64_t pos) {
+uint32_t quick_calc_cached(uint64_t *cache, const parameters params, uint64_t pos) {
   if (pos < params.cache_size)
     return cache[pos];
   else {
@@ -128,19 +112,19 @@ uint32_t quick_calc_cached(const uint32_t * cache, const parameters params, uint
 
 uint32_t quick_calc(
         parameters params, 
-        const unsigned char seed[32], 
+        const unsigned char seed[HASH_CHARS],
         const uint64_t pos) {
-  uint32_t cache[params.cache_size];
+  uint64_t cache[params.cache_size];
   params.n = params.cache_size;
   produce_dag(cache, params, seed);
   return quick_calc_cached(cache, params, pos);
 }
 
 void hashimoto(
-        unsigned char result[32],
+        unsigned char result[HASH_CHARS],
         const uint32_t * dag,
         const parameters params,
-        const unsigned char prevhash[32],
+        const unsigned char prevhash[HASH_CHARS],
         const uint64_t nonce) {
   const uint64_t m = params.n - WIDTH;
   uint64_t idx = sha3_nonce(prevhash, nonce) % m;
@@ -158,7 +142,7 @@ void hashimoto(
 
 void quick_hashimoto_cached(
         unsigned char result[32],
-        const uint32_t *cache,
+        uint64_t *cache,
         const parameters params,
         const unsigned char prevhash[32],
         const uint64_t nonce) {
@@ -187,7 +171,7 @@ void quick_hashimoto(
   params.n = params.cache_size;
   produce_dag(cache, params, prevhash);
   params.n = original_n;
-  return quick_hashimoto_cached(result cache, params, prevhash, nonce);
+  return quick_hashimoto_cached(result, cache, params, prevhash, nonce);
 }
 
 

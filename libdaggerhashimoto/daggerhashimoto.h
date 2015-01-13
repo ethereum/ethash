@@ -28,20 +28,40 @@ extern "C" {
 #endif // __cplusplus
 
 #include <stdint.h>
-#include <ForceFeedback/ForceFeedback.h>
+
+#define SAFE_PRIME 4294967087U
+#define NUM_BITS 64U
+#define WIDTH 4096U
+#define HASH_CHARS 32
 
 typedef struct {
-    uint64_t n;              // Size of the dataset
-    unsigned char diff[256]; // Difficulty (adjusted during block evaluation)
-    int epoch_time;          // Length of an epoch in blocks (how often the dataset is updated)
-    int n_inc;               // Increment in value of n per period epoch
-    uint64_t cache_size;          // How big should the light client's cache be?
-    int w;                   // Work factor for memory free mining
-    int width;               // How much memory state to use in hashimoto
-    int accesses;            // Number of dataset accesses during hashimoto
-    int trials;              // Number of times to run hashimoto
+    uint64_t n;                     // Size of the dataset
+    unsigned char diff[HASH_CHARS]; // Difficulty (adjusted during block evaluation)
+    int epoch_time;                 // Length of an epoch in blocks (how often the dataset is updated)
+    int n_inc;                      // Increment in value of n per period epoch
+    uint64_t cache_size;            // How big should the light client's cache be?
+    int w;                          // Work factor for memory free mining
+    int width;                      // How much memory state to use in hashimoto
+    int accesses;                   // Number of dataset accesses during hashimoto
+    int trials;                     // Number of times to run hashimoto
   } parameters;
 
+const parameters defaults = {
+        .n = (uint64_t) (4000055296 * 8 / NUM_BITS),
+        .n_inc = 65536,
+        // .diff = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        .diff = {
+                126, 126, 126, 126, 126, 126, 126, 126,
+                126, 126, 126, 126, 126, 126, 126, 126,
+                126, 126, 126, 126, 126, 126, 126, 126,
+                126, 126, 126, 126, 126, 126, 126, 126,},
+        .cache_size = 4,  // CANNOT BE LESS THAN 4!
+        .epoch_time = 1000,
+        .w = 3,
+        .accesses = 200,
+};
+
+void sha3_1(unsigned char *result, const unsigned char prevhash[HASH_CHARS]);
 
 #ifdef __cplusplus
 }

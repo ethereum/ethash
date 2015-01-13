@@ -1,54 +1,45 @@
-/* sha3.h */
-#ifndef SHA3_H
-#define SHA3_H
-#include "ustd.h"
+/*
+ * Copyright (C) 2012 Vincent Hanquez <vincent@snarc.org>
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+#ifndef CRYPTOHASH_SHA3_H
+#define CRYPTOHASH_SHA3_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <stdint.h>
 
-#define sha3_224_hash_size  28
-#define sha3_256_hash_size  32
-#define sha3_384_hash_size  48
-#define sha3_512_hash_size  64
-#define sha3_max_permutation_size 25
-#define sha3_max_rate_in_qwords 24
-
-/**
-* SHA3 Algorithm context.
-*/
-typedef struct sha3_ctx
+struct sha3_ctx
 {
-    /* 1600 bits algorithm hashing state */
-    uint64_t hash[sha3_max_permutation_size];
-    /* 1536-bit buffer for leftovers */
-    uint64_t message[sha3_max_rate_in_qwords];
-    /* count of bytes in the message[] buffer */
-    unsigned rest;
-    /* size of a message block processed at once */
-    unsigned block_size;
-} sha3_ctx;
+    uint32_t hashlen; /* in bytes */
+    uint32_t bufindex;
+    uint64_t state[25];
+    uint32_t bufsz;
+    uint32_t _padding;
+    uint8_t  buf[144]; /* minimum SHA3-224, otherwise buffer need increases */
+};
 
-/* methods for calculating the hash function */
+#define SHA3_CTX_SIZE		sizeof(struct sha3_ctx)
 
-void sha3_224_init(sha3_ctx *ctx);
-void sha3_256_init(sha3_ctx *ctx);
-void sha3_384_init(sha3_ctx *ctx);
-void sha3_512_init(sha3_ctx *ctx);
-void sha3_update(sha3_ctx *ctx, const unsigned char* msg, size_t size);
-void sha3_final(sha3_ctx *ctx, unsigned char* result);
+void sha3_init(struct sha3_ctx *ctx, const uint32_t hashlen);
+void sha3_update(struct sha3_ctx *ctx, const uint8_t *data, const uint32_t len);
+void sha3_finalize(struct sha3_ctx *ctx, uint8_t *out);
 
-#ifdef USE_KECCAK
-#define keccak_224_init sha3_224_init
-#define keccak_256_init sha3_256_init
-#define keccak_384_init sha3_384_init
-#define keccak_512_init sha3_512_init
-#define keccak_update sha3_update
-void keccak_final(sha3_ctx *ctx, unsigned char* result);
 #endif
-
-#ifdef __cplusplus
-} /* extern "C" */
-#endif /* __cplusplus */
-
-#endif /* SHA3_H */
