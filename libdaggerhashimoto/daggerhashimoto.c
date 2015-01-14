@@ -22,6 +22,7 @@
 */
 
 #include <stdlib.h>
+#include <malloc.h>
 #include "daggerhashimoto.h"
 #include "sha3.h"
 
@@ -93,7 +94,7 @@ inline uint32_t cube_mod_safe_prime2(uint32_t x) {
 }
 
 void produce_dag(
-        uint64_t *dag,
+        uint64_t * dag,
         const parameters params,
         const unsigned char seed[HASH_CHARS]) {
     sha3_dag(dag, seed);
@@ -132,24 +133,24 @@ uint32_t pow_mod(const uint32_t a, int b) {
 
 
 uint32_t quick_calc_cached(uint64_t *cache, const parameters params, uint64_t pos) {
-    if (pos < params.cache_size)
-        return cache[pos];
-    else {
-        uint32_t x = pow_mod(cache[0], pos + 1);
-        for (int j = 0; j < params.w; ++j)
-            x ^= cube_mod_safe_prime(x);
-        return x;
-    }
+  if (pos < params.cache_size)
+    return cache[pos]; // todo, 64->32 bit truncation
+  else {
+    uint32_t x = pow_mod(cache[0], pos+1);  // todo, 64->32 bit truncation
+    for (int j = 0; j < params.w; ++j)
+      x ^= cube_mod_safe_prime(x);
+    return x;
+  }
 }
 
 uint32_t quick_calc(
         parameters params,
         const unsigned char seed[HASH_CHARS],
         const uint64_t pos) {
-    uint64_t cache[params.cache_size];
-    params.n = params.cache_size;
-    produce_dag(cache, params, seed);
-    return quick_calc_cached(cache, params, pos);
+  uint64_t* cache = alloca(sizeof(uint64_t) * params.cache_size); // might be too large for stack?
+  params.n = params.cache_size;
+  produce_dag(cache, params, seed);
+  return quick_calc_cached(cache, params, pos);
 }
 
 void hashimoto(
@@ -158,41 +159,18 @@ void hashimoto(
         const parameters params,
         const unsigned char prevhash[HASH_CHARS],
         const uint64_t nonce) {
-    const size_t m = params.n - WIDTH;
-    size_t idx = sha3_nonce(prevhash, nonce) % m;
-    uint32_t mix[WIDTH], c[WIDTH];
-
-    for (int i = 0; i < WIDTH; ++i) {
-        mix[i] = 0;
-        c[i] = dag[idx + i];
-    }
-
-    for (int p = 0; p < params.accesses; ++p) {
-        for (int i = 0; i < WIDTH; ++i)
-            mix[i] ^= dag[idx + i];
-        idx = (idx ^ ((uint64_t *) mix)[0]) % m;
-    }
-    sha3_mix(result, mix);
-}
-
-void hashimoto(
-        unsigned char result[HASH_CHARS],
-        const uint32_t *dag,
-        const parameters params,
-        const unsigned char prevhash[HASH_CHARS],
-        const uint64_t nonce) {
-    const uint64_t m = params.n - WIDTH;
-    uint64_t idx = sha3_nonce(prevhash, nonce) % m;
-    uint32_t mix[WIDTH];
-    int i;
+  const uint64_t m = params.n - WIDTH;
+  uint64_t idx = sha3_nonce(prevhash, nonce) % m;
+  uint32_t mix[WIDTH];
+  int i;
+  for (i = 0; i < WIDTH; ++i)
+    mix[i] = 0;
+  for(int p = 0; p < params.accesses; ++p) {
     for (i = 0; i < WIDTH; ++i)
-        mix[i] = 0;
-    for (int p = 0; p < params.accesses; ++p) {
-        for (i = 0; i < WIDTH; ++i)
-            mix[i] ^= dag[idx + i];
-        idx = (idx ^ ((uint64_t *) mix)[0]) % m;
-    }
-    sha3_mix(result, mix);
+      mix[i] ^= dag[idx + i];
+    idx = (idx ^ ((uint64_t *) mix)[0]) % m;
+  }
+  sha3_mix(result, mix);
 }
 
 void quick_hashimoto_cached(
@@ -221,10 +199,10 @@ void quick_hashimoto(
         parameters params,
         const unsigned char prevhash[32],
         const uint64_t nonce) {
-    const uint64_t original_n = params.n;
-    uint64_t cache[params.cache_size];
-    params.n = params.cache_size;
-    produce_dag(cache, params, prevhash);
-    params.n = original_n;
-    return quick_hashimoto_cached(result, cache, params, prevhash, nonce);
+  const uint64_t original_n = params.n;
+  uint64_t* cache = alloca(sizeof(uint64_t) * params.cache_size); // might be too large for stack?
+  params.n = params.cache_size;
+  produce_dag(cache, params, prevhash);
+  params.n = original_n;
+  quick_hashimoto_cached(result, cache, params, prevhash, nonce);
 }
