@@ -40,8 +40,8 @@ std::string hashToHex(const uint8_t str[HASH_CHARS]) {
 }
 
 BOOST_AUTO_TEST_CASE(sha3_1_check) {
-    uint8_t input[32], result[HASH_CHARS];
-    memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+    uint8_t input[HASH_CHARS], result[HASH_CHARS];
+    memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", HASH_CHARS);
     sha3_1(result, input);
 
     const std::string
@@ -54,8 +54,8 @@ BOOST_AUTO_TEST_CASE(sha3_1_check) {
 }
 
 BOOST_AUTO_TEST_CASE(sha3_dag_check) {
-    unsigned char input[32];
-    memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+    uint8_t input[HASH_CHARS];
+    memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", HASH_CHARS);
     uint64_t actual[4],
             expected[4] = {
             3124899385593414205U,
@@ -71,3 +71,30 @@ BOOST_AUTO_TEST_CASE(sha3_dag_check) {
     }
 }
 
+BOOST_AUTO_TEST_CASE(uint64str_check) {
+    uint8_t expected_[8], actual_[8];
+    memcpy(expected_, "~~~~~~~~", 8);
+    uint64str(actual_, 0x7E7E7E7E7E7E7E7EU);
+    const std::string expected((char *) expected_, 8), actual((char *) actual_, 8);
+    BOOST_REQUIRE_MESSAGE(actual == expected,
+            "\nexpected: " << expected.c_str() << "\n"
+                    << "actual: " << actual.c_str() << "\n");
+}
+
+BOOST_AUTO_TEST_CASE(sha3_nonce_check) {
+    uint8_t input[HASH_CHARS];
+    memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", HASH_CHARS);
+    const uint64_t nonce = 0x7E7E7E7E7E7E7E7EU,
+            expected[HASH_UINT64S] = {
+            16676420855326402901U,
+            7135211131009382663U,
+            10419225811852285529U,
+            17845768961284699855U};
+    uint64_t actual[HASH_UINT64S];
+    sha3_nonce(actual, input, nonce);
+    for (int i = 0; i < HASH_UINT64S; i++) {
+        BOOST_REQUIRE_MESSAGE(actual[i] == expected[i],
+                "\nexpected: " << expected[i] << "\n"
+                        << "actual: " << actual[i] << "\n");
+    }
+}

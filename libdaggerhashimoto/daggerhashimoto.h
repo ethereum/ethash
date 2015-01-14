@@ -20,8 +20,7 @@
  * @date 2014
  */
 
-#ifndef DAGGERHASHIMOTO_H
-#define DAGGERHASHIMOTO_H
+#pragma once
 #include "compiler.h"
 #include <stddef.h>
 
@@ -68,10 +67,10 @@ const parameters defaults = {
 };
 
 void sha3_1(uint8_t result[HASH_CHARS], const unsigned char previous_hash[HASH_CHARS]);
-void sha3_dag(uint64_t *dag, const unsigned char prevhash[HASH_CHARS]);
+void sha3_dag(uint64_t *dag, const unsigned char previous_hash[HASH_CHARS]);
+void uint64str(uint8_t result[8], uint64_t n);
+void sha3_nonce(uint64_t rand[HASH_UINT64S], const unsigned char previous_hash[HASH_CHARS], const uint64_t nonce);
 
 #ifdef __cplusplus
 }
 #endif // __cplusplus
-
-#endif // DAGGERHASHIMOTO_H

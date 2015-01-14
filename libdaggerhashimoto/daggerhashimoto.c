@@ -22,7 +22,6 @@
 */
 
 #include <stdlib.h>
-#include <stdlib.h>
 #include "daggerhashimoto.h"
 #include "sha3.h"
 
@@ -34,11 +33,11 @@ void sha3_1(uint8_t result[HASH_CHARS], const unsigned char previous_hash[HASH_C
     sha3_finalize(&ctx, result);
 }
 
-void sha3_dag(uint64_t *dag, const unsigned char prevhash[HASH_CHARS]) {
+void sha3_dag(uint64_t *dag, const unsigned char previous_hash[HASH_CHARS]) {
     // DAG must be at least 256 bits long!
     uint8_t result[HASH_CHARS];
     int i, j;
-    sha3_1(result, prevhash);
+    sha3_1(result, previous_hash);
     for (i = 0; i < HASH_UINT64S; ++i) {
         dag[i] = 0;
         for (j = 0; j < 8; ++j) {
@@ -56,26 +55,30 @@ void uint64str(uint8_t result[8], uint64_t n) {
     }
 }
 
-void sha3_nonce(uint64_t rand[HASH_UINT64S], const unsigned char prevhash[HASH_CHARS], const uint64_t nonce) {
+void sha3_nonce(
+        uint64_t out[HASH_UINT64S],
+        const unsigned char previous_hash[HASH_CHARS],
+        const uint64_t nonce) {
     uint8_t result[HASH_CHARS], nonce_data[8];
     int i, j;
     struct sha3_ctx ctx;
     uint64str(nonce_data, nonce);
     sha3_init(&ctx, 256);
-    sha3_update(&ctx, prevhash, HASH_CHARS);
+    sha3_update(&ctx, previous_hash, HASH_CHARS);
     sha3_update(&ctx, nonce_data, 8);
     sha3_finalize(&ctx, result);
-    sha3_1(result, prevhash);
     for (i = 0; i < HASH_UINT64S; ++i) {
-        rand[i] = 0;
+        out[i] = 0;
         for (j = 0; j < 8; ++j) {
-            rand[i] <<= 8;
-            rand[i] += result[8 * i + j];
+            out[i] <<= 8;
+            out[i] += result[8 * i + j];
         }
     }
 }
 
-void sha3_mix(uint8_t result[HASH_CHARS], const uint64_t mix[HASH_UINT64S]) {
+void sha3_mix(
+        uint8_t result[HASH_CHARS],
+        const uint64_t mix[HASH_UINT64S]) {
     uint8_t temp[8];
     struct sha3_ctx ctx;
     sha3_init(&ctx, 256);
@@ -164,11 +167,11 @@ void hashimoto(
         unsigned char result[HASH_CHARS],
         const uint64_t *dag,
         const parameters params,
-        const unsigned char prevhash[HASH_CHARS],
+        const unsigned char previous_hash[HASH_CHARS],
         const uint64_t nonce) {
     uint64_t rand[HASH_UINT64S];
     const uint64_t m = params.n - params.accesses - WIDTH;
-    sha3_nonce(rand, prevhash, nonce);
+    sha3_nonce(rand, previous_hash, nonce);
     uint64_t mix[WIDTH];
     int i, j, p;
     for (i = 0; i < WIDTH; ++i) {
@@ -187,11 +190,11 @@ void quick_hashimoto_cached(
         unsigned char result[32],
         uint64_t *cache,
         const parameters params,
-        const unsigned char prevhash[32],
+        const unsigned char previous_hash[32],
         const uint64_t nonce) {
     uint64_t rand[HASH_UINT64S];
     const uint64_t m = params.n - WIDTH;
-    sha3_nonce(rand, prevhash, nonce);
+    sha3_nonce(rand, previous_hash, nonce);
     uint64_t mix[WIDTH];
     int i, p;
     for (i = 0; i < WIDTH; ++i)
@@ -208,12 +211,12 @@ void quick_hashimoto(
         unsigned char result[32],
         const unsigned char seed[32],
         parameters params,
-        const unsigned char prevhash[32],
+        const unsigned char previous_hash[32],
         const uint64_t nonce) {
     const uint64_t original_n = params.n;
     uint64_t *cache = alloca(sizeof(uint64_t) * params.cache_size); // might be too large for stack?
     params.n = params.cache_size;
-    produce_dag(cache, params, prevhash);
+    produce_dag(cache, params, previous_hash);
     params.n = original_n;
-    quick_hashimoto_cached(result, cache, params, prevhash, nonce);
+    quick_hashimoto_cached(result, cache, params, previous_hash, nonce);
 }
