@@ -23,6 +23,7 @@
 #ifndef DAGGERHASHIMOTO_H
 #define DAGGERHASHIMOTO_H
 #include "compiler.h"
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
