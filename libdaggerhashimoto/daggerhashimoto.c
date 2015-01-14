@@ -164,7 +164,7 @@ void hashimoto(
         const unsigned char prevhash[HASH_CHARS],
         const uint64_t nonce) {
     uint64_t rand[HASH_UINT64S];
-    const uint64_t m = params.n - WIDTH;
+    const uint64_t m = params.n - params.accesses - WIDTH;
     sha3_nonce(rand, prevhash, nonce);
     uint64_t mix[WIDTH], c[WIDTH];
     int i;
