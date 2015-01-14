@@ -30,9 +30,11 @@ extern "C" {
 #include <stdint.h>
 
 #define SAFE_PRIME 4294967087U
+#define SAFE_PRIME2 4294965887U
 #define NUM_BITS 64U
 #define WIDTH 4096U
 #define HASH_CHARS 32
+#define HASH_UINT64S 4
 
 typedef struct {
     uint64_t n;                     // Size of the dataset
@@ -61,7 +63,7 @@ const parameters defaults = {
         .accesses = 200,
 };
 
-void sha3_1(uint8_t *result, const unsigned char prevhash[HASH_CHARS]);
+void sha3_1(uint8_t result[HASH_CHARS], const unsigned char previous_hash[HASH_CHARS]);
 void sha3_dag(uint64_t *dag, const unsigned char prevhash[HASH_CHARS]);
 
 #ifdef __cplusplus
