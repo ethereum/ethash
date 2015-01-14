@@ -192,7 +192,7 @@ void quick_hashimoto_cached(
     uint64_t rand[HASH_UINT64S];
     const uint64_t m = params.n - WIDTH;
     sha3_nonce(rand, prevhash, nonce);
-    uint32_t mix[WIDTH];
+    uint64_t mix[WIDTH];
     int i, p;
     for (i = 0; i < WIDTH; ++i)
         mix[i] = 0;
