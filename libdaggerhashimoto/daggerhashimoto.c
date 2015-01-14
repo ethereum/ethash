@@ -49,7 +49,8 @@ void sha3_dag(uint64_t *dag, const unsigned char prevhash[HASH_CHARS]) {
 }
 
 void uint64str(uint8_t result[8], uint64_t n) {
-    for (int i = 0; i < 8; ++i) {
+    int i;
+    for (i = 0; i < 8; ++i) {
         result[i] = (uint8_t) n;
         n >>= 8;
     }
@@ -78,7 +79,8 @@ void sha3_mix(uint8_t result[HASH_CHARS], const uint64_t mix[HASH_UINT64S]) {
     uint8_t temp[8];
     struct sha3_ctx ctx;
     sha3_init(&ctx, 256);
-    for(int i = 0; i < HASH_UINT64S; ++i) {
+    int i;
+    for(i = 0; i < HASH_UINT64S; ++i) {
         uint64str(temp, mix[i]);
         sha3_update(&ctx, temp, 8);
     }
@@ -141,7 +143,8 @@ uint64_t quick_calc_cached(uint64_t *cache, const parameters params, uint64_t po
         return cache[pos]; // todo, 64->32 bit truncation
     else {
         uint32_t x = pow_mod(cache[0], pos + 1);  // todo, 64->32 bit truncation
-        for (int j = 0; j < params.w; ++j)
+        int j;
+        for (j = 0; j < params.w; ++j)
             x ^= cube_mod_safe_prime(x);
         return x;
     }
@@ -166,16 +169,16 @@ void hashimoto(
     uint64_t rand[HASH_UINT64S];
     const uint64_t m = params.n - WIDTH;
     sha3_nonce(rand, prevhash, nonce);
-    uint64_t mix[WIDTH], c[WIDTH];
-    int i;
+    uint64_t mix[WIDTH];
+    int i, j, p;
     for (i = 0; i < WIDTH; ++i) {
-        c[i] = dag[rand[0] % m + 1];
-        mix[i] = 0;
+        mix[i] = dag[rand[0] % m + i];
     }
-    for (int j = 1; j < HASH_UINT64S ; j++)
-        for (int p = 0; p < params.accesses; ++p) {
+    for (j = 1; j < HASH_UINT64S ; j++)
+        for (p = 0; p < params.accesses; ++p) {
+            uint64_t ind = mix[p % WIDTH] % params.n;
             for (i = 0; i < WIDTH; ++i)
-                mix[i] = mix[i] * c[i] + dag[rand[j] % m + i];
+                mix[i] ^= dag[ind + i];
         }
     sha3_mix(result, mix);
 }

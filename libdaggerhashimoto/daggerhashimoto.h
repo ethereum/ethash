@@ -34,7 +34,7 @@ extern "C" {
 #define SAFE_PRIME 4294967087U
 #define SAFE_PRIME2 4294965887U
 #define NUM_BITS 64U
-#define WIDTH 4096U
+#define WIDTH 64U
 #define HASH_CHARS 32
 #define HASH_UINT64S 4
 
