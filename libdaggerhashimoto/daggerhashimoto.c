@@ -174,32 +174,32 @@ void hashimoto(
     for (i = 0; i < WIDTH; ++i) {
         mix[i] = dag[rand[0] % m + i];
     }
-    for (j = 1; j < HASH_UINT64S ; j++)
-        for (p = 0; p < params.accesses; ++p) {
-            uint64_t ind = mix[p % WIDTH] % params.n;
-            for (i = 0; i < WIDTH; ++i)
-                mix[i] ^= dag[ind + i];
-        }
+    for (p = 0; p < params.accesses; ++p) {
+        uint64_t ind = mix[p % WIDTH] % params.n;
+        for (i = 0; i < WIDTH; ++i)
+            mix[i] ^= dag[ind + i];
+    }
     sha3_mix(result, mix);
 }
 
-/*
+
 void quick_hashimoto_cached(
         unsigned char result[32],
         uint64_t *cache,
         const parameters params,
         const unsigned char prevhash[32],
         const uint64_t nonce) {
+    uint64_t rand[HASH_UINT64S];
     const uint64_t m = params.n - WIDTH;
-    uint64_t idx = sha3_nonce(prevhash, nonce) % m;
+    sha3_nonce(rand, prevhash, nonce);
     uint32_t mix[WIDTH];
-    int i;
+    int i, p;
     for (i = 0; i < WIDTH; ++i)
         mix[i] = 0;
-    for (int p = 0; p < params.accesses; ++p) {
+    for (p = 0; p < params.accesses; ++p) {
+        uint64_t ind = mix[p % WIDTH] % params.n;
         for (i = 0; i < WIDTH; ++i)
-            mix[i] ^= quick_calc_cached(cache, params, idx + i);
-        idx = (idx ^ ((uint64_t *) mix)[0]) % m;
+            mix[i] ^= quick_calc_cached(cache, params, ind + i);
     }
     sha3_mix(result, mix);
 }
@@ -217,4 +217,3 @@ void quick_hashimoto(
     params.n = original_n;
     quick_hashimoto_cached(result, cache, params, prevhash, nonce);
 }
-*/
