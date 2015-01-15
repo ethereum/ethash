@@ -137,7 +137,7 @@ void sha3_update(struct sha3_ctx * const __restrict__ ctx, const uint8_t *data, 
     }
 }
 
-void sha3_finalize(struct sha3_ctx * const __restrict__ ctx, uint8_t * const out)
+void sha3_finalize(struct sha3_ctx * const __restrict__ ctx, uint8_t * const __restrict__ out)
 {
     uint64_t w[25];
 

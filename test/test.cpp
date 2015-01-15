@@ -17,45 +17,36 @@ std::string hashToHex(const uint8_t str[HASH_CHARS]) {
     return ret.str();
 }
 
-BOOST_AUTO_TEST_CASE(sha3_1_check) {
-    uint8_t input[HASH_CHARS], result[HASH_CHARS];
-    memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", HASH_CHARS);
-    sha3_1(result, input);
-
-    const std::string
-            expected = "2b5ddf6f4d21c23de216f44d5e4bdc68e044b71897837ea74c83908be7037cd7",
-            actual = hashToHex(result);
-
-    BOOST_REQUIRE_MESSAGE(expected == actual,
-            "\nexpected: " << expected.c_str() << "\n"
-                    << "actual: " << actual.c_str() << "\n");
-}
-
 BOOST_AUTO_TEST_CASE(sha3_dag_check) {
-    uint8_t input[HASH_CHARS];
-    memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", HASH_CHARS);
-    uint64_t actual[4],
-            expected[4] = {
-            3124899385593414205U,
-            16291477315191037032U,
-            16160242679161257639U,
-            5513409299382238423U};
-    sha3_dag(actual, input);
-    for (int i = 0; i < 4; i++) {
-        BOOST_REQUIRE_MESSAGE(actual[i] == expected[i],
-                "\nexpected: " << expected[i] << "\n"
-                        << "actual: " << actual[i] << "\n");
-    }
-}
+    {
+        uint8_t input[HASH_CHARS], result[HASH_CHARS];
+        memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", HASH_CHARS);
+        sha3_dag(result, input);
 
-BOOST_AUTO_TEST_CASE(uint64str_check) {
-    uint8_t expected_[8], actual_[8];
-    memcpy(expected_, "~~~~~~~~", 8);
-    uint64str(actual_, 0x7E7E7E7E7E7E7E7EU);
-    const std::string expected((char *) expected_, 8), actual((char *) actual_, 8);
-    BOOST_REQUIRE_MESSAGE(actual == expected,
-            "\nexpected: " << expected.c_str() << "\n"
-                    << "actual: " << actual.c_str() << "\n");
+        const std::string
+                expected = "2b5ddf6f4d21c23de216f44d5e4bdc68e044b71897837ea74c83908be7037cd7",
+                actual = hashToHex(result);
+
+        BOOST_REQUIRE_MESSAGE(expected == actual,
+                "\nexpected: " << expected.c_str() << "\n"
+                        << "actual: " << actual.c_str() << "\n");
+    }
+    {
+        uint8_t input[HASH_CHARS];
+        memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", HASH_CHARS);
+        uint64_t actual[4],
+                expected[4] = {
+                4450155998268579115U,
+                7555997143227700962U,
+                12069228736377472224U,
+                15527289908280460108U};
+        sha3_dag((uint8_t *) actual, input);
+        for (int i = 0; i < 4; i++) {
+            BOOST_REQUIRE_MESSAGE(actual[i] == expected[i],
+                    "\nexpected: " << expected[i] << "\n"
+                            << "actual: " << actual[i] << "\n");
+        }
+    }
 }
 
 BOOST_AUTO_TEST_CASE(sha3_rand_check) {
