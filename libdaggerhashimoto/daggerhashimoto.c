@@ -1,30 +1,6 @@
-// -*-c-*-
-/*
-  This file is part of cpp-ethereum.
-
-  cpp-ethereum is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  cpp-ethereum is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
-/** @file daggerhashimoto.c
-* @author Matthew Wampler-Doty <matt@w-d.org>
-* @date 2014
-*/
-
 #include <stdlib.h>
 #include "daggerhashimoto.h"
 #include "sha3.h"
-
 
 void sha3_1(uint8_t result[HASH_CHARS], const unsigned char previous_hash[HASH_CHARS]) {
     struct sha3_ctx ctx;
@@ -33,6 +9,7 @@ void sha3_1(uint8_t result[HASH_CHARS], const unsigned char previous_hash[HASH_C
     sha3_finalize(&ctx, result);
 }
 
+// TODO: Switch to little endian
 void sha3_dag(uint64_t *dag, const unsigned char previous_hash[HASH_CHARS]) {
     // DAG must be at least 256 bits long!
     uint8_t result[HASH_CHARS];
@@ -55,7 +32,8 @@ void uint64str(uint8_t result[8], uint64_t n) {
     }
 }
 
-void sha3_nonce(
+// TODO: Switch to little endian
+void sha3_rand(
         uint64_t out[HASH_UINT64S],
         const unsigned char previous_hash[HASH_CHARS],
         const uint64_t nonce) {
@@ -76,32 +54,40 @@ void sha3_nonce(
     }
 }
 
+// TODO: Test Me
 void sha3_mix(
         uint8_t result[HASH_CHARS],
-        const uint64_t mix[HASH_UINT64S]) {
+        const uint64_t mix[WIDTH],
+        const uint64_t nonce) {
     uint8_t temp[8];
     struct sha3_ctx ctx;
     sha3_init(&ctx, 256);
-    int i;
-    for(i = 0; i < HASH_UINT64S; ++i) {
+    for(int i = 0; i < WIDTH; ++i) {
         uint64str(temp, mix[i]);
         sha3_update(&ctx, temp, 8);
     }
+    uint64str(temp, nonce);
+    sha3_update(&ctx, temp, 8);
     sha3_finalize(&ctx, result);
 }
 
-inline uint32_t cube_mod_safe_prime(uint32_t x) {
-    uint64_t temp = x * x;
-    temp = x * ((uint32_t) (temp % SAFE_PRIME));
-    return (uint32_t) temp;
+inline uint32_t cube_mod_safe_prime(const uint32_t x) {
+    uint64_t temp = x;
+    temp *= x;
+    temp %= SAFE_PRIME;
+    temp *= x;
+    return (uint32_t) (temp % SAFE_PRIME);
 }
 
-inline uint32_t cube_mod_safe_prime2(uint32_t x) {
-    uint64_t temp = x * x;
-    temp = x * ((uint32_t) (temp % SAFE_PRIME2));
-    return (uint32_t) temp;
+inline uint32_t cube_mod_safe_prime2(const uint32_t x) {
+    uint64_t temp = x;
+    temp *= x;
+    temp %= SAFE_PRIME2;
+    temp *= x;
+    return (uint32_t) (temp % SAFE_PRIME2);
 }
 
+// TODO: Test Me
 void produce_dag(
         uint64_t *dag,
         const parameters params,
@@ -127,30 +113,61 @@ void produce_dag(
     }
 }
 
-uint32_t pow_mod(const uint32_t a, int b) {
-    uint64_t r = 1, aa = a;
-    while (1) {
-        if (b & 1)
-            r = (r * a) % SAFE_PRIME;
-        b >>= 1;
-        if (b == 0)
-            break;
-        aa = (aa * aa) % SAFE_PRIME;
+const uint32_t powers_of_three_mod_totient[32] = {
+        3, 9, 81, 6561, 43046721, 3884235087U, 4077029855U, 106110483U,
+        2292893763U, 2673619771U, 2265535291U, 2641962139U, 867632699U,
+        4234161123U, 4065670495U, 1161610561U, 1960994291U, 683176121U,
+        1539788995U, 1214448689U, 2554812497U, 2574646649U, 3290602031U,
+        2381552417U, 3391635653U, 639421717U, 1685119297U, 4206074945U,
+        1006214457U, 102532655U, 4081098815U, 3106101787U
+};
+
+uint32_t three_pow_mod_totient(uint32_t p) {
+    uint64_t r = 1;
+    for(int i = 0; i < 32; ++i) {
+        if (p & 1) {
+            r *= powers_of_three_mod_totient[i];
+            r %= (SAFE_PRIME - 1);
+        }
+        p >>= 1;
     }
     return (uint32_t) r;
 }
 
+void init_power_table_mod_prime(uint32_t table[32], const uint32_t n) {
+    uint64_t r = n;
+    r %= SAFE_PRIME;
+    table[0] = (uint32_t) r;
+    for(int i = 1; i < 32; ++i) {
+        r *= r;
+        r %= SAFE_PRIME;
+        table[i] = (uint32_t) r;
+    }
+}
+
+uint32_t quick_bbs(const uint32_t table[32], const uint32_t p) {
+    uint32_t q = three_pow_mod_totient(p);
+    uint64_t r = 1;
+    for(int i = 0; i < 32; ++i) {
+        if (q & 1) {
+            r *= table[i];
+            r %= SAFE_PRIME;
+        }
+        q >>= 1;
+    }
+    return (uint32_t) r;
+}
 
 uint64_t quick_calc_cached(uint64_t *cache, const parameters params, uint64_t pos) {
-    if (pos < params.cache_size)
-        return cache[pos]; // todo, 64->32 bit truncation
-    else {
-        uint32_t x = pow_mod(cache[0], pos + 1);  // todo, 64->32 bit truncation
-        int j;
-        for (j = 0; j < params.w; ++j)
-            x ^= cube_mod_safe_prime(x);
-        return x;
-    }
+//    if (pos < params.cache_size)
+//        return cache[pos]; // todo, 64->32 bit truncation
+//    else {
+//        uint32_t x = pow_mod(cache[0], pos + 1);  // todo, 64->32 bit truncation
+//        int j;
+//        for (j = 0; j < params.w; ++j)
+//            x ^= cube_mod_safe_prime(x);
+//        return x;
+//    }
 }
 
 uint32_t quick_calc(
@@ -170,19 +187,19 @@ void hashimoto(
         const unsigned char previous_hash[HASH_CHARS],
         const uint64_t nonce) {
     uint64_t rand[HASH_UINT64S];
-    const uint64_t m = params.n - params.accesses - WIDTH;
-    sha3_nonce(rand, previous_hash, nonce);
+    const uint64_t m = params.n - WIDTH;
+    sha3_rand(rand, previous_hash, nonce);
     uint64_t mix[WIDTH];
     int i, j, p;
     for (i = 0; i < WIDTH; ++i) {
         mix[i] = dag[rand[0] % m + i];
     }
     for (p = 0; p < params.accesses; ++p) {
-        uint64_t ind = mix[p % WIDTH] % params.n;
+        uint64_t ind = mix[p % WIDTH] % m;
         for (i = 0; i < WIDTH; ++i)
             mix[i] ^= dag[ind + i];
     }
-    sha3_mix(result, mix);
+    sha3_mix(result, mix, nonce);
 }
 
 
@@ -194,7 +211,7 @@ void quick_hashimoto_cached(
         const uint64_t nonce) {
     uint64_t rand[HASH_UINT64S];
     const uint64_t m = params.n - WIDTH;
-    sha3_nonce(rand, previous_hash, nonce);
+    sha3_rand(rand, previous_hash, nonce);
     uint64_t mix[WIDTH];
     int i, p;
     for (i = 0; i < WIDTH; ++i)
@@ -204,7 +221,7 @@ void quick_hashimoto_cached(
         for (i = 0; i < WIDTH; ++i)
             mix[i] ^= quick_calc_cached(cache, params, ind + i);
     }
-    sha3_mix(result, mix);
+    sha3_mix(result, mix, nonce);
 }
 
 void quick_hashimoto(

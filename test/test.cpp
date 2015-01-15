@@ -1,25 +1,4 @@
-// -*-c++-*-
-/*
-  This file is part of cpp-ethereum.
-
-  cpp-ethereum is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  cpp-ethereum is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
-*/
-/** @file test.cpp
-* @author Matthew Wampler-Doty <matt@w-d.org>
-* @date 2014
-*/
-
+#include <iomanip>
 #include <libdaggerhashimoto/daggerhashimoto.h>
 
 
@@ -27,7 +6,6 @@
 #define BOOST_TEST_MAIN
 
 #include <boost/test/unit_test.hpp>
-#include <iomanip>
 
 
 std::string hashToHex(const uint8_t str[HASH_CHARS]) {
@@ -81,7 +59,7 @@ BOOST_AUTO_TEST_CASE(uint64str_check) {
                     << "actual: " << actual.c_str() << "\n");
 }
 
-BOOST_AUTO_TEST_CASE(sha3_nonce_check) {
+BOOST_AUTO_TEST_CASE(sha3_rand_check) {
     uint8_t input[HASH_CHARS];
     memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", HASH_CHARS);
     const uint64_t nonce = 0x7E7E7E7E7E7E7E7EU,
@@ -91,10 +69,136 @@ BOOST_AUTO_TEST_CASE(sha3_nonce_check) {
             10419225811852285529U,
             17845768961284699855U};
     uint64_t actual[HASH_UINT64S];
-    sha3_nonce(actual, input, nonce);
+    sha3_rand(actual, input, nonce);
     for (int i = 0; i < HASH_UINT64S; i++) {
         BOOST_REQUIRE_MESSAGE(actual[i] == expected[i],
                 "\nexpected: " << expected[i] << "\n"
                         << "actual: " << actual[i] << "\n");
+    }
+}
+
+BOOST_AUTO_TEST_CASE(cube_mod_safe_prime_check) {
+    const uint32_t expected = 4294966087U,
+            actual = cube_mod_safe_prime(4294967077U);
+
+    BOOST_REQUIRE_MESSAGE(actual == expected,
+            "\nexpected: " << expected << "\n"
+                    << "actual: " << actual << "\n");
+
+}
+
+BOOST_AUTO_TEST_CASE(cube_mod_safe_prime2_check) {
+    const uint32_t
+            expected = 3565965887U,
+            actual = cube_mod_safe_prime2(4294964987U);
+
+    BOOST_REQUIRE_MESSAGE(actual == expected,
+            "\nexpected: " << expected << "\n"
+                    << "actual: " << actual << "\n");
+}
+
+BOOST_AUTO_TEST_CASE(three_pow_mod_totient_check) {
+    {
+        const uint32_t
+                expected = 1,
+                actual = three_pow_mod_totient(0);
+
+        BOOST_REQUIRE_MESSAGE(actual == expected,
+                "\nexpected: " << expected << "\n"
+                        << "actual: " << actual << "\n");
+    }
+    {
+        const uint32_t
+                expected = 3,
+                actual = three_pow_mod_totient(1);
+
+        BOOST_REQUIRE_MESSAGE(actual == expected,
+                "\nexpected: " << expected << "\n"
+                        << "actual: " << actual << "\n");
+    }
+    {
+        const uint32_t
+                expected = 9,
+                actual = three_pow_mod_totient(2);
+
+        BOOST_REQUIRE_MESSAGE(actual == expected,
+                "\nexpected: " << expected << "\n"
+                        << "actual: " << actual << "\n");
+    }
+    {
+        const uint32_t
+                expected = 27,
+                actual = three_pow_mod_totient(3);
+
+        BOOST_REQUIRE_MESSAGE(actual == expected,
+                "\nexpected: " << expected << "\n"
+                        << "actual: " << actual << "\n");
+    }
+    {
+        const uint32_t
+                expected = 3748161571U,
+                actual = three_pow_mod_totient(4294967295U);
+
+        BOOST_REQUIRE_MESSAGE(actual == expected,
+                "\nexpected: " << expected << "\n"
+                        << "actual: " << actual << "\n");
+    }
+    {
+        const uint32_t
+                expected = 3106101787U,
+                actual = three_pow_mod_totient(2147483648U);
+
+        BOOST_REQUIRE_MESSAGE(actual == expected,
+                "\nexpected: " << expected << "\n"
+                        << "actual: " << actual << "\n");
+    }
+}
+
+BOOST_AUTO_TEST_CASE(init_power_table_mod_prime_check) {
+    const uint32_t expected[32] = {
+            1758178831, 3087151933U, 2181741089U, 2215739027U, 1172752426U,
+            2166186118U, 952137455U, 1932908534U, 2055989032U, 3668501270U,
+            3361953768U, 2864264791U, 346776217U, 589953143U, 46265863U,
+            87348622U, 368498995U, 237438963U, 2748204571U, 3669701545U,
+            3941733513U, 1373024902U, 477501137U, 1476916330U, 3722281540U,
+            2393041984U, 3169721271U, 680334287U, 3255565205U, 2133070878U,
+            4212360994U, 202306615U};
+    uint32_t actual[32];
+    init_power_table_mod_prime(actual, 1758178831U);
+    for(int i = 0; i < 32 ; ++i)
+        BOOST_REQUIRE_MESSAGE(actual[i] == expected[i],
+                "\nexpected: " << expected[i] << "\n"
+                        << "actual: " << actual[i] << "\n");
+}
+
+BOOST_AUTO_TEST_CASE(quick_bbs_check) {
+    uint32_t table[32];
+    init_power_table_mod_prime(table, 1799198831U);
+    {
+        const uint32_t
+                expected = 1799198831U,
+                actual = quick_bbs(table,0);
+
+        BOOST_REQUIRE_MESSAGE(actual == expected,
+                "\nexpected: " << expected << "\n"
+                        << "actual: " << actual << "\n");
+    }
+    {
+        const uint32_t
+                expected = 2685204534U,
+                actual = quick_bbs(table,1);
+
+        BOOST_REQUIRE_MESSAGE(actual == expected,
+                "\nexpected: " << expected << "\n"
+                        << "actual: " << actual << "\n");
+    }
+    {
+        const uint32_t
+                expected = 542784404U,
+                actual = quick_bbs(table,0xFFFFFFFF);
+
+        BOOST_REQUIRE_MESSAGE(actual == expected,
+                "\nexpected: " << expected << "\n"
+                        << "actual: " << actual << "\n");
     }
 }

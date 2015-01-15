@@ -46,7 +46,6 @@ typedef struct {
     int w;                          // Work factor for memory free mining
     int width;                      // How much memory state to use in hashimoto
     int accesses;                   // Number of dataset accesses during hashimoto
-    int trials;                     // Number of times to run hashimoto
   } parameters;
 
 /* C99 initialisers not supported by Visual Studio or C++ */
@@ -63,13 +62,17 @@ const parameters defaults = {
 		/*.w          = */ 3,
         /*.width      = */ 1,
 		/*.accesses   = */ 200,
-		/*.trials     = */ 1
 };
 
 void sha3_1(uint8_t result[HASH_CHARS], const unsigned char previous_hash[HASH_CHARS]);
 void sha3_dag(uint64_t *dag, const unsigned char previous_hash[HASH_CHARS]);
 void uint64str(uint8_t result[8], uint64_t n);
-void sha3_nonce(uint64_t rand[HASH_UINT64S], const unsigned char previous_hash[HASH_CHARS], const uint64_t nonce);
+void sha3_rand(uint64_t out[HASH_UINT64S], const unsigned char previous_hash[HASH_CHARS], const uint64_t nonce);
+uint32_t cube_mod_safe_prime(const uint32_t x);
+uint32_t cube_mod_safe_prime2(const uint32_t x);
+uint32_t three_pow_mod_totient(uint32_t p);
+void init_power_table_mod_prime(uint32_t table[32], const uint32_t n);
+uint32_t quick_bbs(const uint32_t table[32], const uint32_t p);
 
 #ifdef __cplusplus
 }
