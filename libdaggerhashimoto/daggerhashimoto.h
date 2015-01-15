@@ -40,7 +40,7 @@ extern "C" {
 #define HASH_UINT64S 4
 
 typedef struct {
-    size_t dag_size;                       // Size of the dataset
+    uint64_t dag_size;              // Size of the dataset
     unsigned char diff[HASH_CHARS]; // Difficulty (adjusted during block evaluation)
     int epoch_time;                 // Length of an epoch in blocks (how often the dataset is updated)
     int n_inc;                      // Increment in value of n per period epoch

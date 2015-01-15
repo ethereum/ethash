@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <malloc.h>
 #include "daggerhashimoto.h"
 #include "sha3.h"
 
@@ -20,7 +21,7 @@ void sha3_rand(
     sha3_init(&ctx, 256);
     sha3_update(&ctx, previous_hash, HASH_CHARS);
     sha3_update(&ctx, (const uint8_t *) &nonce, sizeof(uint64_t));
-    sha3_finalize(&ctx, out);
+    sha3_finalize(&ctx, (uint8_t *) out);
 }
 
 // TODO: Test Me
@@ -156,7 +157,7 @@ uint64_t light_calc(
         const uint64_t pos) {
 
     uint64_t * cache = alloca(sizeof(uint64_t) * params.cache_size);
-    size_t original_dag_size = params.dag_size;
+    uint64_t original_dag_size = params.dag_size;
     params.dag_size = params.cache_size;
     produce_dag(cache, params, previous_hash);
     params.dag_size = original_dag_size;
@@ -182,7 +183,7 @@ void hashimoto(
     sha3_rand(rands, previous_hash, nonce);
     uint32_t picker1 = (uint32_t) rands[0] % SAFE_PRIME,
              picker2 = cube_mod_safe_prime(picker1);
-    size_t ind = (((size_t) picker2 << 32) | picker1) % m;
+    uint64_t ind = (((uint64_t) picker2 << 32) | picker1) % m;
     uint64_t mix[WIDTH];
     int i, p;
     for (i = 0; i < WIDTH; ++i) 
@@ -190,7 +191,7 @@ void hashimoto(
     for (p = 0; p < params.accesses; ++p) {
         picker1 = cube_mod_safe_prime(picker2);
         picker2 = cube_mod_safe_prime(picker1);
-        ind = (((size_t) picker2 << 32) | picker1) % m;
+        ind = (((uint64_t) picker2 << 32) | picker1) % m;
         for (i = 0; i < WIDTH; ++i)
             mix[i] ^= dag[ind + i]; // TODO: Try something not associative and commutative
     }
@@ -208,9 +209,9 @@ void light_hashimoto_cached(
     uint64_t rands[HASH_UINT64S];
     const uint64_t m = params.dag_size / WIDTH; // TODO: Force this to be prime
     sha3_rand(rands, previous_hash, nonce);
-    uint32_t picker1 = (uint32_t) rands[0] % SAFE_PRIME,
-            picker2 = cube_mod_safe_prime(picker1);
-    size_t ind = (((size_t) picker2 << 32) | picker1) % m;
+    uint32_t picker1 = (uint32_t) rands[0] % SAFE_PRIME;
+    uint32_t picker2 = cube_mod_safe_prime(picker1);
+    uint64_t ind = (((uint64_t) picker2 << 32) | picker1) % m;
     uint64_t mix[WIDTH];
     int i, p;
     for (i = 0; i < WIDTH; ++i)
@@ -218,7 +219,7 @@ void light_hashimoto_cached(
     for (p = 0; p < params.accesses; ++p) {
         picker1 = cube_mod_safe_prime(picker2);
         picker2 = cube_mod_safe_prime(picker1);
-        ind = (((size_t) picker2 << 32) | picker1) % m;
+        ind = (((uint64_t) picker2 << 32) | picker1) % m;
         for (i = 0; i < WIDTH; ++i)
             mix[i] ^= light_calc_cached(cache, power_table, params, ind + i); // TODO: Try something not associative and commutative
     }

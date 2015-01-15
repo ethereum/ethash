@@ -22,5 +22,6 @@
 // Visual Studio doesn't support the inline keyword in C mode
 #if defined(_MSC_VER) && !defined(__cplusplus)
 #define inline __inline
+#define __restrict__ __restrict
 #endif
 

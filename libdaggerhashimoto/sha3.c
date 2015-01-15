@@ -55,7 +55,7 @@ static inline void sha3_do_chunk(uint64_t state[25], uint64_t buf[], const size_
     uint64_t tmp, bc[5];
 
     /* merge buf with state */
-    for (i = 0; i < buffer_size; i++)
+    for (i = 0; i < (int)buffer_size; i++)
         state[i] ^= le64_to_cpu(buf[i]);
 
     /* run keccak rounds */
