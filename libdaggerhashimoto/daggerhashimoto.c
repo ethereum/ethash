@@ -3,7 +3,7 @@
 #include "daggerhashimoto.h"
 #include "sha3.h"
 
-void sha3_dag(uint8_t result[HASH_CHARS], const unsigned char previous_hash[HASH_CHARS]) {
+void sha3_dag(uint8_t result[HASH_CHARS], const uint8_t previous_hash[HASH_CHARS]) {
     struct sha3_ctx ctx;
     sha3_init(&ctx, 256);
     sha3_update(&ctx, previous_hash, HASH_CHARS);
@@ -11,16 +11,16 @@ void sha3_dag(uint8_t result[HASH_CHARS], const unsigned char previous_hash[HASH
     // TODO: Fix result if Architecture is BigEndian
 }
 
-// TODO: Switch to little endian
 void sha3_rand(
         uint64_t out[HASH_UINT64S],
-        const unsigned char previous_hash[HASH_CHARS],
+        const uint8_t previous_hash[HASH_CHARS],
         const uint64_t nonce) {
     struct sha3_ctx ctx;
     sha3_init(&ctx, 256);
     sha3_update(&ctx, previous_hash, HASH_CHARS);
     sha3_update(&ctx, (const uint8_t *) &nonce, sizeof(uint64_t));
     sha3_finalize(&ctx, out);
+    // TODO: Fix result if Architecture is BigEndian
 }
 
 // TODO: Test Me
@@ -35,6 +35,7 @@ void sha3_mix(
     }
     sha3_update(&ctx, (const uint8_t *) &nonce, sizeof(uint64_t));
     sha3_finalize(&ctx, result);
+    // TODO: Fix result if Architecture is BigEndian
 }
 
 uint32_t cube_mod_safe_prime(const uint32_t x) {
@@ -57,9 +58,9 @@ uint32_t cube_mod_safe_prime2(const uint32_t x) {
 void produce_dag(
         uint64_t *dag,
         const parameters params,
-        const unsigned char previous_hash[HASH_CHARS]) {
+        const uint8_t previous_hash[HASH_CHARS]) {
     sha3_dag((uint8_t *) dag, previous_hash);
-    uint32_t picker1 = (uint32_t) dag[0] % SAFE_PRIME,
+    uint32_t picker1 = (uint32_t) (dag[0] % SAFE_PRIME),
             picker2, worker1, worker2;
     uint64_t x;
     size_t i;
@@ -152,7 +153,7 @@ uint64_t light_calc_cached(
 // Todo: Test Me
 uint64_t light_calc(
         parameters params,
-        const unsigned char previous_hash[HASH_CHARS],
+        const uint8_t previous_hash[HASH_CHARS],
         const uint64_t pos) {
 
     uint64_t * cache = alloca(sizeof(uint64_t) * params.cache_size);
@@ -161,7 +162,7 @@ uint64_t light_calc(
     produce_dag(cache, params, previous_hash);
     params.dag_size = original_dag_size;
 
-    uint32_t seed = (uint32_t) cache[0] % SAFE_PRIME;
+    uint32_t seed = (uint32_t) (cache[0] % SAFE_PRIME);
     seed = seed < 2 ? 2 : seed;
     uint32_t power_table[32];
     init_power_table_mod_prime(power_table, seed);
@@ -172,10 +173,10 @@ uint64_t light_calc(
 // Todo: Test Me
 // TODO: Rename This bears no resemblance at all to the original Hashimoto loop
 void hashimoto(
-        unsigned char result[HASH_CHARS],
+        uint8_t result[HASH_CHARS],
         const uint64_t *dag,
         const parameters params,
-        const unsigned char previous_hash[HASH_CHARS],
+        const uint8_t previous_hash[HASH_CHARS],
         const uint64_t nonce) {
     uint64_t rands[HASH_UINT64S];
     const uint64_t m = params.dag_size / WIDTH; // TODO: Force this to be prime
@@ -199,11 +200,11 @@ void hashimoto(
 
 // TODO: Test Me
 void light_hashimoto_cached(
-        unsigned char result[HASH_CHARS],
+        uint8_t result[HASH_CHARS],
         const uint64_t *cache,
         const uint32_t power_table[32],
         const parameters params,
-        const unsigned char previous_hash[32],
+        const uint8_t previous_hash[32],
         const uint64_t nonce) {
     uint64_t rands[HASH_UINT64S];
     const uint64_t m = params.dag_size / WIDTH; // TODO: Force this to be prime
@@ -227,9 +228,9 @@ void light_hashimoto_cached(
 
 // TODO: Test Me
 void light_hashimoto(
-        unsigned char result[32],
+        uint8_t result[32],
         parameters params,
-        const unsigned char previous_hash[32],
+        const uint8_t previous_hash[32],
         const uint64_t nonce) {
     const uint64_t original_dag_size = params.dag_size;
 
