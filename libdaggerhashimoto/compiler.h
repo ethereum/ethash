@@ -24,3 +24,8 @@
 #define inline __inline
 #endif
 
+// MSVC flavored __restrict__
+#if defined(_MSC_VER)
+#defin __restrict__ __restrict
+#endif
+
