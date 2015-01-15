@@ -1,7 +1,6 @@
 #include <iomanip>
 #include <libdaggerhashimoto/daggerhashimoto.h>
 
-
 #define BOOST_TEST_MODULE Daggerhashimoto
 #define BOOST_TEST_MAIN
 
@@ -50,22 +49,43 @@ BOOST_AUTO_TEST_CASE(sha3_dag_check) {
 }
 
 BOOST_AUTO_TEST_CASE(sha3_rand_check) {
-    uint8_t input[HASH_CHARS];
-    memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", HASH_CHARS);
-    const uint64_t nonce = 0x7E7E7E7E7E7E7E7EU,
-            expected[HASH_UINT64S] = {
-            6154632431212981991U,
-            520511268698457443U,
-            6437342779080611984U,
-            14985183232610838775U};
-    uint64_t actual[HASH_UINT64S];
-    sha3_rand(actual, input, nonce);
-    for (int i = 0; i < HASH_UINT64S; i++) {
-        BOOST_REQUIRE_MESSAGE(actual[i] == expected[i],
-                "\nexpected: " << expected[i] << "\n"
-                        << "actual: " << actual[i] << "\n");
+    {
+        uint8_t input[HASH_CHARS];
+        memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", HASH_CHARS);
+        const uint64_t nonce = 0x7E7E7E7E7E7E7E7EU,
+                expected[HASH_UINT64S] = {
+                6154632431212981991U,
+                520511268698457443U,
+                6437342779080611984U,
+                14985183232610838775U};
+        uint64_t actual[HASH_UINT64S];
+        sha3_rand(actual, input, nonce);
+        for (int i = 0; i < HASH_UINT64S; i++) {
+            BOOST_REQUIRE_MESSAGE(actual[i] == expected[i],
+                    "\nexpected: " << expected[i] << "\n"
+                            << "actual: " << actual[i] << "\n");
+        }
+    }
+    {
+        uint8_t input[HASH_CHARS];
+        memcpy(input, "~~~~~~H~~~~~~~~~~~~~~~~~~~~~~~~~", HASH_CHARS);
+        const uint64_t nonce = 0x7E597E7E7E7E7E7EU,
+                expected[HASH_UINT64S] = {
+                12131474505527047766U,
+                6365449550867347897U,
+                14172837750324433329U,
+                5787924029805105676U};
+        uint64_t actual[HASH_UINT64S];
+        sha3_rand(actual, input, nonce);
+        for (int i = 0; i < HASH_UINT64S; i++) {
+            BOOST_REQUIRE_MESSAGE(actual[i] == expected[i],
+                    "\nexpected: " << expected[i] << "\n"
+                            << "actual: " << actual[i] << "\n");
+        }
     }
 }
+
+
 
 BOOST_AUTO_TEST_CASE(cube_mod_safe_prime_check) {
     const uint32_t expected = 4294966087U,
