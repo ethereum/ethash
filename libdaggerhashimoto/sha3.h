@@ -21,8 +21,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef CRYPTOHASH_SHA3_H
-#define CRYPTOHASH_SHA3_H
+#pragma once
 
 #include <stdint.h>
 
@@ -41,5 +40,3 @@ struct sha3_ctx
 void sha3_init(struct sha3_ctx * const __restrict__ ctx, const uint32_t hashlen);
 void sha3_update(struct sha3_ctx * const __restrict__ ctx, const uint8_t *data, const uint32_t len);
 void sha3_finalize(struct sha3_ctx * const __restrict__ sctx, uint8_t * const __restrict__ out);
-
-#endif
