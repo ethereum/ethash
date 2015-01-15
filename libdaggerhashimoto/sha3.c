@@ -49,13 +49,13 @@ static const int keccak_rotc[24] =
 static const int keccak_piln[24] =
         { 10,7,11,17,18,3,5,16,8,21,24,4,15,23,19,13,12,2,20,14,22,9,6,1 };
 
-static inline void sha3_do_chunk(uint64_t state[25], uint64_t buf[], int bufsz)
+static inline void sha3_do_chunk(uint64_t state[25], uint64_t buf[], const size_t buffer_size)
 {
     int i, j, r;
     uint64_t tmp, bc[5];
 
     /* merge buf with state */
-    for (i = 0; i < bufsz; i++)
+    for (i = 0; i < buffer_size; i++)
         state[i] ^= le64_to_cpu(buf[i]);
 
     /* run keccak rounds */
@@ -97,14 +97,14 @@ static inline void sha3_do_chunk(uint64_t state[25], uint64_t buf[], int bufsz)
     }
 }
 
-void sha3_init(struct sha3_ctx *ctx, const uint32_t hashlen)
+void sha3_init(struct sha3_ctx * const __restrict__ ctx, const uint32_t hashlen)
 {
     memset(ctx, 0, sizeof(*ctx));
     ctx->hashlen = hashlen / 8;
     ctx->bufsz = 200 - 2 * ctx->hashlen;
 }
 
-void sha3_update(struct sha3_ctx *ctx, const uint8_t *data, const uint32_t len_)
+void sha3_update(struct sha3_ctx * const __restrict__ ctx, const uint8_t *data, const uint32_t len_)
 {
     uint32_t
             to_fill= ctx->bufsz - ctx->bufindex,
@@ -137,7 +137,7 @@ void sha3_update(struct sha3_ctx *ctx, const uint8_t *data, const uint32_t len_)
     }
 }
 
-void sha3_finalize(struct sha3_ctx *ctx, uint8_t *out)
+void sha3_finalize(struct sha3_ctx * const __restrict__ ctx, uint8_t * const out)
 {
     uint64_t w[25];
 

@@ -38,8 +38,8 @@ struct sha3_ctx
 
 #define SHA3_CTX_SIZE		sizeof(struct sha3_ctx)
 
-void sha3_init(struct sha3_ctx *ctx, const uint32_t hashlen);
-void sha3_update(struct sha3_ctx *ctx, const uint8_t *data, const uint32_t len);
-void sha3_finalize(struct sha3_ctx *ctx, uint8_t *out);
+void sha3_init(struct sha3_ctx * const __restrict__ ctx, const uint32_t hashlen);
+void sha3_update(struct sha3_ctx * const __restrict__ ctx, const uint8_t *data, const uint32_t len);
+void sha3_finalize(struct sha3_ctx * const __restrict__ sctx, uint8_t * const out);
 
 #endif
