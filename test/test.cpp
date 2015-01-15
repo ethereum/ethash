@@ -42,7 +42,6 @@ BOOST_AUTO_TEST_CASE(sha3_dag_check) {
             5513409299382238423U};
     sha3_dag(actual, input);
     for (int i = 0; i < 4; i++) {
-
         BOOST_REQUIRE_MESSAGE(actual[i] == expected[i],
                 "\nexpected: " << expected[i] << "\n"
                         << "actual: " << actual[i] << "\n");
@@ -196,6 +195,15 @@ BOOST_AUTO_TEST_CASE(quick_bbs_check) {
         const uint32_t
                 expected = 542784404U,
                 actual = quick_bbs(table,0xFFFFFFFF);
+
+        BOOST_REQUIRE_MESSAGE(actual == expected,
+                "\nexpected: " << expected << "\n"
+                        << "actual: " << actual << "\n");
+    }
+    {
+        const uint32_t
+                expected = 4097726076U,
+                actual = quick_bbs(table,0xFFFFFFFFFFFFFFFF);
 
         BOOST_REQUIRE_MESSAGE(actual == expected,
                 "\nexpected: " << expected << "\n"

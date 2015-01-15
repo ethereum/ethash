@@ -37,7 +37,7 @@ int main(void){
     begin = clock();
     for (int i = 0 ; i < trials ; i++) {
       hash_bit ^= num_to_uint(hashimoto(dag, params, header, nonce++)) & 1;
-      //hash_bit ^= num_to_uint(quick_hashimoto_cached(cache, params, header, nonce++)) & 1;
+      //hash_bit ^= num_to_uint(light_hashimoto_cached(cache, params, header, nonce++)) & 1;
     }
     end = clock();
     time_spent = (double)(end - begin) / CLOCKS_PER_SEC;

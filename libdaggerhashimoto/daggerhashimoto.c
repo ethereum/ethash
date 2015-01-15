@@ -91,20 +91,20 @@ inline uint32_t cube_mod_safe_prime2(const uint32_t x) {
 void produce_dag(
         uint64_t *dag,
         const parameters params,
-        const unsigned char seed[HASH_CHARS]) {
-    sha3_dag(dag, seed);
+        const unsigned char previous_hash[HASH_CHARS]) {
+    sha3_dag(dag, previous_hash);
     uint32_t picker1 = (uint32_t) dag[0] % SAFE_PRIME,
             picker2, worker1, worker2;
     uint64_t x;
     size_t i;
     int j;
     picker1 = picker1 < 2 ? 2 : picker1;
-    for (i = 8; i < params.n; ++i) {
+    for (i = HASH_UINT64S; i < params.dag_size; ++i) {
         picker2 = cube_mod_safe_prime(picker1);
         worker1 = picker1 = cube_mod_safe_prime(picker2);
-        x = ((uint64_t) picker2 << 32) + picker1;
+        x = ((uint64_t) picker2 << 32) | picker1;
         x ^= dag[x % i];
-        for (j = 0; j < params.w; ++j) {
+        for (j = 0; j < params.work_factor; ++j) {
             worker2 = cube_mod_safe_prime2(worker1);
             worker1 = cube_mod_safe_prime2(worker2);
             x ^= ((uint64_t) worker2 << 32) + worker1;
@@ -127,7 +127,7 @@ uint32_t three_pow_mod_totient(uint32_t p) {
     for(int i = 0; i < 32; ++i) {
         if (p & 1) {
             r *= powers_of_three_mod_totient[i];
-            r %= (SAFE_PRIME - 1);
+            r %= SAFE_PRIME_TOTIENT;
         }
         p >>= 1;
     }
@@ -145,8 +145,9 @@ void init_power_table_mod_prime(uint32_t table[32], const uint32_t n) {
     }
 }
 
-uint32_t quick_bbs(const uint32_t table[32], const uint32_t p) {
-    uint32_t q = three_pow_mod_totient(p);
+uint32_t quick_bbs(const uint32_t table[32], const uint64_t p) {
+    uint32_t q = three_pow_mod_totient(
+            (uint32_t) (p % SAFE_PRIME_TOTIENT_TOTIENT));
     uint64_t r = 1;
     for(int i = 0; i < 32; ++i) {
         if (q & 1) {
@@ -158,82 +159,116 @@ uint32_t quick_bbs(const uint32_t table[32], const uint32_t p) {
     return (uint32_t) r;
 }
 
-uint64_t quick_calc_cached(uint64_t *cache, const parameters params, uint64_t pos) {
-//    if (pos < params.cache_size)
-//        return cache[pos]; // todo, 64->32 bit truncation
-//    else {
-//        uint32_t x = pow_mod(cache[0], pos + 1);  // todo, 64->32 bit truncation
-//        int j;
-//        for (j = 0; j < params.w; ++j)
-//            x ^= cube_mod_safe_prime(x);
-//        return x;
-//    }
-}
-
-uint32_t quick_calc(
-        parameters params,
-        const unsigned char seed[HASH_CHARS],
+uint64_t light_calc_cached(
+        const uint64_t *cache,
+        const uint32_t power_table[32],
+        const parameters params,
         const uint64_t pos) {
-    uint64_t *cache = alloca(sizeof(uint64_t) * params.cache_size); // might be too large for stack?
-    params.n = params.cache_size;
-    produce_dag(cache, params, seed);
-    return quick_calc_cached(cache, params, pos);
+    if (pos < params.cache_size)
+        return cache[pos];
+    else {
+        const uint32_t
+                picker2 = quick_bbs(power_table, pos + 1 - HASH_UINT64S),
+                picker1 = cube_mod_safe_prime(picker2);
+        uint64_t x = ((uint64_t) picker2 << 32) | picker1;
+        x ^= light_calc_cached(cache, power_table, params, x % pos);
+        uint32_t worker1 = picker1, worker2;
+        for (int j = 0; j < params.work_factor; ++j) {
+            worker2 = cube_mod_safe_prime2(worker1);
+            worker1 = cube_mod_safe_prime2(worker2);
+            x ^= ((uint64_t) worker2 << 32) + worker1;
+        }
+        return x;
+    }
 }
 
+uint64_t light_calc(
+        parameters params,
+        const unsigned char previous_hash[HASH_CHARS],
+        const uint64_t pos) {
+
+    uint64_t * cache = alloca(sizeof(uint64_t) * params.cache_size);
+    size_t original_dag_size = params.dag_size;
+    params.dag_size = params.cache_size;
+    produce_dag(cache, params, previous_hash);
+    params.dag_size = original_dag_size;
+
+    uint32_t seed = (uint32_t) cache[0] % SAFE_PRIME;
+    seed = seed < 2 ? 2 : seed;
+    uint32_t power_table[32];
+    init_power_table_mod_prime(power_table, seed);
+
+    return light_calc_cached(cache, power_table, params, pos);
+}
+
+// TODO: This bears no resemblance at all to the original Hashimoto loop
 void hashimoto(
         unsigned char result[HASH_CHARS],
         const uint64_t *dag,
         const parameters params,
         const unsigned char previous_hash[HASH_CHARS],
         const uint64_t nonce) {
-    uint64_t rand[HASH_UINT64S];
-    const uint64_t m = params.n - WIDTH;
-    sha3_rand(rand, previous_hash, nonce);
+    uint64_t rands[HASH_UINT64S];
+    const uint64_t m = params.dag_size / WIDTH; // TODO: Force this to be prime
+    sha3_rand(rands, previous_hash, nonce);
+    uint32_t picker1 = (uint32_t) rands[0] % SAFE_PRIME,
+             picker2 = cube_mod_safe_prime(picker1);
+    size_t ind = (((size_t) picker2 << 32) | picker1) % m;
     uint64_t mix[WIDTH];
-    int i, j, p;
-    for (i = 0; i < WIDTH; ++i) {
-        mix[i] = dag[rand[0] % m + i];
-    }
+    int i, p;
+    for (i = 0; i < WIDTH; ++i) 
+        mix[i] = dag[ind + i];
     for (p = 0; p < params.accesses; ++p) {
-        uint64_t ind = mix[p % WIDTH] % m;
+        picker1 = cube_mod_safe_prime(picker2);
+        picker2 = cube_mod_safe_prime(picker1);
+        ind = (((size_t) picker2 << 32) | picker1) % m;
         for (i = 0; i < WIDTH; ++i)
-            mix[i] ^= dag[ind + i];
+            mix[i] ^= dag[ind + i]; // TODO: Try something not associative and commutative
     }
     sha3_mix(result, mix, nonce);
 }
 
-
-void quick_hashimoto_cached(
-        unsigned char result[32],
-        uint64_t *cache,
+void light_hashimoto_cached(
+        unsigned char result[HASH_CHARS],
+        const uint64_t *cache,
+        const uint32_t power_table[32],
         const parameters params,
         const unsigned char previous_hash[32],
         const uint64_t nonce) {
-    uint64_t rand[HASH_UINT64S];
-    const uint64_t m = params.n - WIDTH;
-    sha3_rand(rand, previous_hash, nonce);
+    uint64_t rands[HASH_UINT64S];
+    const uint64_t m = params.dag_size / WIDTH; // TODO: Force this to be prime
+    sha3_rand(rands, previous_hash, nonce);
+    uint32_t picker1 = (uint32_t) rands[0] % SAFE_PRIME,
+            picker2 = cube_mod_safe_prime(picker1);
+    size_t ind = (((size_t) picker2 << 32) | picker1) % m;
     uint64_t mix[WIDTH];
     int i, p;
     for (i = 0; i < WIDTH; ++i)
-        mix[i] = 0;
+        mix[i] = light_calc_cached(cache, power_table, params, ind + i);
     for (p = 0; p < params.accesses; ++p) {
-        uint64_t ind = mix[p % WIDTH] % params.n;
+        picker1 = cube_mod_safe_prime(picker2);
+        picker2 = cube_mod_safe_prime(picker1);
+        ind = (((size_t) picker2 << 32) | picker1) % m;
         for (i = 0; i < WIDTH; ++i)
-            mix[i] ^= quick_calc_cached(cache, params, ind + i);
+            mix[i] ^= light_calc_cached(cache, power_table, params, ind + i); // TODO: Try something not associative and commutative
     }
     sha3_mix(result, mix, nonce);
 }
 
-void quick_hashimoto(
+void light_hashimoto(
         unsigned char result[32],
-        const unsigned char seed[32],
         parameters params,
         const unsigned char previous_hash[32],
         const uint64_t nonce) {
-    const uint64_t original_n = params.n;
+    const uint64_t original_dag_size = params.dag_size;
     uint64_t *cache = alloca(sizeof(uint64_t) * params.cache_size); // might be too large for stack?
-    params.n = params.cache_size;
+    params.dag_size = params.cache_size;
     produce_dag(cache, params, previous_hash);
-    params.n = original_n;
-    quick_hashimoto_cached(result, cache, params, previous_hash, nonce);
+    params.dag_size = original_dag_size;
+
+    uint32_t seed = (uint32_t) cache[0] % SAFE_PRIME;
+    seed = seed < 2 ? 2 : seed;
+    uint32_t power_table[32];
+    init_power_table_mod_prime(power_table, seed);
+    light_hashimoto_cached(result, cache, power_table, params, previous_hash, nonce);
 }
