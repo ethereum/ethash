@@ -16,20 +16,11 @@ void sha3_rand(
         uint64_t out[HASH_UINT64S],
         const unsigned char previous_hash[HASH_CHARS],
         const uint64_t nonce) {
-    uint8_t result[HASH_CHARS];
-    int i, j;
     struct sha3_ctx ctx;
     sha3_init(&ctx, 256);
     sha3_update(&ctx, previous_hash, HASH_CHARS);
     sha3_update(&ctx, (const uint8_t *) &nonce, sizeof(uint64_t));
-    sha3_finalize(&ctx, result);
-    for (i = 0; i < HASH_UINT64S; ++i) {
-        out[i] = 0;
-        for (j = 0; j < 8; ++j) {
-            out[i] <<= 8;
-            out[i] += result[8 * i + j];
-        }
-    }
+    sha3_finalize(&ctx, out);
 }
 
 // TODO: Test Me

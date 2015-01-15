@@ -54,10 +54,10 @@ BOOST_AUTO_TEST_CASE(sha3_rand_check) {
     memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", HASH_CHARS);
     const uint64_t nonce = 0x7E7E7E7E7E7E7E7EU,
             expected[HASH_UINT64S] = {
-            16676420855326402901U,
-            7135211131009382663U,
-            10419225811852285529U,
-            17845768961284699855U};
+            6154632431212981991U,
+            520511268698457443U,
+            6437342779080611984U,
+            14985183232610838775U};
     uint64_t actual[HASH_UINT64S];
     sha3_rand(actual, input, nonce);
     for (int i = 0; i < HASH_UINT64S; i++) {
