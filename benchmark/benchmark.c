@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <libdaggerhashimoto/num.h>
-#include <libdaggerhashimoto/daggerhashimoto.h>
+#include "internal.h"
 
 int main(void){
   const num
