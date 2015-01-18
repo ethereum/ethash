@@ -97,14 +97,14 @@ static inline void sha3_do_chunk(uint64_t state[25], uint64_t buf[], const size_
     }
 }
 
-void sha3_init(struct sha3_ctx * const __restrict__ ctx, const uint32_t hashlen)
+void sha3_init(struct sha3_ctx * const restrict ctx, const uint32_t hashlen)
 {
     memset(ctx, 0, sizeof(*ctx));
     ctx->hashlen = hashlen / 8;
     ctx->bufsz = 200 - 2 * ctx->hashlen;
 }
 
-void sha3_update(struct sha3_ctx * const __restrict__ ctx, const uint8_t *data, const uint32_t len_)
+void sha3_update(struct sha3_ctx * const restrict ctx, const uint8_t *data, const uint32_t len_)
 {
     uint32_t
             to_fill= ctx->bufsz - ctx->bufindex,
@@ -137,7 +137,7 @@ void sha3_update(struct sha3_ctx * const __restrict__ ctx, const uint8_t *data, 
     }
 }
 
-void sha3_finalize(struct sha3_ctx * const __restrict__ ctx, uint8_t * const __restrict__ out)
+void sha3_finalize(struct sha3_ctx * const restrict ctx, uint8_t * const restrict out)
 {
     uint64_t w[25];
 

@@ -14,40 +14,34 @@
   You should have received a copy of the GNU General Public License
   along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file dash.h
+/** @file util.h
  * @author Tim Hughes <tim@ethdev.org>
  * @date 2015
  */
 #pragma once
 #include <stdint.h>
+#include "compiler.h"
 
-#define NODE_WORDS 8
-#define PAGE_WORDS 512
-#define PAGE_NODES (PAGE_WORDS / NODE_WORDS)
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#define USE_RNG_FOR_HASH 1
-#define USE_RNG_FOR_NODES 1
+#ifdef _MSC_VER
+void debugf(const char *str, ...);
+#else
+#define debugf printf
+#endif
 
-typedef union node
+static inline uint32_t min_u32(uint32_t a, uint32_t b)
 {
-	uint8_t bytes[NODE_WORDS*8];
-	uint64_t words[NODE_WORDS];
-} node;
+	return a < b ? a : b;
+}
 
-typedef struct h256
+static inline uint32_t clamp_u32(uint32_t x, uint32_t min_, uint32_t max_)
 {
-	uint8_t bytes[32];
-} hash256;
+	return x < min_ ? min_ : (x > max_ ? max_ : x);
+}
 
-typedef struct parameters
-{
-	unsigned full_size;		// Size of full data set (in bytes, multiple of page size).
-	unsigned cache_size;	// Size of compute cache (in bytes, multiple of node size).
-	unsigned k;				// Number of parents of a full node.
-	unsigned page_accesses;	// Number of page accesses during compute_hash.
-	h256 seed;				// Seed for data set.
-} parameters;
-
-
-
-
+#ifdef __cplusplus
+}
+#endif

@@ -1,4 +1,8 @@
 include_directories(..)
-file(GLOB HEADERS "*.h")
-add_executable (Benchmark benchmark.c ${HEADERS})
-target_link_libraries (Benchmark daggerhashimoto)
+
+if (MSVC)
+	add_definitions("/openmp")
+endif()
+
+add_executable (Benchmark benchmark.cpp)
+target_link_libraries (Benchmark ${ETHHASH_LIBS})

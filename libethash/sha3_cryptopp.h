@@ -14,19 +14,19 @@
   You should have received a copy of the GNU General Public License
   along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file compiler.h
- * @date 2014
+/** @file sha3_cryptopp.h
+ * @author Tim Hughes <tim@ethdev.org>
+ * @date 2015
  */
 #pragma once
 
-// Visual Studio doesn't support the inline keyword in C mode
-#if defined(_MSC_VER) && !defined(__cplusplus)
-#define inline __inline
-#define __restrict__ __restrict
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-// MSVC flavored __restrict__
-#if defined(_MSC_VER)
-#defin __restrict__ __restrict
-#endif
+void sha3_256(void* ret, void const* data, uint32_t size);
+void sha3_512(void* ret, void const* data, uint32_t size);
 
+#ifdef __cplusplus
+}
+#endif
