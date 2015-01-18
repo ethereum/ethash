@@ -79,7 +79,7 @@ static void ethash_compute_cache_nodes(node* nodes, ethash_params const* params)
 		for (unsigned i = 0; i != num_nodes; ++i)
 		{
 			// todo, endian
-			unsigned p = nodes[i].words[0] % num_nodes;
+			unsigned p = nodes[i].words[i % NODE_WORDS] % num_nodes;
 			sha3_512(nodes[i].bytes, nodes[p].bytes, 64);
 		}
 	}
