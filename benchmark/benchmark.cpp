@@ -22,7 +22,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <malloc.h>
 #include <time.h>
 #include "libethash/ethash.h"
 #include "libethash/util.h"
@@ -37,6 +36,7 @@ extern "C" void main(void)
 	params.full_size = 262147 * 4096;	// 1GBish;
 	//params.full_size = 32771 * 4096;	// 128MBish;
 	params.cache_size = 8209*4096;
+	//params.cache_size = 2053*4096;
 	params.k = 2 * (params.full_size / params.cache_size);
 
 	const unsigned trials = 1000;
