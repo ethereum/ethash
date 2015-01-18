@@ -62,22 +62,33 @@ typedef union node
 
 
 // todo
-static void ethash_compute_cache_nodes_placeholder(node* nodes, ethash_params const* params)
+static void ethash_compute_cache_nodes(node* nodes, ethash_params const* params)
 {
 	assert((params->cache_size % sizeof(node)) == 0);
+	unsigned const num_nodes = params->cache_size/sizeof(node);
 
 	sha3_512(nodes[0].bytes, &params->seed, 32);
 
-	for (unsigned i = 1; i < params->cache_size/sizeof(node); ++i)
+	for (unsigned i = 1; i != num_nodes; ++i)
 	{
 		sha3_512(nodes[i].bytes, nodes[i-1].bytes, 64);
+	}
+
+	for (unsigned pass = 0; pass != params->cache_generation_passes; ++pass)
+	{
+		for (unsigned i = 0; i != num_nodes; ++i)
+		{
+			// todo, endian
+			unsigned p = nodes[i].words[0] % num_nodes;
+			sha3_512(nodes[i].bytes, nodes[p].bytes, 64);
+		}
 	}
 }
 
 void ethash_compute_cache_data(ethash_cache* cache, ethash_params const* params)
 {
 	node* nodes = (node*)cache->mem;
-	ethash_compute_cache_nodes_placeholder(nodes, params);
+	ethash_compute_cache_nodes(nodes, params);
 
 	// todo, endian
 	uint32_t rng_seed = make_seed(nodes->words[0], SAFE_PRIME);
