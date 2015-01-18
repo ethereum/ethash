@@ -28,7 +28,7 @@
 
 uint8_t g_hash[32];
 
-extern "C" void main(void)
+extern "C" int main(void)
 {
 	// params for ethash
 	ethash_params params;
@@ -70,9 +70,9 @@ extern "C" void main(void)
 		clock_t time = clock() - startTime;
 		
 		if (test_full)
-			debugf("ethash_compute_full_data: %ums\n", time);
+			debugf("ethash_compute_full_data: %ums\n", (unsigned)((time*1000)/CLOCKS_PER_SEC));
 		else
-			debugf("ethash_compute_cache_data: %ums\n", time);
+			debugf("ethash_compute_cache_data: %ums\n", (unsigned)((time*1000)/CLOCKS_PER_SEC));
 	}
 
 	// trial different numbers of accesses
@@ -98,11 +98,13 @@ extern "C" void main(void)
 
 		debugf("read_size %5ukb, hashrate: %6u, bw: %5u MB/s\n",
 			read_size / 1024,
-			(trials*1000)/time,
-			(unsigned)((((uint64_t)trials*read_size*1000)/time) / (1024*1024))
+			(unsigned)((trials*CLOCKS_PER_SEC)/time),
+			(unsigned)((((uint64_t)trials*read_size*CLOCKS_PER_SEC)/time) / (1024*1024))
 			);
 	}
 
 	free(mem_buf);
+
+	return 0;
 }
 

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 2.8.2)
 project(ethash)
 
 set(ETHHASH_LIBS ethash)
@@ -9,6 +9,10 @@ if (WANT_CRYPTOPP)
 	include_directories(..)
 	add_definitions("-DWANT_CRYPTOPP")
 	set(ETHHASH_LIBS ${ETHHASH_LIBS} cryptopp)
+endif()
+
+if (NOT MSVC)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
 endif()
 
 add_subdirectory(libethash)
