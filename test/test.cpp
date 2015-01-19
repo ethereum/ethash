@@ -1,6 +1,6 @@
 #include <iomanip>
-#include <libdaggerhashimoto/internal.h>
-#include <libdaggerhashimoto/blum_blum_shub.h>
+#include <libethash/blum_blum_shub.h>
+#include <libethash/fnv.h>
 
 #define BOOST_TEST_MODULE Daggerhashimoto
 #define BOOST_TEST_MAIN
@@ -8,85 +8,14 @@
 #include <boost/test/unit_test.hpp>
 
 
-std::string hashToHex(const uint8_t str[HASH_CHARS]) {
-    std::ostringstream ret;
-
-    for (int i = 0; i < HASH_CHARS; ++i)
-        ret << std::hex << std::setfill('0') << std::setw(2) << std::nouppercase << (int) str[i];
-
-    return ret.str();
-}
-
-BOOST_AUTO_TEST_CASE(sha3_dag_check) {
-    {
-        uint8_t input[HASH_CHARS], result[HASH_CHARS];
-        memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", HASH_CHARS);
-        sha3_dag(result, input);
-
-        const std::string
-                expected = "2b5ddf6f4d21c23de216f44d5e4bdc68e044b71897837ea74c83908be7037cd7",
-                actual = hashToHex(result);
-
-        BOOST_REQUIRE_MESSAGE(expected == actual,
-                "\nexpected: " << expected.c_str() << "\n"
-                        << "actual: " << actual.c_str() << "\n");
-    }
-    {
-        uint8_t input[HASH_CHARS];
-        memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", HASH_CHARS);
-        uint64_t actual[4],
-                expected[4] = {
-                4450155998268579115U,
-                7555997143227700962U,
-                12069228736377472224U,
-                15527289908280460108U};
-        sha3_dag((uint8_t *) actual, input);
-        for (int i = 0; i < 4; i++) {
-            BOOST_REQUIRE_MESSAGE(actual[i] == expected[i],
-                    "\nexpected: " << expected[i] << "\n"
-                            << "actual: " << actual[i] << "\n");
-        }
-    }
-}
-
-BOOST_AUTO_TEST_CASE(sha3_rand_check) {
-    {
-        uint8_t input[HASH_CHARS];
-        memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", HASH_CHARS);
-        const uint64_t nonce = 0x7E7E7E7E7E7E7E7EU,
-                expected[HASH_UINT64S] = {
-                6154632431212981991U,
-                520511268698457443U,
-                6437342779080611984U,
-                14985183232610838775U};
-        uint64_t actual[HASH_UINT64S];
-        sha3_rand(actual, input, nonce);
-        for (int i = 0; i < HASH_UINT64S; i++) {
-            BOOST_REQUIRE_MESSAGE(actual[i] == expected[i],
-                    "\nexpected: " << expected[i] << "\n"
-                            << "actual: " << actual[i] << "\n");
-        }
-    }
-    {
-        uint8_t input[HASH_CHARS];
-        memcpy(input, "~~~~~~H~~~~~~~~~~~~~~~~~~~~~~~~~", HASH_CHARS);
-        const uint64_t nonce = 0x7E597E7E7E7E7E7EU,
-                expected[HASH_UINT64S] = {
-                12131474505527047766U,
-                6365449550867347897U,
-                14172837750324433329U,
-                5787924029805105676U};
-        uint64_t actual[HASH_UINT64S];
-        sha3_rand(actual, input, nonce);
-        for (int i = 0; i < HASH_UINT64S; i++) {
-            BOOST_REQUIRE_MESSAGE(actual[i] == expected[i],
-                    "\nexpected: " << expected[i] << "\n"
-                            << "actual: " << actual[i] << "\n");
-        }
-    }
-}
-
-
+//std::string hashToHex(const uint8_t str[HASH_CHARS]) {
+//    std::ostringstream ret;
+//
+//    for (int i = 0; i < HASH_CHARS; ++i)
+//        ret << std::hex << std::setfill('0') << std::setw(2) << std::nouppercase << (int) str[i];
+//
+//    return ret.str();
+//}
 
 BOOST_AUTO_TEST_CASE(cube_mod_safe_prime1_check) {
     const uint32_t expected = 4294966087U,
@@ -221,4 +150,17 @@ BOOST_AUTO_TEST_CASE(quick_bbs_check) {
                 "\nexpected: " << expected << "\n"
                         << "actual: " << actual << "\n");
     }
+}
+
+BOOST_AUTO_TEST_CASE(fnv_hash_check) {
+    const uint32_t
+            x = 1235U,
+            y = 9999999U,
+            expected = (FNV_PRIME * x) ^ y,
+            actual = fnv_hash(x, y);
+
+    BOOST_REQUIRE_MESSAGE(actual == expected,
+            "\nexpected: " << expected << "\n"
+                    << "actual: " << actual << "\n");
+
 }

@@ -21,7 +21,6 @@
 
 #include <stdio.h>
 #include <assert.h>
-#include <ForceFeedback/ForceFeedback.h>
 #include "ethash.h"
 #include "blum_blum_shub.h"
 

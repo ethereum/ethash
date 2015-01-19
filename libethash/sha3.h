@@ -68,7 +68,6 @@ static inline void sha3_512_2(void *const ret, void const *data1, void const *da
     sha3_finalize(&ctx, (uint8_t *) ret);
 }
 
-
 #ifdef __cplusplus
 }
 #endif
