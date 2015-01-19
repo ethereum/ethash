@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.2)
 project(ethash)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+
 set(ETHHASH_LIBS ethash)
 
 option(WANT_CRYPTOPP "Use CryptoPP at ../cryptopp for SHA3" OFF)
@@ -16,5 +18,5 @@ if (NOT MSVC)
 endif()
 
 add_subdirectory(libethash)
-add_subdirectory(benchmark)
+add_subdirectory(benchmark EXCLUDE_FROM_ALL)
 #add_subdirectory(test)

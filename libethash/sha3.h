@@ -22,8 +22,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #pragma once
-#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "compiler.h"
+#include <stdint.h>
 
 struct sha3_ctx
 {
@@ -40,3 +45,30 @@ struct sha3_ctx
 void sha3_init(struct sha3_ctx * const restrict ctx, const uint32_t hashlen);
 void sha3_update(struct sha3_ctx * const restrict ctx, const uint8_t *data, const uint32_t len);
 void sha3_finalize(struct sha3_ctx * const restrict sctx, uint8_t * const restrict out);
+
+static inline void sha3_256(void *const ret, void const *data, const uint32_t size) {
+    struct sha3_ctx ctx;
+    sha3_init(&ctx, 256);
+    sha3_update(&ctx, (uint8_t const *) data, size);
+    sha3_finalize(&ctx, (uint8_t *) ret);
+}
+
+static inline void sha3_512(void *const ret, void const *data, const uint32_t size) {
+    struct sha3_ctx ctx;
+    sha3_init(&ctx, 512);
+    sha3_update(&ctx, (uint8_t const *) data, size);
+    sha3_finalize(&ctx, (uint8_t *) ret);
+}
+
+static inline void sha3_512_2(void *const ret, void const *data1, void const *data2, const uint32_t size) {
+    struct sha3_ctx ctx;
+    sha3_init(&ctx, 512);
+    sha3_update(&ctx, (uint8_t const *) data1, size);
+    sha3_update(&ctx, (uint8_t const *) data2, size);
+    sha3_finalize(&ctx, (uint8_t *) ret);
+}
+
+
+#ifdef __cplusplus
+}
+#endif

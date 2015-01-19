@@ -18,10 +18,9 @@
  * @author Tim Hughes <tim@ethdev.org>
  * @date 2015
  */
-#include <stdarg.h>
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <time.h>
 #include "libethash/ethash.h"
 #include "libethash/util.h"

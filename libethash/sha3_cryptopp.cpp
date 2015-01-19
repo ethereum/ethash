@@ -14,20 +14,21 @@
   You should have received a copy of the GNU General Public License
   along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file sha3_cryptopp.h
- * @author Tim Hughes <tim@ethdev.org>
- * @date 2015
- */
-#pragma once
-#include "cryptopp/sha3.h"
-#include "sha3_cryptopp.h"
 
-void sha3_256(void* ret, void const* data, uint32_t size)
-{
-	CryptoPP::SHA3_256().CalculateDigest((uint8_t*)ret, (uint8_t const*)data, size);
+/** @file sha3.cpp
+* @author Tim Hughes <tim@ethdev.org>
+* @date 2015
+*/
+
+#include <stdint.h>
+#include <cryptopp/sha3.h>
+
+extern "C" {
+void sha3_256(uint8_t *const ret, const uint8_t *data, uint32_t size) {
+    CryptoPP::SHA3_256().CalculateDigest(ret, data, size);
 }
 
-void sha3_512(void* ret, void const* data, uint32_t size)
-{
-	CryptoPP::SHA3_512().CalculateDigest((uint8_t*)ret, (uint8_t const*)data, size);
+void sha3_512(uint8_t *const ret, const uint8_t *data, uint32_t size) {
+    CryptoPP::SHA3_512().CalculateDigest(ret, data, size);
+}
 }
