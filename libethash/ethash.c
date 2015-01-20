@@ -49,7 +49,7 @@ typedef union node {
 // Follows Sergio's "STRICT MEMORY HARD HASHING FUNCTIONS" (2014)
 // https://bitslog.files.wordpress.com/2013/12/memohash-v0-3.pdf
 // SeqMemoHash(s, R, N)
-static void ethash_compute_cache_nodes(node *const nodes, ethash_params const *params) {
+void static ethash_compute_cache_nodes(node *const nodes, ethash_params const *params) {
     assert((params->cache_size % sizeof(node)) == 0);
     const size_t num_nodes = params->cache_size / sizeof(node);
 
@@ -68,7 +68,7 @@ static void ethash_compute_cache_nodes(node *const nodes, ethash_params const *p
         }
 }
 
-void ethash_compute_cache_data(ethash_cache *cache, ethash_params const *params) {
+void ethash_mkcache(ethash_cache *cache, ethash_params const *params) {
     node *nodes = (node *) cache->mem;
     ethash_compute_cache_nodes(nodes, params);
 
@@ -111,7 +111,7 @@ void ethash_compute_full_data(void *mem, ethash_params const *params) {
     // compute cache nodes first
     ethash_cache cache;
     ethash_cache_init(&cache, mem);
-    ethash_compute_cache_data(&cache, params);
+    ethash_mkcache(&cache, params);
 
     // now compute full nodes
     for (unsigned n = params->cache_size / sizeof(node); n != params->full_size / sizeof(node); ++n) {

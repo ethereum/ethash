@@ -24,11 +24,11 @@
 #include <cryptopp/sha3.h>
 
 extern "C" {
-void SHA3_256(uint8_t *const ret, const uint8_t *data, uint32_t size) {
-    CryptoPP::SHA3_256().CalculateDigest(ret, data, size);
+void SHA3_256(uint8_t *const ret, const uint8_t *data, size_t size) {
+  CryptoPP::SHA3_256().CalculateDigest(ret, data, size);
 }
 
-void SHA3_512(uint8_t *const ret, const uint8_t *data, uint32_t size) {
-    CryptoPP::SHA3_512().CalculateDigest(ret, data, size);
+void SHA3_512(uint8_t *const ret, const uint8_t *data, size_t size) {
+  CryptoPP::SHA3_512().CalculateDigest(ret, data, size);
 }
 }

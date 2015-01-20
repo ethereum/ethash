@@ -1,13 +1,18 @@
 #include <iomanip>
 #include <libethash/blum_blum_shub.h>
 #include <libethash/fnv.h>
-#include <libethash/sha3.h>
 
 #define BOOST_TEST_MODULE Daggerhashimoto
 #define BOOST_TEST_MAIN
 
 #include <boost/test/unit_test.hpp>
+#include <libethash/ethash.h>
 
+#ifdef WITH_CRYPTOPP
+#include <libethash/sha3_cryptopp.h>
+#else
+#include <libethash/sha3.h>
+#endif // WITH_CRYPTOPP
 
 std::string strToHex(const uint8_t * str, const size_t s) {
     std::ostringstream ret;
@@ -191,4 +196,19 @@ BOOST_AUTO_TEST_CASE(SHA512_check) {
                     << "actual: " << actual.c_str() << "\n");
 
 
+}
+
+BOOST_AUTO_TEST_CASE(mkcache_check) {
+    ethash_params params;
+    ethash_params_init(&params);
+    params.cache_size = 128;
+    ethash_cache c;
+    c.mem = alloca(128);
+    ethash_mkcache(&c, &params);
+    const std::string
+            expected = "9ef8038dfc581e5e96fefb18b8cf658f3161badd7818ba643405790c35c9b717468441f7f9b73693c3689e5fe0adb4037f66a38caf47b89093d948456a55fd37c61f74ea9bea0910ce069b6f25f9f0861fc0b6b89b8b1aef55267e730ed7d0ac4485daf189caf470e51d4b5012a7332d6d475c8e6d07258362064955bcc0ea62",
+            actual = strToHex((uint8_t const *) c.mem, 128);
+    BOOST_REQUIRE_MESSAGE(expected == actual,
+            "\nexpected: " << expected.c_str() << "\n"
+                    << "actual: " << actual.c_str() << "\n");
 }

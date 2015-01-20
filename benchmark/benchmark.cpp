@@ -43,11 +43,11 @@ extern "C" int main(void)
 	
 	// make random seed and header
 	uint8_t header[32];
-	srand(3248723843);
+	srand(3248723843U);
 	for (unsigned i = 0; i != 32; ++i)
 	{
-		params.seed[i] = rand();
-		header[i] = rand();
+		params.seed[i] = (uint8_t) rand();
+		header[i] = (uint8_t) rand();
 	}
 
 	// allocate page aligned buffer for dataset
@@ -64,14 +64,14 @@ extern "C" int main(void)
 		if (test_full)
 			ethash_compute_full_data(cache.mem, &params);
 		else
-			ethash_compute_cache_data(&cache, &params);
+			ethash_mkcache(&cache, &params);
 
 		clock_t time = clock() - startTime;
 		
 		if (test_full)
 			debugf("ethash_compute_full_data: %ums\n", (unsigned)((time*1000)/CLOCKS_PER_SEC));
 		else
-			debugf("ethash_compute_cache_data: %ums\n", (unsigned)((time*1000)/CLOCKS_PER_SEC));
+			debugf("ethash_mkcache: %ums\n", (unsigned)((time*1000)/CLOCKS_PER_SEC));
 	}
 
 	// trial different numbers of accesses

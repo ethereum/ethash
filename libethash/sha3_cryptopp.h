@@ -7,8 +7,8 @@
 extern "C" {
 #endif
 
-void SHA3_256(uint8_t* const ret, const uint8_t * data, uint32_t size);
-void SHA3_512(uint8_t* const ret, const uint8_t * data, uint32_t size);
+void SHA3_256(uint8_t *const ret, const uint8_t *data, size_t size);
+void SHA3_512(uint8_t *const ret, const uint8_t *data, size_t size);
 
 #ifdef __cplusplus
 }

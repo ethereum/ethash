@@ -21,11 +21,11 @@ decsha3(256)
 decsha3(384)
 decsha3(512)
 
-static inline void SHA3_256(void *const ret, void const *data, const uint32_t size) {
+static inline void SHA3_256(uint8_t * const ret, uint8_t const *data, const size_t size) {
     sha3_256(ret, 32, data, size);
 }
 
-static inline void SHA3_512(void *const ret, void const *data, const uint32_t size) {
+static inline void SHA3_512(uint8_t * const ret, uint8_t const *data, const size_t size) {
     sha3_512(ret, 64, data, size);
 }
 

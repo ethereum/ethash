@@ -34,7 +34,6 @@ typedef struct ethash_params
 	unsigned cache_size;				// Size of compute cache (in bytes, multiple of node size (64)).
 	unsigned hash_read_size;			// Size of data set to read for each hash (in bytes, multiple of page size (4096)).
 	unsigned k;							// Number of parents of a full node.
-	unsigned cache_generation_passes;	// Number of SHA3 passes over cache data. Increase for smaller caches.
 	uint8_t seed[32];					// Seed for data set.
 } ethash_params;
 
@@ -45,7 +44,6 @@ static inline void ethash_params_init(ethash_params* params)
 	params->cache_size = 8209 * 4096;	// 32MB-ish
 	params->hash_read_size = 32 * 4096;	// 128k
 	params->k = 64;
-	params->cache_generation_passes = 1;
 	memset(params->seed, 0, sizeof(params->seed));
 }
 
@@ -61,7 +59,7 @@ static inline void ethash_cache_init(ethash_cache* cache, void* mem)
 	cache->mem = mem;
 }
 
-void ethash_compute_cache_data(ethash_cache* cache, ethash_params const* params);
+void ethash_mkcache(ethash_cache *cache, ethash_params const *params);
 void ethash_compute_full_data(void* mem, ethash_params const* params);
 void ethash_full(uint8_t ret[32], void const* full_mem, ethash_params const* params, uint64_t nonce);
 void ethash_light(uint8_t ret[32], ethash_cache const* cache, ethash_params const* params, uint64_t nonce);

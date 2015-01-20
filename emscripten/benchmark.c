@@ -17,7 +17,7 @@ int main(void) {
 
     printf("Building cache...\n");
     clock_t startTime = clock();
-    ethash_compute_cache_data(&cache, &params);
+    ethash_mkcache(&cache, &params);
     clock_t endTime = clock();
     printf("Time to build Cache: %lu msecs\n", (unsigned long) ((endTime - startTime) * 1000.0 / CLOCKS_PER_SEC));
 
