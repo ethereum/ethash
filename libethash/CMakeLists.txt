@@ -8,11 +8,11 @@ set(FILES 	util.c
           	blum_blum_shub.c
           	blum_blum_shub.h
           	bitfn.h
-          	compiler.h)
+          	compiler.h
+          	fnv.h)
 
 find_package (CryptoPP)
 
-# TODO: cleverness not working yet
 if (CRYPTOPP_FOUND)
 	add_definitions(-DWITH_CRYPTOPP)
 	include_directories( ${CRYPTOPP_INCLUDE_DIRS} )

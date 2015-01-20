@@ -128,23 +128,6 @@ static inline void array_swap64(uint64_t *d, uint64_t *s, uint32_t nb)
 }
 #endif
 
-#ifndef ARCH_HAS_MEMORY_ZERO
-static inline void memory_zero(void *ptr, uint32_t len)
-{
-    uint32_t *ptr32 = ptr;
-    uint8_t *ptr8;
-    uint32_t i;
-
-    for (i = 0; i < len / 4; i++)
-        *ptr32++ = 0;
-    if (len % 4) {
-        ptr8 = (uint8_t *) ptr32;
-        for (i = len % 4; i >= 0; i--)
-            ptr8[i] = 0;
-    }
-}
-#endif
-
 #ifndef ARCH_HAS_ARRAY_COPY32
 static inline void array_copy32(uint32_t *d, uint32_t *s, uint32_t nb)
 {

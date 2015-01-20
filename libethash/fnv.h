@@ -21,6 +21,7 @@
 
 #pragma once
 #include <stdint.h>
+#include "compiler.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,8 +29,9 @@ extern "C" {
 
 #define FNV_PRIME 0x01000193
 
-static inline uint32_t fnv_hash(const uint64_t x, const uint64_t y) {
-    return (x + (x<<1) + (x<<4) + (x<<7) + (x<<8) + (x<<24)) ^ y;
+static inline void fnv_hash(uint32_t * const x, const uint32_t y) {
+    *x += (*x<<1) + (*x<<4) + (*x<<7) + (*x<<8) + (*x<<24);
+    *x ^= y;
 }
 
 #ifdef __cplusplus

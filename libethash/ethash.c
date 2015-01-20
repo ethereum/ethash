@@ -23,9 +23,12 @@
 #include <assert.h>
 #include "ethash.h"
 #include "blum_blum_shub.h"
+#include "fnv.h"
 
 #ifdef WITH_CRYPTOPP
+
 #include "sha3_cryptopp.h"
+
 #else
 #include "sha3.h"
 #endif // WITH_CRYPTOPP
@@ -34,15 +37,19 @@
 #define NODE_WORDS 8
 #define PAGE_WORDS 512
 #define PAGE_NODES (PAGE_WORDS / NODE_WORDS)
+#define CACHE_ROUNDS 2
 
 typedef union node {
     uint8_t bytes[NODE_WORDS * 8];
+    uint32_t half_words[NODE_WORDS * 2];
     uint64_t words[NODE_WORDS];
 } node;
 
 
-// todo
-static void ethash_compute_cache_nodes(node *nodes, ethash_params const *params) {
+// Follows Sergio's "STRICT MEMORY HARD HASHING FUNCTIONS" (2014)
+// https://bitslog.files.wordpress.com/2013/12/memohash-v0-3.pdf
+// SeqMemoHash(s, R, N)
+static void ethash_compute_cache_nodes(node *const nodes, ethash_params const *params) {
     assert((params->cache_size % sizeof(node)) == 0);
     const size_t num_nodes = params->cache_size / sizeof(node);
 
@@ -53,11 +60,12 @@ static void ethash_compute_cache_nodes(node *nodes, ethash_params const *params)
         sha3_512(nodes[i].bytes, nodes[i - 1].bytes, 64);
     }
 
-    for (unsigned i = 0; i != num_nodes; ++i) {
-        // todo: endianness
-        unsigned const idx = (unsigned int const) (nodes[i].words[0] % num_nodes);
-        sha3_512(nodes[i].bytes, nodes[idx].bytes, 64);
-    }
+    for (unsigned j = 0; j != CACHE_ROUNDS; j++)
+        for (unsigned i = 0; i != num_nodes; ++i) {
+            // todo: endianness
+            unsigned const idx = (unsigned int const) (nodes[i].words[0] % num_nodes);
+            sha3_512(nodes[i].bytes, nodes[idx].bytes, 64);
+        }
 }
 
 void ethash_compute_cache_data(ethash_cache *cache, ethash_params const *params) {
@@ -79,8 +87,8 @@ static void ethash_compute_full_node(
     size_t num_parent_nodes = params->cache_size / sizeof(node);
     assert(node_index >= num_parent_nodes);
 
-    for (unsigned w = 0; w != NODE_WORDS; ++w) {
-        ret->words[w] = 0;
+    for (unsigned hw = 0; hw != NODE_WORDS*2; ++hw) {
+        ret->half_words[hw] = 0;
     }
 
     uint32_t rand = quick_bbs(rng_table, node_index * 2);
@@ -89,8 +97,8 @@ static void ethash_compute_full_node(
         size_t parent_index = rand % num_parent_nodes;
         rand = cube_mod_safe_prime2(rand);
 
-        for (unsigned w = 0; w != NODE_WORDS; ++w) {
-            ret->words[w] ^= nodes[parent_index].words[w];
+        for (unsigned hw = 0; hw != NODE_WORDS*2; ++hw) {
+            fnv_hash(&(ret->half_words[hw]),nodes[parent_index].half_words[hw]);
         }
     }
 }
@@ -111,11 +119,10 @@ void ethash_compute_full_data(void *mem, ethash_params const *params) {
     }
 }
 
-static void ethash_hash(uint8_t ret[32], void const *mem, uint32_t const *rng_table, ethash_params const *params, uint64_t nonce) {
+static void ethash_hash(uint8_t ret[32], node const * nodes, uint32_t const *rng_table, ethash_params const *params, uint64_t nonce) {
     // for simplicity the cache and dag must be whole number of pages
     assert((params->cache_size % PAGE_WORDS) == 0);
     assert((params->full_size % PAGE_WORDS) == 0);
-    node const *nodes = (node const *) mem;
 
     // pack seed and nonce together, todo, endian
     struct {
@@ -126,31 +133,28 @@ static void ethash_hash(uint8_t ret[32], void const *mem, uint32_t const *rng_ta
     init.nonce = nonce;
 
     // compute sha3-256 hash and replicate across mix
-    uint64_t mix[PAGE_WORDS];
+    uint32_t mix[PAGE_WORDS * 2];
     sha3_256((uint8_t *const) mix, (uint8_t const *) &init, sizeof(init));
-    for (unsigned w = 4; w != PAGE_WORDS; ++w) {
-        mix[w] = mix[w & 3];
+    for (unsigned hw = 4; hw != PAGE_WORDS * 2; ++hw) {
+        mix[hw] = mix[hw & 3];
     }
 
     // seed for RNG variant
-    uint32_t rand = (uint32_t) mix[0];
+    // todo: endian
+    uint32_t rand = mix[0];
 
-    unsigned const page_size = sizeof(uint64_t) * PAGE_WORDS;
-    unsigned const page_reads = params->hash_read_size / page_size;
-    unsigned num_full_pages = params->full_size / page_size;
-    unsigned num_cache_pages = params->cache_size / page_size;
-    unsigned num_pages = rng_table ? num_cache_pages : num_full_pages;
+    unsigned const
+            page_size = sizeof(uint64_t) * PAGE_WORDS,
+            page_reads = params->hash_read_size / page_size,
+            num_full_pages = params->full_size / page_size,
+            num_cache_pages = params->cache_size / page_size,
+            num_pages = rng_table ? num_cache_pages : num_full_pages;
 
     for (unsigned i = 0; i != page_reads; ++i) {
-        // most architectures are little-endian now, we can speed things up
-        // by specifying the byte order as little endian for this part.
-        uint64_t mixi = mix[i % PAGE_WORDS];
-
-        unsigned index = rand % num_full_pages;
+        unsigned const index = rand % num_full_pages;
         rand = cube_mod_safe_prime1(rand);
 
-        node tmp_page[PAGE_NODES];
-        node const *page;
+        node tmp_page[PAGE_NODES], *page;
         if (index >= num_pages) {
             page = tmp_page;
 
@@ -162,8 +166,8 @@ static void ethash_hash(uint8_t ret[32], void const *mem, uint32_t const *rng_ta
             page = nodes + PAGE_NODES * index;
         }
 
-        for (unsigned w = 0; w != PAGE_WORDS; ++w) {
-            mix[w] ^= page->words[w];
+        for (unsigned hw = 0; hw != PAGE_WORDS*2; ++hw) {
+            fnv_hash(&mix[hw], page->half_words[hw]);
         }
     }
 
@@ -173,6 +177,7 @@ static void ethash_hash(uint8_t ret[32], void const *mem, uint32_t const *rng_ta
 }
 
 void ethash_full(uint8_t ret[32], void const *full_mem, ethash_params const *params, uint64_t nonce) {
+    // todo: Maybe not use a null pointer here?
     ethash_hash(ret, (node const *) full_mem, NULL, params, nonce);
 }
 

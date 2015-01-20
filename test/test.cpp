@@ -153,14 +153,15 @@ BOOST_AUTO_TEST_CASE(quick_bbs_check) {
 }
 
 BOOST_AUTO_TEST_CASE(fnv_hash_check) {
+    uint32_t x = 1235U;
     const uint32_t
-            x = 1235U,
             y = 9999999U,
-            expected = (FNV_PRIME * x) ^ y,
-            actual = fnv_hash(x, y);
+            expected = (FNV_PRIME * x) ^ y;
 
-    BOOST_REQUIRE_MESSAGE(actual == expected,
+    fnv_hash(&x, y);
+
+    BOOST_REQUIRE_MESSAGE(x == expected,
             "\nexpected: " << expected << "\n"
-                    << "actual: " << actual << "\n");
+                    << "actual: " << x << "\n");
 
 }
