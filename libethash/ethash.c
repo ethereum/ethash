@@ -27,7 +27,7 @@
 
 #ifdef WITH_CRYPTOPP
 
-#include "sha3_cryptopp.h"
+#include "SHA3_cryptopp.h"
 
 #else
 #include "sha3.h"
@@ -54,17 +54,17 @@ static void ethash_compute_cache_nodes(node *const nodes, ethash_params const *p
     const size_t num_nodes = params->cache_size / sizeof(node);
 
 
-    sha3_512(nodes[0].bytes, params->seed, 32);
+    SHA3_512(nodes[0].bytes, params->seed, 32);
 
     for (unsigned i = 1; i != num_nodes; ++i) {
-        sha3_512(nodes[i].bytes, nodes[i - 1].bytes, 64);
+        SHA3_512(nodes[i].bytes, nodes[i - 1].bytes, 64);
     }
 
     for (unsigned j = 0; j != CACHE_ROUNDS; j++)
         for (unsigned i = 0; i != num_nodes; ++i) {
             // todo: endianness
             unsigned const idx = (unsigned int const) (nodes[i].words[0] % num_nodes);
-            sha3_512(nodes[i].bytes, nodes[idx].bytes, 64);
+            SHA3_512(nodes[i].bytes, nodes[idx].bytes, 64);
         }
 }
 
@@ -134,7 +134,7 @@ static void ethash_hash(uint8_t ret[32], node const * nodes, uint32_t const *rng
 
     // compute sha3-256 hash and replicate across mix
     uint32_t mix[PAGE_WORDS * 2];
-    sha3_256((uint8_t *const) mix, (uint8_t const *) &init, sizeof(init));
+    SHA3_256((uint8_t *const) mix, (uint8_t const *) &init, sizeof(init));
     for (unsigned hw = 4; hw != PAGE_WORDS * 2; ++hw) {
         mix[hw] = mix[hw & 3];
     }
@@ -172,8 +172,8 @@ static void ethash_hash(uint8_t ret[32], node const * nodes, uint32_t const *rng
     }
 
     uint8_t tmp[32];
-    sha3_256((uint8_t *const) &tmp, (uint8_t const *) mix, sizeof(mix));
-    sha3_256(ret, (uint8_t const *) &tmp, sizeof(tmp));
+    SHA3_256((uint8_t *const) &tmp, (uint8_t const *) mix, sizeof(mix));
+    SHA3_256(ret, (uint8_t const *) &tmp, sizeof(tmp));
 }
 
 void ethash_full(uint8_t ret[32], void const *full_mem, ethash_params const *params, uint64_t nonce) {

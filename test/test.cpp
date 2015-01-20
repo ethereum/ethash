@@ -1,6 +1,7 @@
 #include <iomanip>
 #include <libethash/blum_blum_shub.h>
 #include <libethash/fnv.h>
+#include <libethash/sha3.h>
 
 #define BOOST_TEST_MODULE Daggerhashimoto
 #define BOOST_TEST_MAIN
@@ -8,14 +9,14 @@
 #include <boost/test/unit_test.hpp>
 
 
-//std::string hashToHex(const uint8_t str[HASH_CHARS]) {
-//    std::ostringstream ret;
-//
-//    for (int i = 0; i < HASH_CHARS; ++i)
-//        ret << std::hex << std::setfill('0') << std::setw(2) << std::nouppercase << (int) str[i];
-//
-//    return ret.str();
-//}
+std::string strToHex(const uint8_t * str, const size_t s) {
+    std::ostringstream ret;
+
+    for (int i = 0; i < s; ++i)
+        ret << std::hex << std::setfill('0') << std::setw(2) << std::nouppercase << (int) str[i];
+
+    return ret.str();
+}
 
 BOOST_AUTO_TEST_CASE(cube_mod_safe_prime1_check) {
     const uint32_t expected = 4294966087U,
@@ -163,5 +164,31 @@ BOOST_AUTO_TEST_CASE(fnv_hash_check) {
     BOOST_REQUIRE_MESSAGE(x == expected,
             "\nexpected: " << expected << "\n"
                     << "actual: " << x << "\n");
+
+}
+
+BOOST_AUTO_TEST_CASE(SHA256_check) {
+    uint8_t input[32], out[32];
+    memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+    SHA3_256(out, input, 32);
+    const std::string
+            expected = "2b5ddf6f4d21c23de216f44d5e4bdc68e044b71897837ea74c83908be7037cd7",
+            actual = strToHex(out, 32);
+    BOOST_REQUIRE_MESSAGE(expected == actual,
+            "\nexpected: " << expected.c_str() << "\n"
+                    << "actual: " << actual.c_str() << "\n");
+}
+
+BOOST_AUTO_TEST_CASE(SHA512_check) {
+    uint8_t input[64], out[64];
+    memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 64);
+    SHA3_512(out, input, 64);
+    const std::string
+            expected = "0be8a1d334b4655fe58c6b38789f984bb13225684e86b20517a55ab2386c7b61c306f25e0627c60064cecd6d80cd67a82b3890bd1289b7ceb473aad56a359405",
+            actual = strToHex(out, 64);
+    BOOST_REQUIRE_MESSAGE(expected == actual,
+            "\nexpected: " << expected.c_str() << "\n"
+                    << "actual: " << actual.c_str() << "\n");
+
 
 }
