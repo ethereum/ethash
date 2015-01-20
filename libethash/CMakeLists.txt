@@ -7,7 +7,7 @@ set(FILES 	util.c
           	ethash.h
           	blum_blum_shub.c
           	blum_blum_shub.h
-          	bitfn.h
+          	endian.h
           	compiler.h
           	fnv.h)
 

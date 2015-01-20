@@ -14,7 +14,7 @@
   You should have received a copy of the GNU General Public License
   along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file dash.cpp
+/** @file benchmark.cpp
  * @author Tim Hughes <tim@ethdev.org>
  * @date 2015
  */
@@ -33,20 +33,19 @@ extern "C" int main(void)
 	ethash_params params;
 	ethash_params_init(&params);
 	params.full_size = 262147 * 4096;	// 1GBish;
-	//params.full_size = 32771 * 4096;	// 128MBish;
 	params.cache_size = 8209*4096;
-	//params.cache_size = 2053*4096;
 	params.k = 2 * (params.full_size / params.cache_size);
+	uint8_t seed[32], previous_hash[32];
+	memcpy(seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+	memcpy(previous_hash, "~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
 
 	const unsigned trials = 1000;
-	const bool test_full = false;
 	
 	// make random seed and header
 	uint8_t header[32];
 	srand(3248723843U);
 	for (unsigned i = 0; i != 32; ++i)
 	{
-		params.seed[i] = (uint8_t) rand();
 		header[i] = (uint8_t) rand();
 	}
 
@@ -61,17 +60,19 @@ extern "C" int main(void)
 	{
 		clock_t startTime = clock();
 
-		if (test_full)
-			ethash_compute_full_data(cache.mem, &params);
-		else
-			ethash_mkcache(&cache, &params);
+		#ifdef FULL
+			ethash_compute_full_data(cache.mem, &params, seed);
+		#else
+			ethash_mkcache(&cache, &params, seed);
+		#endif // FULL
 
 		clock_t time = clock() - startTime;
-		
-		if (test_full)
+
+		#ifdef FULL
 			debugf("ethash_compute_full_data: %ums\n", (unsigned)((time*1000)/CLOCKS_PER_SEC));
-		else
+		#else
 			debugf("ethash_mkcache: %ums\n", (unsigned)((time*1000)/CLOCKS_PER_SEC));
+		#endif // FULL
 	}
 
 	// trial different numbers of accesses
@@ -85,10 +86,11 @@ extern "C" int main(void)
 		//#pragma omp parallel for
 		for (int nonce = 0; nonce < trials; ++nonce)
 		{
-			if (test_full)
-				ethash_full(g_hash, cache.mem, &params, nonce);
-			else
-				ethash_light(g_hash, &cache, &params, nonce);
+			#ifdef FULL
+				ethash_full(g_hash, cache.mem, &params, previous_hash, nonce);
+			#else
+				ethash_light(g_hash, &cache, &params, previous_hash, nonce);
+			#endif // FULL
 
 			//if ((nonce % 500) == 0)
 			//	logf("trials: %u\n", nonce);

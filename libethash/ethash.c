@@ -24,6 +24,7 @@
 #include "ethash.h"
 #include "blum_blum_shub.h"
 #include "fnv.h"
+#include "endian.h"
 
 #ifdef WITH_CRYPTOPP
 
@@ -49,12 +50,12 @@ typedef union node {
 // Follows Sergio's "STRICT MEMORY HARD HASHING FUNCTIONS" (2014)
 // https://bitslog.files.wordpress.com/2013/12/memohash-v0-3.pdf
 // SeqMemoHash(s, R, N)
-void static ethash_compute_cache_nodes(node *const nodes, ethash_params const *params) {
+void static ethash_compute_cache_nodes(node *const nodes, ethash_params const *params, const uint8_t seed[32]) {
     assert((params->cache_size % sizeof(node)) == 0);
     const size_t num_nodes = params->cache_size / sizeof(node);
 
 
-    SHA3_512(nodes[0].bytes, params->seed, 32);
+    SHA3_512(nodes[0].bytes, seed, 32);
 
     for (unsigned i = 1; i != num_nodes; ++i) {
         SHA3_512(nodes[i].bytes, nodes[i - 1].bytes, 64);
@@ -62,18 +63,17 @@ void static ethash_compute_cache_nodes(node *const nodes, ethash_params const *p
 
     for (unsigned j = 0; j != CACHE_ROUNDS; j++)
         for (unsigned i = 0; i != num_nodes; ++i) {
-            // todo: endianness
-            unsigned const idx = (unsigned int const) (nodes[i].words[0] % num_nodes);
-            SHA3_512(nodes[i].bytes, nodes[idx].bytes, 64);
+            unsigned const idx = (unsigned int const) (fix_endian64(nodes[i].words[0]) % num_nodes);
+            const node data[2] = {nodes[(i-1+num_nodes) % num_nodes], nodes[idx]};
+            SHA3_512(nodes[i].bytes, (uint8_t const *) data, 128);
         }
 }
 
-void ethash_mkcache(ethash_cache *cache, ethash_params const *params) {
+void ethash_mkcache(ethash_cache *cache, ethash_params const *params, const uint8_t seed[32]) {
     node *nodes = (node *) cache->mem;
-    ethash_compute_cache_nodes(nodes, params);
+    ethash_compute_cache_nodes(nodes, params, seed);
 
-    // todo, endian
-    uint32_t rng_seed = make_seed(nodes->words[0], SAFE_PRIME);
+    uint32_t rng_seed = make_seed(fix_endian64(nodes->words[0]), SAFE_PRIME);
     init_power_table_mod_prime1(cache->rng_table, rng_seed);
 }
 
@@ -103,7 +103,7 @@ static void ethash_compute_full_node(
     }
 }
 
-void ethash_compute_full_data(void *mem, ethash_params const *params) {
+void ethash_compute_full_data(void *mem, ethash_params const *params, const uint8_t seed[32]) {
     assert((params->full_size % (sizeof(uint64_t) * PAGE_WORDS)) == 0);
     assert((params->full_size % sizeof(node)) == 0);
     node *nodes = (node *) mem;
@@ -111,7 +111,7 @@ void ethash_compute_full_data(void *mem, ethash_params const *params) {
     // compute cache nodes first
     ethash_cache cache;
     ethash_cache_init(&cache, mem);
-    ethash_mkcache(&cache, params);
+    ethash_mkcache(&cache, params, seed);
 
     // now compute full nodes
     for (unsigned n = params->cache_size / sizeof(node); n != params->full_size / sizeof(node); ++n) {
@@ -119,7 +119,13 @@ void ethash_compute_full_data(void *mem, ethash_params const *params) {
     }
 }
 
-static void ethash_hash(uint8_t ret[32], node const * nodes, uint32_t const *rng_table, ethash_params const *params, uint64_t nonce) {
+static void ethash_hash(
+        uint8_t ret[32],
+        node const * nodes,
+        uint32_t const *rng_table,
+        ethash_params const *params,
+        const uint8_t prevhash[32],
+        const uint64_t nonce) {
     // for simplicity the cache and dag must be whole number of pages
     assert((params->cache_size % PAGE_WORDS) == 0);
     assert((params->full_size % PAGE_WORDS) == 0);
@@ -129,7 +135,7 @@ static void ethash_hash(uint8_t ret[32], node const * nodes, uint32_t const *rng
         uint8_t seed[32];
         uint64_t nonce;
     } init;
-    memcpy(init.seed, params->seed, sizeof(params->seed));
+    memcpy(init.seed, prevhash, 32);
     init.nonce = nonce;
 
     // compute sha3-256 hash and replicate across mix
@@ -139,7 +145,6 @@ static void ethash_hash(uint8_t ret[32], node const * nodes, uint32_t const *rng
         mix[hw] = mix[hw & 3];
     }
 
-    // seed for RNG variant
     // todo: endian
     uint32_t rand = mix[0];
 
@@ -176,11 +181,11 @@ static void ethash_hash(uint8_t ret[32], node const * nodes, uint32_t const *rng
     SHA3_256(ret, (uint8_t const *) &tmp, sizeof(tmp));
 }
 
-void ethash_full(uint8_t ret[32], void const *full_mem, ethash_params const *params, uint64_t nonce) {
+void ethash_full(uint8_t ret[32], void const *full_mem, ethash_params const *params, const uint8_t previous_hash[32], const uint64_t nonce) {
     // todo: Maybe not use a null pointer here?
-    ethash_hash(ret, (node const *) full_mem, NULL, params, nonce);
+    ethash_hash(ret, (node const *) full_mem, NULL, params, previous_hash, nonce);
 }
 
-void ethash_light(uint8_t ret[32], ethash_cache const *cache, ethash_params const *params, uint64_t nonce) {
-    ethash_hash(ret, (node const *) cache->mem, cache->rng_table, params, nonce);
+void ethash_light(uint8_t ret[32], ethash_cache const *cache, ethash_params const *params, const uint8_t previous_hash[32], const uint64_t nonce) {
+    ethash_hash(ret, (node const *) cache->mem, cache->rng_table, params, previous_hash, nonce);
 }

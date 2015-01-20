@@ -41,7 +41,7 @@ set( CMAKE_C_COMPILER           "${EMSCRIPTEN_ROOT_PATH}/emcc")
 set( CMAKE_CXX_COMPILER         "${EMSCRIPTEN_ROOT_PATH}/em++")
 set( CMAKE_C_ARCHIVE_CREATE     "${CMAKE_C_COMPILER} -o <TARGET> <LINK_FLAGS> <OBJECTS>" )
 set( CMAKE_CXX_ARCHIVE_CREATE   "${CMAKE_CXX_COMPILER} -o <TARGET>  <LINK_FLAGS> <OBJECTS>" )
-set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-warn-absolute-paths")
+set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-warn-absolute-paths -O3 -s ASM_JS=1 -s FULL_ES2=1")
 
 CMAKE_FORCE_C_COMPILER(         ${CMAKE_C_COMPILER} Clang )
 CMAKE_FORCE_CXX_COMPILER(       ${CMAKE_CXX_COMPILER} Clang )
@@ -53,12 +53,12 @@ set(FILES 	../libethash/util.c
           	../libethash/ethash.h
           	../libethash/blum_blum_shub.c
           	../libethash/blum_blum_shub.h
-          	../libethash/bitfn.h
+          	../libethash/endian.h
           	../libethash/compiler.h
           	../libethash/fnv.h
           	../libethash/sha3.c
           	../libethash/sha3.h)
 
-add_executable(benchmark.js benchmark.c ${FILES})
-SET_TARGET_PROPERTIES(benchmark.js PROPERTIES LINK_FLAGS "-s TOTAL_MEMORY=50331648")
+add_executable(benchmark.js EXCLUDE_FROM_ALL benchmark.c ${FILES})
+SET_TARGET_PROPERTIES(benchmark.js PROPERTIES LINK_FLAGS "-s TOTAL_MEMORY=50331648 --bind")
 add_custom_command(TARGET benchmark.js POST_BUILD COMMAND node benchmark.js)
