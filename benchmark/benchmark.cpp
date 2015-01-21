@@ -84,8 +84,9 @@ extern "C" int main(void)
 		
 		clock_t startTime = clock();
 
-		// uncomment to enable multicore
-		//#pragma omp parallel for
+        #ifdef MPI
+		#pragma omp parallel for
+		#endif // MPI
 		for (int nonce = 0; nonce < trials; ++nonce)
 		{
 			#ifdef FULL
@@ -93,9 +94,6 @@ extern "C" int main(void)
 			#else
 				ethash_light(g_hash, &cache, &params, previous_hash, nonce);
 			#endif // FULL
-
-			//if ((nonce % 500) == 0)
-			//	logf("trials: %u\n", nonce);
 		}
 		clock_t time = clock() - startTime;
 
