@@ -164,7 +164,7 @@ BOOST_AUTO_TEST_CASE(fnv_hash_check) {
             y = 9999999U,
             expected = (FNV_PRIME * x) ^ y;
 
-    fnv_hash(&x, y);
+    x = fnv_hash(x, y);
 
     BOOST_REQUIRE_MESSAGE(x == expected,
             "\nexpected: " << expected << "\n"
