@@ -28,6 +28,7 @@ extern "C" {
 
 #define SAFE_PRIME 4294967087U
 #define SAFE_PRIME_TOTIENT 4294967086U
+// Not really the totient totient... works the same
 #define SAFE_PRIME_TOTIENT_TOTIENT 2147483542
 #define SAFE_PRIME2 4294965887U
 
