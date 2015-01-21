@@ -30,7 +30,7 @@ extern "C" {
 #define FNV_PRIME 0x01000193
 
 static inline uint32_t fnv_hash(const uint32_t x, const uint32_t y) {
-	return (x + (x<<1) + (x<<4) + (x<<7) + (x<<8) + (x<<24)) ^ y;
+	return x*FNV_PRIME ^ y;
 }
 
 #ifdef __cplusplus
