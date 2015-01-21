@@ -33,15 +33,14 @@
 #endif // WITH_CRYPTOPP
 
 // compile time settings
-#define NODE_WORDS 8
-#define PAGE_WORDS 512
+#define NODE_WORDS (64/4)
+#define PAGE_WORDS (4096/4)
 #define PAGE_NODES (PAGE_WORDS / NODE_WORDS)
 #define CACHE_ROUNDS 2
 
 typedef union node {
-    uint8_t bytes[NODE_WORDS * 8];
-    uint32_t half_words[NODE_WORDS * 2];
-    uint64_t words[NODE_WORDS];
+    uint8_t bytes[NODE_WORDS*4];
+    uint32_t words[NODE_WORDS];
 } node;
 
 
@@ -61,7 +60,9 @@ void static ethash_compute_cache_nodes(node *const nodes, ethash_params const *p
 
     for (unsigned j = 0; j != CACHE_ROUNDS; j++)
         for (unsigned i = 0; i != num_nodes; ++i) {
-            unsigned const idx = (unsigned int const) (fix_endian64(nodes[i].words[0]) % num_nodes);
+			uint32_t const low_word = fix_endian32(nodes[i].words[0]);
+			uint32_t const high_word = fix_endian32(nodes[i].words[1]);
+            unsigned const idx = (unsigned)(((uint64_t)high_word << 32 | low_word) % num_nodes);
 
 			// todo, better to use update calls than copying this data into one buffer.
             node data[2];
@@ -75,7 +76,9 @@ void ethash_mkcache(ethash_cache *cache, ethash_params const *params, const uint
     node *nodes = (node *) cache->mem;
     ethash_compute_cache_nodes(nodes, params, seed);
 
-    uint32_t rng_seed = make_seed(fix_endian64(nodes->words[0]), SAFE_PRIME);
+	uint32_t const low_word = fix_endian32(nodes[0].words[0]);
+	uint32_t const high_word = fix_endian32(nodes[0].words[1]);
+    uint32_t rng_seed = make_seed((uint64_t)high_word << 32 | low_word, SAFE_PRIME);
     init_power_table_mod_prime1(cache->rng_table, rng_seed);
 }
 
@@ -89,18 +92,22 @@ static void ethash_compute_full_node(
     size_t num_parent_nodes = params->cache_size / sizeof(node);
     assert(node_index >= num_parent_nodes);
 
-    for (unsigned hw = 0; hw != NODE_WORDS*2; ++hw) {
-        ret->half_words[hw] = 0;
-    }
-
+	memset(ret, 0, sizeof(*ret));
+    
     uint32_t rand = quick_bbs(rng_table, node_index * 2);
     for (unsigned i = 0; i != params->k; ++i) {
 
         size_t parent_index = rand % num_parent_nodes;
         rand = cube_mod_safe_prime2(rand);
 
-        for (unsigned hw = 0; hw != NODE_WORDS*2; ++hw) {
-            fnv_hash(&(ret->half_words[hw]),nodes[parent_index].half_words[hw]);
+		node const* parent = &nodes[parent_index];
+        for (unsigned w = 0; w != NODE_WORDS; ++w)
+		{
+			// if we care about big-endian performance, then we should fix the
+			// return value endian at the end of the function.
+			uint32_t x = fix_endian32(ret->words[w]);
+			uint32_t y = fix_endian32(parent->words[w]);
+            ret->words[w] = fix_endian32(fnv_hash(x, y));
         }
     }
 }
@@ -141,17 +148,17 @@ static void ethash_hash(
     init.nonce = nonce;
 
     // compute sha3-256 hash and replicate across mix
-    uint32_t mix[PAGE_WORDS * 2];
-    SHA3_256((uint8_t *const) mix, (uint8_t const *) &init, sizeof(init));
-    for (unsigned hw = 4; hw != PAGE_WORDS * 2; ++hw) {
-        mix[hw] = mix[hw & 3];
+    uint32_t mix[PAGE_WORDS];
+    SHA3_256((uint8_t*)mix, (uint8_t const *) &init, sizeof(init));
+    for (unsigned w = 8; w != PAGE_WORDS; ++w) {
+        mix[w] = mix[w % 8];
     }
 
     // todo: endian
     uint32_t rand = mix[0];
 
     unsigned const
-            page_size = sizeof(uint64_t) * PAGE_WORDS,
+            page_size = sizeof(uint32_t) * PAGE_WORDS,
             page_reads = params->hash_read_size / page_size,
             num_full_pages = params->full_size / page_size,
             num_cache_pages = params->cache_size / page_size,
@@ -174,8 +181,10 @@ static void ethash_hash(
             page = nodes + PAGE_NODES * index;
         }
 
-        for (unsigned hw = 0; hw != PAGE_WORDS*2; ++hw) {
-            fnv_hash(&mix[hw], page->half_words[hw]);
+        for (unsigned w = 0; w != PAGE_WORDS; ++w) {
+			uint32_t x = fix_endian32(mix[w]);
+			uint32_t y = fix_endian32(page->words[w]);
+            mix[w] = fix_endian32(fnv_hash(x, y));
         }
     }
 
