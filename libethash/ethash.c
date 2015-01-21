@@ -123,7 +123,7 @@ static void ethash_compute_full_node(
 	memset(ret, 0, sizeof(*ret));
 #endif
     
-    uint32_t rand = quick_bbs(rng_table, node_index * 2);
+    uint32_t rand = make_seed2(quick_bbs(rng_table, node_index));
     for (unsigned i = 0; i != params->k; ++i) {
 
         size_t parent_index = rand % num_parent_nodes;
