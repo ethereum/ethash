@@ -1,4 +1,5 @@
 #pragma once
+
 #include <stdint.h>
 #include "compiler.h"
 
@@ -22,18 +23,16 @@ static const uint8_t BitReverseTable256[] =
                 0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF
         };
 
-static inline uint32_t bitfn_swap32(uint32_t a)
-{
+static inline uint32_t bitfn_swap32(uint32_t a) {
     return (BitReverseTable256[a & 0xff] << 24) |
             (BitReverseTable256[(a >> 8) & 0xff] << 16) |
             (BitReverseTable256[(a >> 16) & 0xff] << 8) |
             (BitReverseTable256[(a >> 24) & 0xff]);
 }
 
-static inline uint64_t bitfn_swap64(uint64_t a)
-{
-	return ((uint64_t) bitfn_swap32((uint32_t) (a >> 32))) |
-	       (((uint64_t) bitfn_swap32((uint32_t) a)) << 32);
+static inline uint64_t bitfn_swap64(uint64_t a) {
+    return ((uint64_t) bitfn_swap32((uint32_t) (a >> 32))) |
+            (((uint64_t) bitfn_swap32((uint32_t) a)) << 32);
 }
 
 #if defined(__MINGW32__) || defined(_WIN32)
@@ -45,7 +44,7 @@ static inline uint64_t bitfn_swap64(uint64_t a)
   # include <sys/types.h>
 #elif defined(__APPLE__)
 # include <machine/endian.h>
-#elif defined( BSD ) && ( BSD >= 199103 )
+#elif defined( BSD ) && (BSD >= 199103)
   # include <machine/endian.h>
 #elif defined( __QNXNTO__ ) && defined( __LITTLEENDIAN__ )
   # define LITTLE_ENDIAN 1234
@@ -54,10 +53,12 @@ static inline uint64_t bitfn_swap64(uint64_t a)
   # define BIG_ENDIAN 1234
   # define BYTE_ORDER    BIG_ENDIAN
 #else
-  # include <endian.h>
+
+# include <endian.h>
+
 #endif
 
-/* big endian to cpu */
+
 #if LITTLE_ENDIAN == BYTE_ORDER
 
 #define fix_endian32(x) (x)

@@ -1,0 +1,1 @@
+uint32_t nth_prime(const uint32_t n);
