@@ -38,9 +38,14 @@ uint32_t three_pow_mod_totient1(uint32_t p);
 void init_power_table_mod_prime1(uint32_t table[32], const uint32_t n);
 uint32_t quick_bbs(const uint32_t power_table[32], const uint64_t p);
 
-static inline uint32_t make_seed(uint64_t seed, uint32_t safe_prime)
+static inline uint32_t make_seed1(uint64_t seed)
 {
-	return clamp_u32((uint32_t)(seed % safe_prime), 2, safe_prime-2);
+	return clamp_u32((uint32_t)(seed % SAFE_PRIME), 2, SAFE_PRIME-2);
+}
+
+static inline uint32_t make_seed2(uint64_t seed)
+{
+	return clamp_u32((uint32_t)(seed % SAFE_PRIME2), 2, SAFE_PRIME2-2);
 }
 
 #ifdef __cplusplus

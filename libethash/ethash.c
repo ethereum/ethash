@@ -76,9 +76,10 @@ void ethash_mkcache(ethash_cache *cache, ethash_params const *params, const uint
     node *nodes = (node *) cache->mem;
     ethash_compute_cache_nodes(nodes, params, seed);
 
+	// todo, do we need 64-bits?
 	uint32_t const low_word = fix_endian32(nodes[0].words[0]);
 	uint32_t const high_word = fix_endian32(nodes[0].words[1]);
-    uint32_t rng_seed = make_seed((uint64_t)high_word << 32 | low_word, SAFE_PRIME);
+    uint32_t rng_seed = make_seed1((uint64_t)high_word << 32 | low_word);
     init_power_table_mod_prime1(cache->rng_table, rng_seed);
 }
 
@@ -139,13 +140,13 @@ static void ethash_hash(
     assert((params->cache_size % PAGE_WORDS) == 0);
     assert((params->full_size % PAGE_WORDS) == 0);
 
-    // pack seed and nonce together, todo, endian
+    // pack seed and nonce together
     struct {
         uint8_t seed[32];
         uint64_t nonce;
     } init;
     memcpy(init.seed, prevhash, 32);
-    init.nonce = nonce;
+    init.nonce = fix_endian64(nonce);
 
     // compute sha3-256 hash and replicate across mix
     uint32_t mix[PAGE_WORDS];
@@ -154,8 +155,10 @@ static void ethash_hash(
         mix[w] = mix[w % 8];
     }
 
-    // todo: endian
-    uint32_t rand = mix[0];
+	// todo, do we need 64-bits?
+    uint32_t const low_word = fix_endian32(mix[0]);
+	uint32_t const high_word = fix_endian32(mix[1]);
+    uint32_t rand = make_seed1((uint64_t)high_word << 32 | low_word);
 
     unsigned const
             page_size = sizeof(uint32_t) * PAGE_WORDS,
