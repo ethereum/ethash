@@ -188,12 +188,12 @@ static void ethash_hash(
     assert((params->cache_size % PAGE_WORDS) == 0);
     assert((params->full_size % PAGE_WORDS) == 0);
 
-    // pack seed and nonce together
+    // pack prevhash and nonce together
     struct {
-        uint8_t seed[32];
+        uint8_t prevhash[32];
         uint64_t nonce;
     } init;
-    memcpy(init.seed, prevhash, 32);
+    memcpy(init.prevhash, prevhash, 32);
     init.nonce = fix_endian64(nonce);
 
     // compute sha3-256 hash and replicate across mix
