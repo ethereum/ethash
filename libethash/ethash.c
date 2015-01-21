@@ -126,7 +126,7 @@ static void ethash_compute_full_node(
     uint32_t rand = make_seed2(quick_bbs(rng_table, node_index));
     for (unsigned i = 0; i != params->k; ++i) {
 
-        size_t parent_index = rand % num_parent_nodes;
+        const size_t parent_index = rand % num_parent_nodes;
         rand = cube_mod_safe_prime2(rand);
 
 		node const* parent = &nodes[parent_index];
@@ -221,7 +221,7 @@ static void ethash_hash(
             num_pages = rng_table ? num_cache_pages : num_full_pages;
 
     for (unsigned i = 0; i != page_reads; ++i) {
-        unsigned const index = rand % num_full_pages;
+        uint32_t const index =  (rand ^ mix->words[i % PAGE_WORDS]) % num_full_pages;
         rand = cube_mod_safe_prime1(rand);
 
         node tmp_page[PAGE_NODES];
