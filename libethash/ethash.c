@@ -58,8 +58,9 @@ void static ethash_compute_cache_nodes(node *const nodes, ethash_params const *p
         SHA3_512(nodes[i].bytes, nodes[i - 1].bytes, 64);
     }
 
-    for (unsigned j = 0; j != CACHE_ROUNDS; j++)
+    for (unsigned j = 0; j != CACHE_ROUNDS; j++) {
         for (unsigned i = 0; i != num_nodes; ++i) {
+			// is there a better way to compute the parent index?
 			uint32_t const low_word = fix_endian32(nodes[i].words[0]);
 			uint32_t const high_word = fix_endian32(nodes[i].words[1]);
             unsigned const idx = (unsigned)(((uint64_t)high_word << 32 | low_word) % num_nodes);
@@ -70,6 +71,15 @@ void static ethash_compute_cache_nodes(node *const nodes, ethash_params const *p
 			data[1] = nodes[idx];
             SHA3_512(nodes[i].bytes, data[0].bytes, sizeof(data));
         }
+	}
+
+	// now perform endian conversion
+#if BYTE_ORDER != LITTLE_ENDIAN
+	for (unsigned w = 0; w != (num_nodes*NODE_WORDS); ++w)
+	{
+		nodes->words[w] = fix_endian32(nodes->words[w]);
+	}
+#endif
 }
 
 void ethash_mkcache(ethash_cache *cache, ethash_params const *params, const uint8_t seed[32]) {
@@ -77,8 +87,8 @@ void ethash_mkcache(ethash_cache *cache, ethash_params const *params, const uint
     ethash_compute_cache_nodes(nodes, params, seed);
 
 	// todo, do we need 64-bits?
-	uint32_t const low_word = fix_endian32(nodes[0].words[0]);
-	uint32_t const high_word = fix_endian32(nodes[0].words[1]);
+	uint32_t const low_word = nodes[0].words[0];
+	uint32_t const high_word = nodes[0].words[1];
     uint32_t rng_seed = make_seed1((uint64_t)high_word << 32 | low_word);
     init_power_table_mod_prime1(cache->rng_table, rng_seed);
 }
@@ -102,13 +112,8 @@ static void ethash_compute_full_node(
         rand = cube_mod_safe_prime2(rand);
 
 		node const* parent = &nodes[parent_index];
-        for (unsigned w = 0; w != NODE_WORDS; ++w)
-		{
-			// if we care about big-endian performance, then we should fix the
-			// return value endian at the end of the function.
-			uint32_t x = fix_endian32(ret->words[w]);
-			uint32_t y = fix_endian32(parent->words[w]);
-            ret->words[w] = fix_endian32(fnv_hash(x, y));
+        for (unsigned w = 0; w != NODE_WORDS; ++w) {
+            ret->words[w] = fnv_hash(ret->words[w], parent->words[w]);
         }
     }
 }
@@ -151,13 +156,18 @@ static void ethash_hash(
     // compute sha3-256 hash and replicate across mix
     uint32_t mix[PAGE_WORDS];
     SHA3_256((uint8_t*)mix, (uint8_t const *) &init, sizeof(init));
+#if BYTE_ORDER != LITTLE_ENDIAN
+	for (unsigned w = 0; w != 8; ++w) {
+		mix[w] = fix_endian32(mix[w]);
+	}
+#endif
     for (unsigned w = 8; w != PAGE_WORDS; ++w) {
         mix[w] = mix[w % 8];
     }
 
 	// todo, do we need 64-bits?
-    uint32_t const low_word = fix_endian32(mix[0]);
-	uint32_t const high_word = fix_endian32(mix[1]);
+    uint32_t const low_word = mix[0];
+	uint32_t const high_word = mix[1];
     uint32_t rand = make_seed1((uint64_t)high_word << 32 | low_word);
 
     unsigned const
@@ -185,11 +195,15 @@ static void ethash_hash(
         }
 
         for (unsigned w = 0; w != PAGE_WORDS; ++w) {
-			uint32_t x = fix_endian32(mix[w]);
-			uint32_t y = fix_endian32(page->words[w]);
-            mix[w] = fix_endian32(fnv_hash(x, y));
+            mix[w] = fnv_hash(mix[w], page->words[w]);
         }
     }
+
+#if BYTE_ORDER != LITTLE_ENDIAN
+	for (unsigned w = 0; w != PAGE_WORDS; ++w) {
+		mix[w] = fix_endian32(mix[w]);
+	}
+#endif
 
     uint8_t tmp[32];
     SHA3_256((uint8_t *const) &tmp, (uint8_t const *) mix, sizeof(mix));
