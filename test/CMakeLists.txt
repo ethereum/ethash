@@ -5,7 +5,10 @@ include_directories(..)
 link_directories ( ${Boost_LIBRARY_DIRS} )
 file(GLOB HEADERS "*.h")
 ADD_DEFINITIONS(-DBOOST_TEST_DYN_LINK)
-find_package (CryptoPP)
+
+if (NOT CRYPTOPP_FOUND)
+	find_package (CryptoPP)
+endif()
 
 if (CRYPTOPP_FOUND)
 	add_definitions(-DWITH_CRYPTOPP)

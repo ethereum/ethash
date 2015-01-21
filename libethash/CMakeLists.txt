@@ -11,7 +11,9 @@ set(FILES 	util.c
           	compiler.h
           	fnv.h)
 
-find_package (CryptoPP)
+if (NOT CRYPTOPP_FOUND)
+	find_package(CryptoPP)
+endif()
 
 if (CRYPTOPP_FOUND)
 	add_definitions(-DWITH_CRYPTOPP)

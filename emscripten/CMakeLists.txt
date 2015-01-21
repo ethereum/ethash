@@ -10,10 +10,9 @@ endif()
 
 # Abort if not found.
 if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
-  message(FATAL_ERROR "Could not locate the Emscripten compiler toolchain directory! Either set the EMSCRIPTEN environment variable, or pass -DEMSCRIPTEN_ROOT_PATH=xxx to CMake to explicitly specify the location of the compiler!")
+  message(WARNING "Could not locate the Emscripten compiler toolchain directory! Either set the EMSCRIPTEN environment variable, or pass -DEMSCRIPTEN_ROOT_PATH=xxx to CMake to explicitly specify the location of the compiler!")
 else()
   message("EMSCRIPTEN_ROOT_PATH: ${EMSCRIPTEN_ROOT_PATH}")
-endif()
 
 # Check version
 set(EMSCRIPTEN_REQUIRED_VERSION 1.21.4)
@@ -62,3 +61,5 @@ set(FILES 	../libethash/util.c
 add_executable(benchmark.js EXCLUDE_FROM_ALL benchmark.c ${FILES})
 SET_TARGET_PROPERTIES(benchmark.js PROPERTIES LINK_FLAGS "-s TOTAL_MEMORY=50331648 --bind")
 add_custom_command(TARGET benchmark.js POST_BUILD COMMAND node benchmark.js)
+
+endif()

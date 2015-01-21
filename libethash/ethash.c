@@ -27,9 +27,7 @@
 #include "endian.h"
 
 #ifdef WITH_CRYPTOPP
-
 #include "SHA3_cryptopp.h"
-
 #else
 #include "sha3.h"
 #endif // WITH_CRYPTOPP
@@ -64,8 +62,12 @@ void static ethash_compute_cache_nodes(node *const nodes, ethash_params const *p
     for (unsigned j = 0; j != CACHE_ROUNDS; j++)
         for (unsigned i = 0; i != num_nodes; ++i) {
             unsigned const idx = (unsigned int const) (fix_endian64(nodes[i].words[0]) % num_nodes);
-            const node data[2] = {nodes[(i-1+num_nodes) % num_nodes], nodes[idx]};
-            SHA3_512(nodes[i].bytes, (uint8_t const *) data, 128);
+
+			// todo, better to use update calls than copying this data into one buffer.
+            node data[2];
+			data[0] = nodes[(i-1+num_nodes) % num_nodes];
+			data[1] = nodes[idx];
+            SHA3_512(nodes[i].bytes, data[0].bytes, sizeof(data));
         }
 }
 
@@ -159,7 +161,8 @@ static void ethash_hash(
         unsigned const index = rand % num_full_pages;
         rand = cube_mod_safe_prime1(rand);
 
-        node tmp_page[PAGE_NODES], *page;
+        node tmp_page[PAGE_NODES];
+		node const*page;
         if (index >= num_pages) {
             page = tmp_page;
 
