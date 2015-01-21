@@ -126,7 +126,8 @@ static void ethash_compute_full_node(
     uint32_t rand = make_seed2(quick_bbs(rng_table, node_index));
     for (unsigned i = 0; i != params->k; ++i) {
 
-        const size_t parent_index = rand % num_parent_nodes;
+        const size_t parent_index = (rand ^ ret->words[i % NODE_WORDS]) % num_parent_nodes;
+
         rand = cube_mod_safe_prime2(rand);
 
 		node const* parent = &nodes[parent_index];
