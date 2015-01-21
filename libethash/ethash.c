@@ -197,20 +197,20 @@ static void ethash_hash(
     init.nonce = fix_endian64(nonce);
 
     // compute sha3-256 hash and replicate across mix
-    uint32_t mix[PAGE_WORDS];
-    SHA3_256((uint8_t*)mix, (uint8_t const *) &init, sizeof(init));
+    node mix[PAGE_NODES];
+    SHA3_256(mix->bytes, (uint8_t const *) &init, sizeof(init));
 #if BYTE_ORDER != LITTLE_ENDIAN
 	for (unsigned w = 0; w != 8; ++w) {
-		mix[w] = fix_endian32(mix[w]);
+		mix->words[w] = fix_endian32(mix->words[w]);
 	}
 #endif
     for (unsigned w = 8; w != PAGE_WORDS; ++w) {
-        mix[w] = mix[w % 8];
+        mix->words[w] = mix->words[w % 8];
     }
 
 	// todo, do we need 64-bits?
-    uint32_t const low_word = mix[0];
-	uint32_t const high_word = mix[1];
+    uint32_t const low_word = mix->words[0];
+	uint32_t const high_word = mix->words[1];
     uint32_t rand = make_seed1((uint64_t)high_word << 32 | low_word);
 
     unsigned const
@@ -237,20 +237,38 @@ static void ethash_hash(
             page = nodes + PAGE_NODES * index;
         }
 
-        for (unsigned w = 0; w != PAGE_WORDS; ++w) {
-            mix[w] = fnv_hash(mix[w], page->words[w]);
-        }
+		#if defined(_M_X64) && ENABLE_SSE
+		{
+			__m128i prime = _mm_set1_epi32(FNV_PRIME);
+			for (unsigned n = 0; n != PAGE_NODES; ++n) {
+				__m128i xmm0 = _mm_mullo_epi32(prime, mix[n].xmm[0]);
+				__m128i xmm1 = _mm_mullo_epi32(prime, mix[n].xmm[1]);
+				__m128i xmm2 = _mm_mullo_epi32(prime, mix[n].xmm[2]);
+				__m128i xmm3 = _mm_mullo_epi32(prime, mix[n].xmm[3]);
+				mix[n].xmm[0] = _mm_xor_si128(xmm0, page[n].xmm[0]);
+				mix[n].xmm[1] = _mm_xor_si128(xmm1, page[n].xmm[1]);
+				mix[n].xmm[2] = _mm_xor_si128(xmm2, page[n].xmm[2]);
+				mix[n].xmm[3] = _mm_xor_si128(xmm3, page[n].xmm[3]);
+			}
+		}
+		#else
+		{
+			for (unsigned w = 0; w != PAGE_WORDS; ++w) {
+				mix->words[w] = fnv_hash(mix->words[w], page->words[w]);
+			}
+		}
+		#endif
     }
 
 #if BYTE_ORDER != LITTLE_ENDIAN
 	for (unsigned w = 0; w != PAGE_WORDS; ++w) {
-		mix[w] = fix_endian32(mix[w]);
+		mix->words[w] = fix_endian32(mix->words[w]);
 	}
 #endif
 
     uint8_t tmp[32];
-    SHA3_256((uint8_t *const) &tmp, (uint8_t const *) mix, sizeof(mix));
-    SHA3_256(ret, (uint8_t const *) &tmp, sizeof(tmp));
+    SHA3_256(tmp, mix->bytes, sizeof(mix));
+    SHA3_256(ret, tmp, sizeof(tmp));
 }
 
 void ethash_full(uint8_t ret[32], void const *full_mem, ethash_params const *params, const uint8_t previous_hash[32], const uint64_t nonce) {
