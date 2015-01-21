@@ -19,12 +19,17 @@
 * @date 2015
 */
 
+#define ENABLE_SSE 1
+
 #include <stdio.h>
 #include <assert.h>
 #include "ethash.h"
 #include "blum_blum_shub.h"
 #include "fnv.h"
 #include "endian.h"
+#if defined(_M_X64) && ENABLE_SSE
+#include <smmintrin.h>
+#endif
 
 #ifdef WITH_CRYPTOPP
 #include "SHA3_cryptopp.h"
@@ -41,6 +46,9 @@
 typedef union node {
     uint8_t bytes[NODE_WORDS*4];
     uint32_t words[NODE_WORDS];
+#if defined(_M_X64) && ENABLE_SSE
+	__m128i xmm[NODE_WORDS/4];
+#endif
 } node;
 
 
@@ -103,7 +111,17 @@ static void ethash_compute_full_node(
     size_t num_parent_nodes = params->cache_size / sizeof(node);
     assert(node_index >= num_parent_nodes);
 
+#if defined(_M_X64) && ENABLE_SSE
+	assert(NODE_WORDS == 16); // should be static assert
+	__m128i xmm0, xmm1, xmm2, xmm3, prime;
+	xmm0 = _mm_setzero_si128();
+	xmm1 = _mm_setzero_si128();
+	xmm2 = _mm_setzero_si128();
+	xmm3 = _mm_setzero_si128();
+	prime = _mm_set1_epi32(FNV_PRIME);
+#else
 	memset(ret, 0, sizeof(*ret));
+#endif
     
     uint32_t rand = quick_bbs(rng_table, node_index * 2);
     for (unsigned i = 0; i != params->k; ++i) {
@@ -112,10 +130,35 @@ static void ethash_compute_full_node(
         rand = cube_mod_safe_prime2(rand);
 
 		node const* parent = &nodes[parent_index];
-        for (unsigned w = 0; w != NODE_WORDS; ++w) {
-            ret->words[w] = fnv_hash(ret->words[w], parent->words[w]);
-        }
+
+		#if defined(_M_X64) && ENABLE_SSE
+		{
+			xmm0 = _mm_mullo_epi32(xmm0, prime);
+			xmm1 = _mm_mullo_epi32(xmm1, prime);
+			xmm2 = _mm_mullo_epi32(xmm2, prime);
+			xmm3 = _mm_mullo_epi32(xmm3, prime);
+			xmm0 = _mm_xor_si128(xmm0, parent->xmm[0]);
+			xmm1 = _mm_xor_si128(xmm1, parent->xmm[1]);
+			xmm2 = _mm_xor_si128(xmm2, parent->xmm[2]);
+			xmm3 = _mm_xor_si128(xmm3, parent->xmm[3]);
+		}
+		#else
+		{
+			for (unsigned w = 0; w != NODE_WORDS; ++w) {
+				ret->words[w] = fnv_hash(ret->words[w], parent->words[w]);
+			}
+		}
+		#endif
     }
+
+	#if defined(_M_X64) && ENABLE_SSE
+	{
+		ret->xmm[0] = xmm0;
+		ret->xmm[1] = xmm1;
+		ret->xmm[2] = xmm2;
+		ret->xmm[3] = xmm3;
+	}
+	#endif
 }
 
 void ethash_compute_full_data(void *mem, ethash_params const *params, const uint8_t seed[32]) {
