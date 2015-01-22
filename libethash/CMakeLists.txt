@@ -1,6 +1,10 @@
 set(LIBRARY ethash)
 set(CMAKE_BUILD_TYPE Release)
 
+if (NOT MSVC)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
+endif()
+
 set(FILES 	util.c
           	util.h
           	ethash.c
