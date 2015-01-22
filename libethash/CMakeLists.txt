@@ -13,7 +13,7 @@ set(FILES 	util.c
           	nth_prime.h)
 
 if (NOT CRYPTOPP_FOUND)
-	find_package(CryptoPP)
+	find_package(CryptoPP 5.6.2)
 endif()
 
 if (CRYPTOPP_FOUND)
