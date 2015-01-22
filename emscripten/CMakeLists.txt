@@ -65,7 +65,7 @@ if (EM-CONFIG)
     
     add_executable(benchmark.js EXCLUDE_FROM_ALL benchmark.c ${FILES})
     SET_TARGET_PROPERTIES(benchmark.js PROPERTIES LINK_FLAGS "-s TOTAL_MEMORY=50331648 --bind")
-    add_custom_command(TARGET benchmark.js POST_BUILD COMMAND node benchmark.js)
+    add_custom_target(run_benchmark.js COMMAND node benchmark.js DEPENDS benchmark.js)
   
   endif()
 endif()
