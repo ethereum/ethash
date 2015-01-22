@@ -9,7 +9,8 @@ set(FILES 	util.c
           	blum_blum_shub.h
           	endian.h
           	compiler.h
-          	fnv.h)
+          	fnv.h
+          	nth_prime.h)
 
 if (NOT CRYPTOPP_FOUND)
 	find_package(CryptoPP)

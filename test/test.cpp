@@ -1,18 +1,19 @@
 #include <iomanip>
 #include <libethash/blum_blum_shub.h>
 #include <libethash/fnv.h>
-
-#define BOOST_TEST_MODULE Daggerhashimoto
-#define BOOST_TEST_MAIN
-
-#include <boost/test/unit_test.hpp>
 #include <libethash/ethash.h>
+#include <libethash/nth_prime.h>
 
 #ifdef WITH_CRYPTOPP
 #include <libethash/sha3_cryptopp.h>
 #else
 #include <libethash/sha3.h>
 #endif // WITH_CRYPTOPP
+
+#define BOOST_TEST_MODULE Daggerhashimoto
+#define BOOST_TEST_MAIN
+
+#include <boost/test/unit_test.hpp>
 
 std::string strToHex(const uint8_t * str, const size_t s) {
     std::ostringstream ret;
@@ -211,4 +212,42 @@ BOOST_AUTO_TEST_CASE(mkcache_check) {
     BOOST_REQUIRE_MESSAGE(expected == actual,
             "\nexpected: " << expected.c_str() << "\n"
                     << "actual: " << actual.c_str() << "\n");
+}
+
+BOOST_AUTO_TEST_CASE(nth_prime_check) {
+    {
+        const uint32_t
+                expected = 2,
+                actual = nth_prime(0);
+        BOOST_REQUIRE_MESSAGE(expected == actual,
+                "\nexpected: " << expected << "\n"
+                        << "actual: " << actual << "\n");
+    }
+
+    {
+        const uint32_t
+                expected = 7919,
+                actual = nth_prime(1000-1);
+        BOOST_REQUIRE_MESSAGE(expected == actual,
+                "\nexpected: " << expected << "\n"
+                        << "actual: " << actual << "\n");
+    }
+
+    {
+        const uint32_t
+                expected = 262147,
+                actual = nth_prime(23001-1);
+        BOOST_REQUIRE_MESSAGE(expected == actual,
+                "\nexpected: " << expected << "\n"
+                        << "actual: " << actual << "\n");
+    }
+
+    {
+        const uint32_t
+                expected = 274529,
+                actual = nth_prime(24000-1);
+        BOOST_REQUIRE_MESSAGE(expected == actual,
+                "\nexpected: " << expected << "\n"
+                        << "actual: " << actual << "\n");
+    }
 }
