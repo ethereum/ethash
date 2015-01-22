@@ -5,6 +5,10 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 set(ETHHASH_LIBS ethash)
 
+if (NOT MSVC)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
+endif()
+
 if (WIN32 AND WANT_CRYPTOPP)
 	add_subdirectory(cryptopp)
 endif()
