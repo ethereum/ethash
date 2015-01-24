@@ -36,7 +36,6 @@ if (EM-CONFIG)
     set( PLATFORM_TRIPLET           "emscripten" )
     set( PLATFORM_PREFIX            "$ENV{EMSCRIPTEN}" )
     set( PLATFORM_PORTS_PREFIX      "${CMAKE_SOURCE_DIR}/ports/Emscripten" )
-    set( PLATFORM_EXE_SUFFIX        ".js" )
     set( CMAKE_SYSTEM_NAME          "Generic" CACHE STRING "Target system." )
     set( CMAKE_SYSTEM_PROCESSOR     "JavaScript" CACHE STRING "Target processor." )
     set( CMAKE_AR                   "${EMSCRIPTEN_ROOT_PATH}/emar")
@@ -46,6 +45,7 @@ if (EM-CONFIG)
     set( CMAKE_C_ARCHIVE_CREATE     "${CMAKE_C_COMPILER} -o <TARGET> <LINK_FLAGS> <OBJECTS>" )
     set( CMAKE_CXX_ARCHIVE_CREATE   "${CMAKE_CXX_COMPILER} -o <TARGET>  <LINK_FLAGS> <OBJECTS>" )
     set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-warn-absolute-paths -O3 -s ASM_JS=1")
+    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-warn-absolute-paths -O3 -s ASM_JS=1")
     
     CMAKE_FORCE_C_COMPILER(         ${CMAKE_C_COMPILER} Clang )
     CMAKE_FORCE_CXX_COMPILER(       ${CMAKE_CXX_COMPILER} Clang )
@@ -64,8 +64,17 @@ if (EM-CONFIG)
               	../libethash/sha3.h)
     
     add_executable(benchmark.js EXCLUDE_FROM_ALL benchmark.c ${FILES})
-    SET_TARGET_PROPERTIES(benchmark.js PROPERTIES LINK_FLAGS "-s TOTAL_MEMORY=50331648 --bind")
-    add_custom_target(run_benchmark.js COMMAND node benchmark.js DEPENDS benchmark.js)
-  
+    SET_TARGET_PROPERTIES(benchmark.js PROPERTIES LINK_FLAGS "-s TOTAL_MEMORY=50331648")
+
+    add_custom_target(node_benchmark.js COMMAND node benchmark.js DEPENDS benchmark.js)
+
+    add_executable(sha3.js EXCLUDE_FROM_ALL ../libethash/sha3.c ../libethash/sha3.h sha3.cpp)
+    SET_TARGET_PROPERTIES(sha3.js PROPERTIES
+        LINK_FLAGS "--bind"
+        COMPILE_FLAGS "--bind")
+
+    add_executable(benchmark.html EXCLUDE_FROM_ALL benchmark.c ${FILES})
+    SET_TARGET_PROPERTIES(benchmark.html PROPERTIES LINK_FLAGS "-s TOTAL_MEMORY=50331648")
+
   endif()
 endif()
