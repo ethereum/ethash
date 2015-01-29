@@ -36,7 +36,6 @@ extern "C" int main(void)
 	//params.full_size = 32771 * 4096;	// 128MBish;
 	params.cache_size = 8209*4096;
 	//params.cache_size = 2053*4096;
-	params.k = 2 * (params.full_size / params.cache_size);
 	uint8_t seed[32], previous_hash[32];
 	memcpy(seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
 	memcpy(previous_hash, "~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);

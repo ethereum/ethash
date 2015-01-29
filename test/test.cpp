@@ -1,9 +1,8 @@
 #include <iomanip>
 #include <libethash/blum_blum_shub.h>
 #include <libethash/fnv.h>
-#include <libethash/ethash.h>
 #include <libethash/nth_prime.h>
-#include <libethash/endian.h>
+#include <libethash/internal.h>
 
 #ifdef WITH_CRYPTOPP
 #include <libethash/sha3_cryptopp.h>
@@ -15,6 +14,7 @@
 #define BOOST_TEST_MAIN
 
 #include <boost/test/unit_test.hpp>
+#include <libethash/ethash.h>
 
 std::string strToHex(const uint8_t * str, const size_t s) {
     std::ostringstream ret;

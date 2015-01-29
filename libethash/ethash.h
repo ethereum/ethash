@@ -28,12 +28,15 @@
 extern "C" {
 #endif
 
+
+
+#define DAG_PARENTS 64
+
 typedef struct ethash_params
 {
-	unsigned full_size;					// Size of full data set (in bytes, multiple of page size (4096)).
-	unsigned cache_size;				// Size of compute cache (in bytes, multiple of node size (64)).
-	unsigned hash_read_size;			// Size of data set to read for each hash (in bytes, multiple of page size (4096)).
-	unsigned k;							// Number of parents of a full node.
+    unsigned full_size;					// Size of full data set (in bytes, multiple of page size (4096)).
+    unsigned cache_size;				// Size of compute cache (in bytes, multiple of node size (64)).
+    unsigned hash_read_size;			// Size of data set to read for each hash (in bytes, multiple of page size (4096)).
 } ethash_params;
 
 // init to defaults
@@ -42,7 +45,6 @@ static inline void ethash_params_init(ethash_params* params)
 	params->full_size = 262147 * 4096;	// 1GB-ish;
 	params->cache_size = 8209 * 4096;	// 32MB-ish
 	params->hash_read_size = 32 * 4096;	// 128k
-	params->k = 64;
 }
 
 typedef struct ethash_cache
@@ -55,6 +57,19 @@ static inline void ethash_cache_init(ethash_cache* cache, void* mem)
 {
 	memset(cache, 0, sizeof(*cache));
 	cache->mem = mem;
+}
+
+static inline int check_hash_less_than_difficulty(const uint8_t hash[32], const uint8_t difficulty[32]) {
+    const uint64_t
+            * hash_ = (uint64_t const *) hash,
+            * difficulty_ = (uint64_t const *) difficulty;
+     for (int i = 3; i >= 0 ; --i) {
+        if (hash_[i] < difficulty_[i])
+            return 1;
+        if (hash_[i] > difficulty_[i])
+            return 0;
+    }
+    return 0;
 }
 
 void ethash_mkcache(ethash_cache *cache, ethash_params const *params, const uint8_t seed[32]);

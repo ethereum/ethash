@@ -7,7 +7,7 @@ endif()
 
 set(FILES 	util.c
           	util.h
-          	ethash.c
+          	internal.c
           	ethash.h
           	blum_blum_shub.c
           	blum_blum_shub.h
