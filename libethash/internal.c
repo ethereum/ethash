@@ -19,18 +19,12 @@
 * @date 2015
 */
 
-// todo: flag not needed?
-#define ENABLE_SSE 1
-
 #include <assert.h>
 #include "ethash.h"
 #include "blum_blum_shub.h"
 #include "fnv.h"
 #include "endian.h"
 #include "internal.h"
-#if defined(_M_X64) && ENABLE_SSE
-#include <smmintrin.h>
-#endif
 
 #ifdef WITH_CRYPTOPP
 #include "SHA3_cryptopp.h"
@@ -55,7 +49,9 @@ void static ethash_compute_cache_nodes(node *const nodes, ethash_params const *p
     for (unsigned j = 0; j != CACHE_ROUNDS; j++) {
         for (unsigned i = 0; i != num_nodes; ++i) {
             uint32_t const idx = (unsigned)(fix_endian64(nodes[i].uint64s[0]) % num_nodes);
-            const node data[2] = {nodes[(i-1+num_nodes) % num_nodes], nodes[idx]};
+            node data[2];
+			data[0] = nodes[(i-1+num_nodes) % num_nodes];
+			data[1] = nodes[idx];
             SHA3_512(nodes[i].bytes, data[0].bytes, sizeof(data));
         };
 	}
@@ -88,9 +84,17 @@ void static ethash_compute_full_node(
         uint32_t const *rng_table
 ) {
     size_t num_parent_nodes = params->cache_size / sizeof(node);
-    assert(node_index >= num_parent_nodes);
 
-    memcpy(ret, &(cache[node_index % params->cache_size / sizeof(node)]), sizeof(node));
+	node const* init = &cache[node_index % num_parent_nodes];
+#if defined(_M_X64) && ENABLE_SSE
+	__m128i const fnv_prime = _mm_set1_epi32(FNV_PRIME);
+	__m128i xmm0 = init->xmm[0];
+	__m128i xmm1 = init->xmm[1];
+	__m128i xmm2 = init->xmm[2];
+	__m128i xmm3 = init->xmm[3];
+#else
+    memcpy(ret, init, sizeof(node));
+#endif
 
     uint32_t rand = make_seed2(quick_bbs(rng_table, node_index));
     for (unsigned i = 0; i != DAG_PARENTS; ++i) {
@@ -103,10 +107,10 @@ void static ethash_compute_full_node(
 
 #if defined(_M_X64) && ENABLE_SSE
 		{
-			xmm0 = _mm_mullo_epi32(xmm0, prime);
-			xmm1 = _mm_mullo_epi32(xmm1, prime);
-			xmm2 = _mm_mullo_epi32(xmm2, prime);
-			xmm3 = _mm_mullo_epi32(xmm3, prime);
+			xmm0 = _mm_mullo_epi32(xmm0, fnv_prime);
+			xmm1 = _mm_mullo_epi32(xmm1, fnv_prime);
+			xmm2 = _mm_mullo_epi32(xmm2, fnv_prime);
+			xmm3 = _mm_mullo_epi32(xmm3, fnv_prime);
 			xmm0 = _mm_xor_si128(xmm0, parent->xmm[0]);
 			xmm1 = _mm_xor_si128(xmm1, parent->xmm[1]);
 			xmm2 = _mm_xor_si128(xmm2, parent->xmm[2]);
@@ -209,12 +213,12 @@ static void ethash_hash(
 
 		#if defined(_M_X64) && ENABLE_SSE
 		{
-			__m128i prime = _mm_set1_epi32(FNV_PRIME);
+			__m128i fnv_prime = _mm_set1_epi32(FNV_PRIME);
 			for (unsigned n = 0; n != PAGE_NODES; ++n) {
-				__m128i xmm0 = _mm_mullo_epi32(prime, mix[n].xmm[0]);
-				__m128i xmm1 = _mm_mullo_epi32(prime, mix[n].xmm[1]);
-				__m128i xmm2 = _mm_mullo_epi32(prime, mix[n].xmm[2]);
-				__m128i xmm3 = _mm_mullo_epi32(prime, mix[n].xmm[3]);
+				__m128i xmm0 = _mm_mullo_epi32(fnv_prime, mix[n].xmm[0]);
+				__m128i xmm1 = _mm_mullo_epi32(fnv_prime, mix[n].xmm[1]);
+				__m128i xmm2 = _mm_mullo_epi32(fnv_prime, mix[n].xmm[2]);
+				__m128i xmm3 = _mm_mullo_epi32(fnv_prime, mix[n].xmm[3]);
 				mix[n].xmm[0] = _mm_xor_si128(xmm0, page[n].xmm[0]);
 				mix[n].xmm[1] = _mm_xor_si128(xmm1, page[n].xmm[1]);
 				mix[n].xmm[2] = _mm_xor_si128(xmm2, page[n].xmm[2]);
