@@ -3,6 +3,13 @@
 #include "endian.h"
 #include "ethash.h"
 
+// todo: flag not needed?
+#define ENABLE_SSE 1
+
+#if defined(_M_X64) && ENABLE_SSE
+#include <smmintrin.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
