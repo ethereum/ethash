@@ -24,6 +24,8 @@
 #include <string.h>
 #include "compiler.h"
 
+#define REVISION 10
+
 #ifdef __cplusplus
 extern "C" {
 #endif
