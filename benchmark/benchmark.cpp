@@ -24,8 +24,66 @@
 #include <time.h>
 #include "libethash/ethash.h"
 #include "libethash/util.h"
+#include <vector>
+
+#ifdef WITH_CRYPTOPP
+#include "libethash/SHA3_cryptopp.h"
+#else
+#include "libethash/sha3.h"
+#endif // WITH_CRYPTOPP
 
 uint8_t g_hash[32];
+
+static char nibbleToChar(unsigned nibble)
+{
+	return (nibble >= 10 ? 'a'-10 : '0') + nibble;
+}
+
+static unsigned charToNibble(char chr)
+{
+	if (chr >= '0' && chr <= '9')
+	{
+		return chr - '0';
+	}
+	if (chr >= 'a' && chr <= 'z')
+	{
+		return chr - 'a' + 10;
+	}
+	if (chr >= 'A' && chr <= 'Z')
+	{
+		return chr - 'A' + 10;
+	}
+	return 0;
+}
+
+static std::vector<uint8_t> hexStringToBytes(char const* str)
+{
+	std::vector<uint8_t> bytes(strlen(str) >> 1);
+	for (unsigned i = 0; i != bytes.size(); ++i)
+	{
+		bytes[i] = charToNibble(str[i*2 | 0]) << 4;
+		bytes[i] |= charToNibble(str[i*2 | 1]);
+	}
+	return bytes;
+}
+
+static std::string bytesToHexString(uint8_t const* bytes, unsigned size)
+{
+	std::string str;
+	for (unsigned i = 0; i != size; ++i)
+	{
+		str += nibbleToChar(bytes[i] >> 4);
+		str += nibbleToChar(bytes[i] & 0xf);
+	}
+	return str;
+}
+
+extern "C" void dump(void* data, unsigned size)
+{
+	auto c = bytesToHexString((uint8_t*)data, size);
+	debugf("%s\n", c.data());
+	exit(0);
+}
 
 extern "C" int main(void)
 {
@@ -37,19 +95,12 @@ extern "C" int main(void)
 	params.cache_size = 8209*4096;
 	//params.cache_size = 2053*4096;
 	uint8_t seed[32], previous_hash[32];
-	memcpy(seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
-	memcpy(previous_hash, "~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+
+	memcpy(seed, hexStringToBytes("9410b944535a83d9adf6bbdcc80e051f30676173c16ca0d32d6f1263fc246466").data(), 32);
+	memcpy(previous_hash, hexStringToBytes("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470").data(), 32);
 
 	const unsigned trials = 1000;
 	
-	// make random seed and header
-	uint8_t header[32];
-	srand(3248723843U);
-	for (unsigned i = 0; i != 32; ++i)
-	{
-		header[i] = (uint8_t) rand();
-	}
-
 	// allocate page aligned buffer for dataset
 	void* full_mem_buf = malloc(params.full_size + 4095);
 	void* cache_mem_buf = malloc(params.cache_size + 4095);
@@ -64,8 +115,10 @@ extern "C" int main(void)
 		clock_t startTime = clock();
 		ethash_mkcache(&cache, &params, seed);
 		clock_t time = clock() - startTime;
-		debugf("ethash_mkcache: %ums\n", (unsigned)((time*1000)/CLOCKS_PER_SEC));
 
+		uint8_t cache_hash[32];
+		SHA3_256(cache_hash, (uint8_t const*)cache_mem, params.cache_size);
+		debugf("ethash_mkcache: %ums, sha3: %s\n", (unsigned)((time*1000)/CLOCKS_PER_SEC), bytesToHexString(cache_hash,sizeof(cache_hash)).data());
 
 		#ifdef FULL
 			startTime = clock();
@@ -74,6 +127,17 @@ extern "C" int main(void)
 			debugf("ethash_compute_full_data: %ums\n", (unsigned)((time*1000)/CLOCKS_PER_SEC));
 		#endif // FULL
 	}
+
+	// print a couple of test hashes
+	ethash_light(g_hash, &cache, &params, previous_hash, 0);
+	debugf("ethash_light test: %s\n", bytesToHexString(g_hash, 32).data());
+
+#ifdef FULL
+	ethash_full(g_hash, full_mem, &params, previous_hash, 0);
+	debugf("ethash_full test: %s\n", bytesToHexString(g_hash, 32).data());
+#endif
+
+	exit(0);
 
 	// trial different numbers of accesses
 	for (unsigned read_size = 4096; read_size <= 4096*256; read_size <<= 1)
