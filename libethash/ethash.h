@@ -44,7 +44,8 @@ typedef struct ethash_params
 // init to defaults
 static inline void ethash_params_init(ethash_params* params)
 {
-	params->full_size = 262147 * 4096;	// 1GB-ish;
+	//params->full_size = 121349 * 8192; // 1GB-ish;
+	params->full_size = 8663 * 8192; // 70MB-ish (for testing!);
 	params->cache_size = 8209 * 4096;	// 32MB-ish
 	params->hash_read_size = 32 * 4096;	// 128k
 }
