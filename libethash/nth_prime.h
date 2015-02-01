@@ -29,6 +29,7 @@ extern "C" {
 
 #include <stdint.h>
 #include <assert.h>
+#include <math.h>
 
 // 13KB of primes
 static const uint16_t small_primes[] = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61,
@@ -1922,12 +1923,31 @@ static const uint32_t primes[] = { 262147, 262151, 262153, 262187, 262193, 26221
         389171};
 
 static inline uint32_t nth_prime(const uint32_t n) {
-    assert(n >= 23000 || n < 6500);
-    assert(n < 33000);
+    assert(n < 203280222); // primes after this aren't 32bits
+
+    // Lookup in tables first
     if (n < 6500)
         return small_primes[n];
-    else
+    else if (23000 <= n && n < 33000)
         return primes[n-23000];
+    // If not in tables, fallback to inefficient solution
+    else {
+        uint32_t
+                primes = 0,
+                nthPrimeCandidate = 1;
+        while (primes < n) {
+            nthPrimeCandidate++;
+            int isPrime = 1;
+            for (int i = 2; i < sqrt(n); i++) {
+                if (nthPrimeCandidate % i == 0) {
+                    isPrime = 0;
+                    break;
+                }
+            }
+            if (isPrime) primes++;
+        }
+        return nthPrimeCandidate;
+    }
 }
 
 #ifdef __cplusplus
