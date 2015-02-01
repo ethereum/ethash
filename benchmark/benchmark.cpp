@@ -57,7 +57,7 @@ extern "C" int main(void)
 	void* cache_mem = (void*)((uintptr_t(cache_mem_buf) + 4095) & ~4095);
 
 	ethash_cache cache;
-	ethash_cache_init(&cache, cache_mem_buf);
+	ethash_cache_init(&cache, cache_mem);
 
 	// compute cache or full data
 	{
