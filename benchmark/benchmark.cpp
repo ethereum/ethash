@@ -51,28 +51,27 @@ extern "C" int main(void)
 	}
 
 	// allocate page aligned buffer for dataset
-	void* mem_buf = malloc(params.full_size + 4095 + 64);
-	void* mem = (void*)((uintptr_t(mem_buf) + 4095) & ~4095);
+	void* full_mem_buf = malloc(params.full_size + 4095);
+	void* cache_mem_buf = malloc(params.cache_size + 4095);
+	void* full_mem = (void*)((uintptr_t(full_mem_buf) + 4095) & ~4095);
+	void* cache_mem = (void*)((uintptr_t(cache_mem_buf) + 4095) & ~4095);
 
 	ethash_cache cache;
-	ethash_cache_init(&cache, mem);
+	ethash_cache_init(&cache, cache_mem_buf);
 
 	// compute cache or full data
 	{
 		clock_t startTime = clock();
-
-		#ifdef FULL
-			ethash_compute_full_data(cache.mem, &params, seed);
-		#else
-			ethash_mkcache(&cache, &params, seed);
-		#endif // FULL
-
+		ethash_mkcache(&cache, &params, seed);
 		clock_t time = clock() - startTime;
+		debugf("ethash_mkcache: %ums\n", (unsigned)((time*1000)/CLOCKS_PER_SEC));
+
 
 		#ifdef FULL
+			startTime = clock();
+			ethash_compute_full_data(full_mem, &params, &cache);
+			time = clock() - startTime;
 			debugf("ethash_compute_full_data: %ums\n", (unsigned)((time*1000)/CLOCKS_PER_SEC));
-		#else
-			debugf("ethash_mkcache: %ums\n", (unsigned)((time*1000)/CLOCKS_PER_SEC));
 		#endif // FULL
 	}
 
@@ -89,7 +88,7 @@ extern "C" int main(void)
 		for (int nonce = 0; nonce < trials; ++nonce)
 		{
 			#ifdef FULL
-				ethash_full(g_hash, cache.mem, &params, previous_hash, nonce);
+				ethash_full(g_hash, full_mem, &params, previous_hash, nonce);
 			#else
 				ethash_light(g_hash, &cache, &params, previous_hash, nonce);
 			#endif // FULL
@@ -103,7 +102,8 @@ extern "C" int main(void)
 			);
 	}
 
-	free(mem_buf);
+	free(cache_mem_buf);
+	free(full_mem_buf);
 
 	return 0;
 }

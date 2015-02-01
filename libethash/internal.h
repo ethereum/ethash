@@ -32,13 +32,6 @@ typedef union node {
 
 } node;
 
-void static ethash_compute_full_node(
-        node *const ret,
-        const unsigned node_index,
-        ethash_params const *params,
-        node const *cache,
-        uint32_t const *rng_table
-);
 
 #ifdef __cplusplus
 }

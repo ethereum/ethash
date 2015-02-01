@@ -76,7 +76,7 @@ static inline int check_hash_less_than_difficulty(const uint8_t hash[32], const 
 }
 
 void ethash_mkcache(ethash_cache *cache, ethash_params const *params, const uint8_t seed[32]);
-void ethash_compute_full_data(void *mem, ethash_params const *params, const uint8_t seed[32]);
+void ethash_compute_full_data(void *mem, ethash_params const *params, ethash_cache const *cache);
 void ethash_full(uint8_t ret[32], void const *full_mem, ethash_params const *params, const uint8_t previous_hash[32], const uint64_t nonce);
 void ethash_light(uint8_t ret[32], ethash_cache const *cache, ethash_params const *params, const uint8_t previous_hash[32], const uint64_t nonce);
 
