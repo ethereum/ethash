@@ -38,7 +38,7 @@
 // SeqMemoHash(s, R, N)
 void static ethash_compute_cache_nodes(node *const nodes, ethash_params const *params, const uint8_t seed[32]) {
     assert((params->cache_size % sizeof(node)) == 0);
-    const size_t num_nodes = params->cache_size / sizeof(node);
+    unsigned const num_nodes = params->cache_size / sizeof(node);
 
     SHA3_512(nodes[0].bytes, seed, 32);
 
@@ -48,9 +48,9 @@ void static ethash_compute_cache_nodes(node *const nodes, ethash_params const *p
 
     for (unsigned j = 0; j != CACHE_ROUNDS; j++) {
         for (unsigned i = 0; i != num_nodes; ++i) {
-            uint32_t const idx = (unsigned)(fix_endian64(nodes[i].uint64s[0]) % num_nodes);
+            uint32_t const idx = (uint32_t)(fix_endian64(nodes[i].uint64s[0]) % num_nodes);
             node data[2];
-			data[0] = nodes[(i-1+num_nodes) % num_nodes];
+			data[0] = nodes[(num_nodes-1+i) % num_nodes];
 			data[1] = nodes[idx];
             SHA3_512(nodes[i].bytes, data[0].bytes, sizeof(data));
         };
