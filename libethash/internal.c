@@ -20,23 +20,41 @@
 */
 
 #include <assert.h>
+#include <Python/Python.h>
 #include "ethash.h"
 #include "blum_blum_shub.h"
 #include "fnv.h"
 #include "endian.h"
 #include "internal.h"
+#include "nth_prime.h"
 
 #ifdef WITH_CRYPTOPP
 #include "SHA3_cryptopp.h"
+
 #else
 #include "sha3.h"
 #endif // WITH_CRYPTOPP
 
+uint32_t ethash_get_datasize(const uint32_t block_number) {
+    uint32_t datasize = (DAGSIZE_BYTES_INIT + DAGSIZE_BYTES_GROWTH * block_number) / (EPOCH_LENGTH * MIX_BYTES);
+    uint32_t i = 23000;
+    while(nth_prime(i++) < datasize);
+    return nth_prime(i-1) * MIX_BYTES;
+};
+
+uint32_t ethash_get_cachesize(const uint32_t block_number) {
+    uint32_t
+            cachesize = ethash_get_datasize(block_number) / (32 * HASH_BYTES),
+            i = 0;
+    while(nth_prime(i++) < cachesize);
+    return nth_prime(i) * HASH_BYTES;
+};
 
 // Follows Sergio's "STRICT MEMORY HARD HASHING FUNCTIONS" (2014)
 // https://bitslog.files.wordpress.com/2013/12/memohash-v0-3.pdf
 // SeqMemoHash(s, R, N)
 void static ethash_compute_cache_nodes(node *const nodes, ethash_params const *params, const uint8_t seed[32]) {
+    assert((params->cache_size % sizeof(node)) == 0);
     assert((params->cache_size % sizeof(node)) == 0);
     unsigned const num_nodes = params->cache_size / sizeof(node);
 

@@ -24,14 +24,17 @@
 #include <string.h>
 #include "compiler.h"
 
-#define REVISION 10
+#define REVISION 11
+#define DAGSIZE_BYTES_INIT 1073741824
+#define DAGSIZE_BYTES_GROWTH 131072
+#define EPOCH_LENGTH 1000
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-
-
+#define MIX_BYTES 8192
+#define HASH_BYTES 4096
 #define DAG_PARENTS 64
 
 typedef struct ethash_params
@@ -41,13 +44,15 @@ typedef struct ethash_params
     unsigned hash_read_size;			// Size of data set to read for each hash (in bytes, multiple of page size (4096)).
 } ethash_params;
 
-// init to defaults
-static inline void ethash_params_init(ethash_params* params)
+uint32_t ethash_get_datasize(const uint32_t block_number);
+uint32_t ethash_get_cachesize(const uint32_t block_number);
+
+// initialize the parameters
+static inline void ethash_params_init(ethash_params* params, const uint32_t block_number)
 {
-	//params->full_size = 121349 * 8192; // 1GB-ish;
-	params->full_size = 8663 * 8192; // 70MB-ish (for testing!);
-	params->cache_size = 8209 * 4096;	// 32MB-ish
-	params->hash_read_size = 32 * 4096;	// 128k
+	params->full_size = ethash_get_datasize(block_number);
+    params->cache_size = ethash_get_cachesize(block_number);
+	params->hash_read_size = 32 * HASH_BYTES; // 128k
 }
 
 typedef struct ethash_cache
@@ -62,18 +67,6 @@ static inline void ethash_cache_init(ethash_cache* cache, void* mem)
 	cache->mem = mem;
 }
 
-static inline int check_hash_less_than_difficulty(const uint8_t hash[32], const uint8_t difficulty[32]) {
-    const uint64_t
-            * hash_ = (uint64_t const *) hash,
-            * difficulty_ = (uint64_t const *) difficulty;
-     for (int i = 3; i >= 0 ; --i) {
-        if (hash_[i] < difficulty_[i])
-            return 1;
-        if (hash_[i] > difficulty_[i])
-            return 0;
-    }
-    return 0;
-}
 
 void ethash_mkcache(ethash_cache *cache, ethash_params const *params, const uint8_t seed[32]);
 void ethash_compute_full_data(void *mem, ethash_params const *params, const uint8_t seed[32]);
