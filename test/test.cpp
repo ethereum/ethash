@@ -198,52 +198,6 @@ BOOST_AUTO_TEST_CASE(SHA512_check) {
                     << "actual: " << actual.c_str() << "\n");
 }
 
-BOOST_AUTO_TEST_CASE(light_client_checks) {
-    ethash_params params;
-    uint8_t seed[32], previous_hash[32], ret[32];
-    memcpy(seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
-    memcpy(previous_hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
-    ethash_params_init(&params);
-    params.cache_size = 128;
-    ethash_cache c;
-    c.mem = alloca(params.cache_size);
-    ethash_mkcache(&c, &params, seed);
-
-    {
-        const std::string
-                expected = "9ef8038dfc581e5e96fefb18b8cf658f3161badd7818ba643405790c35c9b717468441f7f9b73693c3689e5fe0adb4037f66a38caf47b89093d948456a55fd37c61f74ea9bea0910ce069b6f25f9f0861fc0b6b89b8b1aef55267e730ed7d0ac4485daf189caf470e51d4b5012a7332d6d475c8e6d07258362064955bcc0ea62",
-                actual = strToHex((uint8_t const *) c.mem, params.cache_size);
-
-        BOOST_REQUIRE_MESSAGE(expected == actual,
-                "\nexpected: " << expected.c_str() << "\n"
-                        << "actual: " << actual.c_str() << "\n");
-    }
-    {
-        for (int i = 0; i < 32; ++i)
-            BOOST_REQUIRE(c.rng_table[i] % SAFE_PRIME == c.rng_table[i]);
-    }
-    {
-        uint64_t tmp = ((uint64_t *) c.mem)[0] % SAFE_PRIME;
-        for (int i = 0; i < 32; ++i) {
-            BOOST_REQUIRE_MESSAGE(tmp % SAFE_PRIME == c.rng_table[i],
-                    "\nexpected: " << tmp << "\n"
-                            << "actual: " << c.rng_table[i] << "\n");
-            tmp *= tmp;
-            tmp %= SAFE_PRIME;
-        }
-    }
-
-    {
-        ethash_light(ret, &c, &params, previous_hash, 5);
-        const std::string
-                expected = "9ef8038dfc581e5e96fefb18b8cf658f3161badd7818ba643405790c35c9b717468441f7f9b73693c3689e5fe0adb4037f66a38caf47b89093d948456a55fd37c61f74ea9bea0910ce069b6f25f9f0861fc0b6b89b8b1aef55267e730ed7d0ac4485daf189caf470e51d4b5012a7332d6d475c8e6d07258362064955bcc0ea62",
-                actual = strToHex(ret, 32);
-        BOOST_REQUIRE_MESSAGE(expected == actual,
-                "\nexpected: " << expected.c_str() << "\n"
-                        << "actual: " << actual.c_str() << "\n");
-    }
-}
-
 BOOST_AUTO_TEST_CASE(nth_prime_check) {
     {
         const uint32_t
@@ -282,29 +236,52 @@ BOOST_AUTO_TEST_CASE(nth_prime_check) {
     }
 }
 
-BOOST_AUTO_TEST_CASE(check_hash_less_than_difficulty_check) {
+BOOST_AUTO_TEST_CASE(light_client_checks) {
+    ethash_params params;
+    uint8_t seed[32], previous_hash[32], light_out[32], full_out[32];
+    memcpy(seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+    memcpy(previous_hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+    ethash_params_init(&params,0);
+    params.cache_size = 128;
+    params.full_size = 128 * 32;
+    ethash_cache cache;
+    cache.mem = alloca(params.cache_size);
+    ethash_mkcache(&cache, &params, seed);
+
     {
-        uint8_t hash[32], difficulty[32];
-        memcpy(hash, "11111111111111111111111111111111", 32);
-        memcpy(difficulty, "22222222222222222222222222222222", 32);
-        BOOST_REQUIRE(check_hash_less_than_difficulty(hash, difficulty));
+        const std::string
+                expected = "9ef8038dfc581e5e96fefb18b8cf658f3161badd7818ba643405790c35c9b717468441f7f9b73693c3689e5fe0adb4037f66a38caf47b89093d948456a55fd37c61f74ea9bea0910ce069b6f25f9f0861fc0b6b89b8b1aef55267e730ed7d0ac4485daf189caf470e51d4b5012a7332d6d475c8e6d07258362064955bcc0ea62",
+                actual = strToHex((uint8_t const *) cache.mem, params.cache_size);
+
+        BOOST_REQUIRE_MESSAGE(expected == actual,
+                "\nexpected: " << expected.c_str() << "\n"
+                        << "actual: " << actual.c_str() << "\n");
     }
     {
-        uint8_t hash[32], difficulty[32];
-        memcpy(hash, "11111111111111111111111111111113", 32);
-        memcpy(difficulty, "22222222222222222222222222222222", 32);
-        BOOST_REQUIRE(! check_hash_less_than_difficulty(hash, difficulty));
+        for (int i = 0; i < 32; ++i)
+            BOOST_REQUIRE(cache.rng_table[i] % SAFE_PRIME == cache.rng_table[i]);
     }
     {
-        uint8_t hash[32], difficulty[32];
-        memcpy(hash, "22222222222222222222222222222222", 32);
-        memcpy(difficulty, "22222222222222222222222222222222", 32);
-        BOOST_REQUIRE(! check_hash_less_than_difficulty(hash, difficulty));
+        uint64_t tmp = ((uint64_t *) cache.mem)[0] % SAFE_PRIME;
+        for (int i = 0; i < 32; ++i) {
+            BOOST_REQUIRE_MESSAGE(tmp % SAFE_PRIME == cache.rng_table[i],
+                    "\nexpected: " << tmp << "\n"
+                            << "actual: " << cache.rng_table[i] << "\n");
+            tmp *= tmp;
+            tmp %= SAFE_PRIME;
+        }
     }
+
     {
-        uint8_t hash[32], difficulty[32];
-        memcpy(hash, "12222222222222222222222222222222", 32);
-        memcpy(difficulty, "22222222222222222222222222222222", 32);
-        BOOST_REQUIRE(check_hash_less_than_difficulty(hash, difficulty));
+        void * full_mem = alloca(params.full_size);
+        ethash_compute_full_data(full_mem, &params, seed);
+        ethash_full(full_out, full_mem, &params, previous_hash, 5);
+        ethash_light(light_out, &cache, &params, previous_hash, 5);
+        const std::string
+                light_string = strToHex(light_out, 32),
+                full_string = strToHex(full_out, 32);
+        BOOST_REQUIRE_MESSAGE(light_string == full_string,
+                "\nlight: " << light_string.c_str() << "\n"
+                        << "full: " << full_string.c_str() << "\n");
     }
 }
