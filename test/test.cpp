@@ -16,7 +16,7 @@
 #include <boost/test/unit_test.hpp>
 #include <libethash/ethash.h>
 
-std::string strToHex(const uint8_t * str, const size_t s) {
+std::string bytesToHexString(const uint8_t *str, const size_t s) {
     std::ostringstream ret;
 
     for (int i = 0; i < s; ++i)
@@ -180,7 +180,7 @@ BOOST_AUTO_TEST_CASE(SHA256_check) {
     SHA3_256(out, input, 32);
     const std::string
             expected = "2b5ddf6f4d21c23de216f44d5e4bdc68e044b71897837ea74c83908be7037cd7",
-            actual = strToHex(out, 32);
+            actual = bytesToHexString(out, 32);
     BOOST_REQUIRE_MESSAGE(expected == actual,
             "\nexpected: " << expected.c_str() << "\n"
                     << "actual: " << actual.c_str() << "\n");
@@ -192,7 +192,7 @@ BOOST_AUTO_TEST_CASE(SHA512_check) {
     SHA3_512(out, input, 64);
     const std::string
             expected = "0be8a1d334b4655fe58c6b38789f984bb13225684e86b20517a55ab2386c7b61c306f25e0627c60064cecd6d80cd67a82b3890bd1289b7ceb473aad56a359405",
-            actual = strToHex(out, 64);
+            actual = bytesToHexString(out, 64);
     BOOST_REQUIRE_MESSAGE(expected == actual,
             "\nexpected: " << expected.c_str() << "\n"
                     << "actual: " << actual.c_str() << "\n");
@@ -251,7 +251,7 @@ BOOST_AUTO_TEST_CASE(light_client_checks) {
     {
         const std::string
                 expected = "9ef8038dfc581e5e96fefb18b8cf658f3161badd7818ba643405790c35c9b717468441f7f9b73693c3689e5fe0adb4037f66a38caf47b89093d948456a55fd37c61f74ea9bea0910ce069b6f25f9f0861fc0b6b89b8b1aef55267e730ed7d0ac4485daf189caf470e51d4b5012a7332d6d475c8e6d07258362064955bcc0ea62",
-                actual = strToHex((uint8_t const *) cache.mem, params.cache_size);
+                actual = bytesToHexString((uint8_t const *) cache.mem, params.cache_size);
 
         BOOST_REQUIRE_MESSAGE(expected == actual,
                 "\nexpected: " << expected.c_str() << "\n"
@@ -262,10 +262,11 @@ BOOST_AUTO_TEST_CASE(light_client_checks) {
             BOOST_REQUIRE(cache.rng_table[i] % SAFE_PRIME == cache.rng_table[i]);
     }
     {
-        uint64_t tmp = ((uint64_t *) cache.mem)[0] % SAFE_PRIME;
+        uint64_t tmp = make_seed1(((node *) cache.mem)[0].words[0]);
         for (int i = 0; i < 32; ++i) {
             BOOST_REQUIRE_MESSAGE(tmp % SAFE_PRIME == cache.rng_table[i],
-                    "\nexpected: " << tmp << "\n"
+                    "\npower: " << i << "\n"
+                            << "expected: " << tmp << "\n"
                             << "actual: " << cache.rng_table[i] << "\n");
             tmp *= tmp;
             tmp %= SAFE_PRIME;
@@ -274,12 +275,12 @@ BOOST_AUTO_TEST_CASE(light_client_checks) {
 
     {
         void * full_mem = alloca(params.full_size);
-        ethash_compute_full_data(full_mem, &params, seed);
+        ethash_compute_full_data(full_mem, &params, &cache);
         ethash_full(full_out, full_mem, &params, previous_hash, 5);
         ethash_light(light_out, &cache, &params, previous_hash, 5);
         const std::string
-                light_string = strToHex(light_out, 32),
-                full_string = strToHex(full_out, 32);
+                light_string = bytesToHexString(light_out, 32),
+                full_string = bytesToHexString(full_out, 32);
         BOOST_REQUIRE_MESSAGE(light_string == full_string,
                 "\nlight: " << light_string.c_str() << "\n"
                         << "full: " << full_string.c_str() << "\n");
