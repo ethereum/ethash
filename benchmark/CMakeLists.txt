@@ -10,6 +10,15 @@ if (NOT MPI_FOUND)
     find_package(MPI)
 endif()
 
+if (NOT CRYPTOPP_FOUND)
+	find_package(CryptoPP 5.6.2)
+endif()
+
+if (CRYPTOPP_FOUND)
+	add_definitions(-DWITH_CRYPTOPP)
+endif()
+
+
 if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})
     add_executable (Benchmark_MPI_FULL benchmark.cpp)
