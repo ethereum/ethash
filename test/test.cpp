@@ -236,31 +236,35 @@ BOOST_AUTO_TEST_CASE(nth_prime_check) {
     }
 }
 
-BOOST_AUTO_TEST_CASE(light_client_checks) {
+BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
     ethash_params params;
     uint8_t seed[32], previous_hash[32], light_out[32], full_out[32];
     memcpy(seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
     memcpy(previous_hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
     ethash_params_init(&params,0);
-    params.cache_size = 128;
-    params.full_size = 128 * 32;
+    params.cache_size = 1024;
+    params.full_size = 1024 * 32;
     ethash_cache cache;
     cache.mem = alloca(params.cache_size);
     ethash_mkcache(&cache, &params, seed);
+    void * full_mem = alloca(params.full_size);
+    ethash_compute_full_data(full_mem, &params, &cache);
 
     {
         const std::string
-                expected = "9ef8038dfc581e5e96fefb18b8cf658f3161badd7818ba643405790c35c9b717468441f7f9b73693c3689e5fe0adb4037f66a38caf47b89093d948456a55fd37c61f74ea9bea0910ce069b6f25f9f0861fc0b6b89b8b1aef55267e730ed7d0ac4485daf189caf470e51d4b5012a7332d6d475c8e6d07258362064955bcc0ea62",
+                expected = "cfd4b2e864f54aaf40f38a193077c99a9575145c567ef07cadd0b57c22136bd8c5f92ac1e8cfe6073c5714945c340c5468aaa82f5e93469e8037c634e2d86fa86072107ab022802e3f2eb51516f9b9ee945c7b3f11d353595ebde40a1dc04054b43a33687bf76574c84dee7b926044442e484778322be2becba3b3c770ed412357a0ecc0757da95ed4d07e57a3b77efce8081c7c20821c7849198ad090665046596756adff7a73a5dbcdfaff2e84b06cd4ae253c58e2ebddda7340616d3e3c3a641f60c5e6cb3b5f9cc2768ed437ae83e592a762e9d412cf127881e6697a0027b6b4d4c76fa234e34bc7d934221ceb754a67b9a0d8419162b32f368ef2d7d4b19ee7144451962196cf8d06607d609e0784e7ee3701bf9c1283f4cf4faaa437585d39ab2e3cbfef322ba3814b668790184a70d3bfeb8758034bea6ac817469f8c0592d171ddeaf4c4ac95a116d761d650dd3cca7d7461f15d50b03cd67fa1bcdd2b398ac585f37f854777b96dcd5a3a0b5f70920295db9511c1c4b88c49fab4404dc8b258f5e22d3c4d2288ec2b16b121299b912ca030787a5a4be987747708ab099149c41b088176f2f44f5b4470c484d6ea63d69ee3bda9d0a29a1a4f72e17411088ecbce085342f95d2896c37187d89756c9861d2f53ec7175e9c5975cd40f8516e879ca936ca7dfd41acc3b542e016354e7f4f5c97255907761f6c972c68f0b137d9ee3c13122027f438de8de53b87ebf622b13d24c5fb66588633fd2218dbe0ed59ca7cf46b4522768e4b3323c2ce685c50eec2040fe48bc6bb24fcd82abfcb41965f19b76373730395198b9e52a2bd2875916b7d3fccded247290652fb8067cca1aba67a5fb741dcec7c588c70d4a942277e524e3d28c2c2681d113f81050926f6db80ad5d2fb14f02c074e35a64ac20d3d3409d3296c50cea22b79d4bcd06d65455fa86f90fe2b9d0b07b07324f94739d07b9c115e57ed6443279945bd3c41fb32e998a1c3a94d9dfd42ef633306d7f72bc56d3509386601315cdccd7bbf4df8b61bc7f046a330c03e50d908b12d0c162f7d390dfcde47d2d32573e1418de18b2cec9ec3664264b0043e8ed4fa794e3a3381bbffcc6385567b33a839c79fbb8f0d46e2a264fd21ace9a3dafad31950252d80da310f0841d511e990624f6fad74b514033e71a54bc20d106450456aa7107a99dc2a8aad8d81ade72a8189dfd69baad2e3142b6489bcfb89bbd82bbf8cd71faec08aafa974640c1389c7b2d82fd66d8b00bcd60ee0d863cc35bf1277527e2dd2ea0362834bda4d732415f15fd0455f7e9006ed61129a23cab8488aa72d5a703905cb12dba61887826498a1ffd31be7cfb506faa7732df638b86bbad728ef1cbfad16484f2019dd23362ced06e497154f820afe8972cf5a576ba6af4f1b257334816580a7614ac03c161517",
                 actual = bytesToHexString((uint8_t const *) cache.mem, params.cache_size);
 
         BOOST_REQUIRE_MESSAGE(expected == actual,
                 "\nexpected: " << expected.c_str() << "\n"
                         << "actual: " << actual.c_str() << "\n");
     }
+
     {
         for (int i = 0; i < 32; ++i)
             BOOST_REQUIRE(cache.rng_table[i] % SAFE_PRIME == cache.rng_table[i]);
     }
+
     {
         uint64_t tmp = make_seed1(((node *) cache.mem)[0].words[0]);
         for (int i = 0; i < 32; ++i) {
@@ -274,8 +278,6 @@ BOOST_AUTO_TEST_CASE(light_client_checks) {
     }
 
     {
-        void * full_mem = alloca(params.full_size);
-        ethash_compute_full_data(full_mem, &params, &cache);
         ethash_full(full_out, full_mem, &params, previous_hash, 5);
         ethash_light(light_out, &cache, &params, previous_hash, 5);
         const std::string

@@ -20,7 +20,7 @@
 */
 
 #include <assert.h>
-#include <Python/Python.h>
+#include <stdio.h>
 #include "ethash.h"
 #include "blum_blum_shub.h"
 #include "fnv.h"
@@ -65,13 +65,13 @@ void static ethash_compute_cache_nodes(node *const nodes, ethash_params const *p
     }
 
     for (unsigned j = 0; j != CACHE_ROUNDS; j++) {
-        for (unsigned i = 0; i != num_nodes; ++i) {
+        for (unsigned i = 0; i != num_nodes; i++) {
             uint32_t const idx = (uint32_t)(fix_endian64(nodes[i].uint64s[0]) % num_nodes);
             node data[2];
 			data[0] = nodes[(num_nodes-1+i) % num_nodes];
 			data[1] = nodes[idx];
             SHA3_512(nodes[i].bytes, data[0].bytes, sizeof(data));
-        };
+        }
 	}
 
 	// now perform endian conversion
@@ -147,14 +147,16 @@ static void ethash_compute_full_node(
 	#endif
 }
 
-void ethash_compute_full_data(void *mem, ethash_params const *params, ethash_cache const* cache) {
+void ethash_compute_full_data(
+        void *mem,
+        ethash_params const *params,
+        ethash_cache const* cache) {
     assert((params->full_size % (sizeof(uint64_t) * PAGE_WORDS)) == 0);
     assert((params->full_size % sizeof(node)) == 0);
-    node *nodes = (node *) mem;
 
     // now compute full nodes
-    for (unsigned n = params->cache_size / sizeof(node); n != params->full_size / sizeof(node); ++n) {
-        ethash_compute_full_node(&nodes[n], n, params, cache);
+    for (unsigned n = 0; n != params->full_size ; n += sizeof(node)) {
+        ethash_compute_full_node(&(mem[n]), n, params, cache);
     }
 }
 
@@ -164,8 +166,8 @@ static void ethash_hash(
 		ethash_cache const* cache,
         ethash_params const *params,
         const uint8_t previous_hash[32],
-        const uint64_t nonce)
-{
+        const uint64_t nonce) {
+
     // for simplicity the cache and dag must be whole number of pages
     assert((params->cache_size % PAGE_WORDS) == 0);
     assert((params->full_size % PAGE_WORDS) == 0);
@@ -189,28 +191,26 @@ static void ethash_hash(
     for (unsigned w = 8; w != PAGE_WORDS; ++w) {
         mix->words[w] = mix->words[w % 8];
     }
-	 
+
     uint32_t rand2 = make_seed2(mix->words[0]);
 
     unsigned const
             page_size = sizeof(uint32_t) * PAGE_WORDS,
             accesses = params->hash_read_size / page_size,
-            num_full_pages = params->full_size / page_size,
-            num_cache_pages = params->cache_size / page_size;
+            num_full_pages = params->full_size / page_size;
 
     for (unsigned i = 0; i != accesses; ++i) {
-        uint32_t const index =  (rand2 ^ mix->words[i % PAGE_WORDS]) % num_full_pages;
+        uint32_t const index = (rand2 ^ mix->words[i % PAGE_WORDS]) % num_full_pages;
         rand2 = cube_mod_safe_prime2(rand2);
 
-		if (!full_nodes)
-		{
-			// todo: better to do one node of mix at a time and FNV directly into the xmm registers
-			for (unsigned n = 0; n != PAGE_NODES; ++n) {
-				node tmp_node;
-                ethash_compute_full_node(&tmp_node, index*PAGE_NODES + n, params, cache);
+        // Todo: better to do one node of mix at a time and FNV directly into the xmm registers
+        for (unsigned n = 0; n != PAGE_NODES; ++n) {
+            if (!full_nodes) {
+                node tmp_node;
+                ethash_compute_full_node(&tmp_node, index * PAGE_NODES + n, params, cache);
 
-				#if defined(_M_X64) && ENABLE_SSE
-				{
+#if defined(_M_X64) && ENABLE_SSE
+			    	{
 					__m128i fnv_prime = _mm_set1_epi32(FNV_PRIME);
 					__m128i xmm0 = _mm_mullo_epi32(fnv_prime, mix[n].xmm[0]);
 					__m128i xmm1 = _mm_mullo_epi32(fnv_prime, mix[n].xmm[1]);
@@ -221,21 +221,17 @@ static void ethash_hash(
 					mix[n].xmm[2] = _mm_xor_si128(xmm2, tmp_node.xmm[2]);
 					mix[n].xmm[3] = _mm_xor_si128(xmm3, tmp_node.xmm[3]);
 				}
-				#else
-				{
-					for (unsigned w = 0; w != NODE_WORDS; ++w) {
-						mix[n].words[w] = fnv_hash(mix[n].words[w], tmp_node.words[w]);
-					}
-				}
-				#endif
+			    	#else
+
+                for (unsigned w = 0; w != NODE_WORDS; ++w) {
+                    mix[n].words[w] = fnv_hash(mix[n].words[w], tmp_node.words[w]);
+                }
+#endif
             }
-		}
-		else
-		{
-			node const* page = &full_nodes[PAGE_NODES * index];
-		
-			#if defined(_M_X64) && ENABLE_SSE
-			{
+            else {
+                node const *page = &full_nodes[PAGE_NODES * index + n];
+        #if defined(_M_X64) && ENABLE_SSE
+        {
 				__m128i fnv_prime = _mm_set1_epi32(FNV_PRIME);
 				for (unsigned n = 0; n != PAGE_NODES; ++n) {
 					__m128i xmm0 = _mm_mullo_epi32(fnv_prime, mix[n].xmm[0]);
@@ -248,14 +244,13 @@ static void ethash_hash(
 					mix[n].xmm[3] = _mm_xor_si128(xmm3, page[n].xmm[3]);
 				}
 			}
-			#else
-			{
-				for (unsigned w = 0; w != PAGE_WORDS; ++w) {
-					mix->words[w] = fnv_hash(mix->words[w], page->words[w]);
-				}
-			}
-			#endif
-		}
+        #else
+                for (unsigned n = 0; n != PAGE_WORDS; ++n) {
+                    mix->words[n] = fnv_hash(mix->words[n], page->words[n]);
+                }
+        #endif
+            }
+        }
     }
 
 #if BYTE_ORDER != LITTLE_ENDIAN
