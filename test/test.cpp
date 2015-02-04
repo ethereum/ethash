@@ -2,6 +2,7 @@
 #include <libethash/blum_blum_shub.h>
 #include <libethash/fnv.h>
 #include <libethash/nth_prime.h>
+#include <libethash/ethash.h>
 #include <libethash/internal.h>
 
 #ifdef WITH_CRYPTOPP
@@ -241,13 +242,13 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
     uint8_t seed[32], previous_hash[32], light_out[32], full_out[32];
     memcpy(seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
     memcpy(previous_hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
-    ethash_params_init(&params,0);
+    ethash_params_init(&params, 0);
     params.cache_size = 1024;
     params.full_size = 1024 * 32;
     ethash_cache cache;
     cache.mem = alloca(params.cache_size);
     ethash_mkcache(&cache, &params, seed);
-    void * full_mem = alloca(params.full_size);
+    node * full_mem = (node *) alloca(params.full_size);
     ethash_compute_full_data(full_mem, &params, &cache);
 
     {
@@ -274,6 +275,34 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
                             << "actual: " << cache.rng_table[i] << "\n");
             tmp *= tmp;
             tmp %= SAFE_PRIME;
+        }
+    }
+
+    {
+        uint64_t tmp = make_seed1(((node *) cache.mem)[0].words[0]);
+        for (int i = 0; i < 32; ++i) {
+            BOOST_REQUIRE_MESSAGE(tmp % SAFE_PRIME == cache.rng_table[i],
+                    "\npower: " << i << "\n"
+                            << "expected: " << tmp << "\n"
+                            << "actual: " << cache.rng_table[i] << "\n");
+            tmp *= tmp;
+            tmp %= SAFE_PRIME;
+        }
+    }
+
+    {
+        for (int i = 0 ; i < params.full_size / sizeof(node) ; ++i ) {
+            for (uint32_t i = 0; i < 32; ++i) {
+                node expected_node;
+                ethash_compute_full_node(&expected_node, i, &params, &cache);
+                const std::string
+                        actual = bytesToHexString((uint8_t const *) &(full_mem[i]), sizeof(node)),
+                        expected = bytesToHexString((uint8_t const *) &expected_node, sizeof(node));
+                BOOST_REQUIRE_MESSAGE(actual == expected,
+                        "\ni: " << i << "\n"
+                                << "expected: " << expected.c_str() << "\n"
+                                << "actual: " << actual.c_str() << "\n");
+            }
         }
     }
 
