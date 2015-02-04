@@ -30,7 +30,7 @@ extern "C" {
 #define SAFE_PRIME_TOTIENT 4294967086U
 // Not really the totient totient... works the same
 #define SAFE_PRIME_TOTIENT_TOTIENT 2147483542
-#define SAFE_PRIME2 4294965887U
+#define SAFE_PRIME2 4294963787U
 
 static inline uint32_t cube_mod_safe_prime1(const uint32_t x) {
     uint64_t temp = x;

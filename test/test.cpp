@@ -38,7 +38,7 @@ BOOST_AUTO_TEST_CASE(cube_mod_safe_prime1_check) {
 
 BOOST_AUTO_TEST_CASE(cube_mod_safe_prime2_check) {
     const uint32_t
-            expected = 3565965887U,
+            expected = 1728000000U,
             actual = cube_mod_safe_prime2(4294964987U);
 
     BOOST_REQUIRE_MESSAGE(actual == expected,

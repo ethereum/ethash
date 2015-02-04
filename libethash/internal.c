@@ -29,6 +29,7 @@
 #include "nth_prime.h"
 
 #ifdef WITH_CRYPTOPP
+
 #include "SHA3_cryptopp.h"
 
 #else
@@ -38,15 +39,15 @@
 uint32_t ethash_get_datasize(const uint32_t block_number) {
     uint32_t datasize = (DAGSIZE_BYTES_INIT + DAGSIZE_BYTES_GROWTH * block_number) / (EPOCH_LENGTH * MIX_BYTES);
     uint32_t i = 23000;
-    while(nth_prime(i++) < datasize);
-    return nth_prime(i-1) * MIX_BYTES;
+    while (nth_prime(i++) < datasize);
+    return nth_prime(i - 1) * MIX_BYTES;
 };
 
 uint32_t ethash_get_cachesize(const uint32_t block_number) {
     uint32_t
             cachesize = ethash_get_datasize(block_number) / (32 * HASH_BYTES),
             i = 0;
-    while(nth_prime(i++) < cachesize);
+    while (nth_prime(i++) < cachesize);
     return nth_prime(i) * HASH_BYTES;
 };
 
@@ -66,15 +67,15 @@ void static ethash_compute_cache_nodes(node *const nodes, ethash_params const *p
 
     for (unsigned j = 0; j != CACHE_ROUNDS; j++) {
         for (unsigned i = 0; i != num_nodes; i++) {
-            uint32_t const idx = (uint32_t)(fix_endian64(nodes[i].double_words[0]) % num_nodes);
+            uint32_t const idx = (uint32_t) (fix_endian64(nodes[i].double_words[0]) % num_nodes);
             node data[2];
-			data[0] = nodes[(num_nodes-1+i) % num_nodes];
-			data[1] = nodes[idx];
+            data[0] = nodes[(num_nodes - 1 + i) % num_nodes];
+            data[1] = nodes[idx];
             SHA3_512(nodes[i].bytes, data[0].bytes, sizeof(data));
         }
-	}
+    }
 
-	// now perform endian conversion
+    // now perform endian conversion
 #if BYTE_ORDER != LITTLE_ENDIAN
 	for (unsigned w = 0; w != (num_nodes*NODE_WORDS); ++w)
 	{
@@ -96,9 +97,9 @@ void ethash_compute_full_node(
         ethash_cache const *cache
 ) {
     size_t num_parent_nodes = params->cache_size / sizeof(node);
-    node const* cache_nodes = (node const*)cache->mem;
+    node const *cache_nodes = (node const *) cache->mem;
 
-    node const* init = &cache_nodes[node_index % num_parent_nodes];
+    node const *init = &cache_nodes[node_index % num_parent_nodes];
 #if defined(_M_X64) && ENABLE_SSE
 	__m128i const fnv_prime = _mm_set1_epi32(FNV_PRIME);
 	__m128i xmm0 = init->xmm[0];
@@ -115,7 +116,7 @@ void ethash_compute_full_node(
         const size_t parent_index = (rand2 ^ ret->words[i % NODE_WORDS]) % num_parent_nodes;
         rand2 = cube_mod_safe_prime2(rand2);
 
-        node const* parent = &cache_nodes[parent_index];
+        node const *parent = &cache_nodes[parent_index];
 
 #if defined(_M_X64) && ENABLE_SSE
 		{
@@ -150,21 +151,21 @@ void ethash_compute_full_node(
 void ethash_compute_full_data(
         void *mem,
         ethash_params const *params,
-        ethash_cache const* cache) {
+        ethash_cache const *cache) {
     assert((params->full_size % (sizeof(uint64_t) * PAGE_WORDS)) == 0);
     assert((params->full_size % sizeof(node)) == 0);
-    node * full_nodes = mem;
+    node *full_nodes = mem;
 
     // now compute full nodes
-    for (unsigned n = 0; n != (params->full_size / sizeof(node)) ; ++n) {
+    for (unsigned n = 0; n != (params->full_size / sizeof(node)); ++n) {
         ethash_compute_full_node(&(full_nodes[n]), n, params, cache);
     }
 }
 
 static void ethash_hash(
         uint8_t ret[32],
-        node const* full_nodes,
-		ethash_cache const* cache,
+        node const *full_nodes,
+        ethash_cache const *cache,
         ethash_params const *params,
         const uint8_t previous_hash[32],
         const uint64_t nonce) {
@@ -234,7 +235,7 @@ static void ethash_hash(
             }
             else {
                 node const *tmp_node = &full_nodes[PAGE_NODES * index + n];
-        #if defined(_M_X64) && ENABLE_SSE
+#if defined(_M_X64) && ENABLE_SSE
         {
 				__m128i fnv_prime = _mm_set1_epi32(FNV_PRIME);
 				for (unsigned n = 0; n != PAGE_NODES; ++n) {
@@ -252,7 +253,7 @@ static void ethash_hash(
                 for (unsigned w = 0; w != NODE_WORDS; ++w) {
                     mix[n].words[w] = fnv_hash(mix[n].words[w], tmp_node->words[w]);
                 }
-        #endif
+#endif
             }
         }
     }
