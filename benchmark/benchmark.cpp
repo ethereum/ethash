@@ -89,7 +89,7 @@ extern "C" int main(void)
 {
 	// params for ethash
 	ethash_params params;
-	ethash_params_init(&params);
+	ethash_params_init(&params, 0);
 	params.full_size = 262147 * 4096;	// 1GBish;
 	//params.full_size = 32771 * 4096;	// 128MBish;
 	params.cache_size = 8209*4096;
