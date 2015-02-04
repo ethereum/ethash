@@ -20,7 +20,6 @@
 */
 
 #include <assert.h>
-#include <stdio.h>
 #include "ethash.h"
 #include "blum_blum_shub.h"
 #include "fnv.h"
