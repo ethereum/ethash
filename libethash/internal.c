@@ -193,7 +193,6 @@ static void ethash_hash(
     }
 
     uint32_t rand2 = make_seed2(mix->words[0]);
-    uint32_t steps = 1;
 
     unsigned const
             page_size = sizeof(uint32_t) * PAGE_WORDS,
@@ -206,9 +205,9 @@ static void ethash_hash(
 
         for (unsigned n = 0; n != PAGE_NODES; ++n) {
 
-			node tmp_node;
 			node const* dag_node = &full_nodes[PAGE_NODES * index + n];
-            if (!full_nodes) {   
+            if (!full_nodes) {
+                node tmp_node;
                 ethash_compute_full_node(&tmp_node, index * PAGE_NODES + n, params, cache);
 				dag_node = &tmp_node;
 			}
