@@ -1,0 +1,5 @@
+To build:
+
+   # go get -d
+   # go build
+   # go test
