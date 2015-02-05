@@ -67,7 +67,7 @@ static inline void ethash_cache_init(ethash_cache* cache,  ethash_params const *
 {
 	memset(cache, 0, sizeof(*cache));
 	cache->mem = mem;
-	ethash_mkcache(*cache, *params, seed);
+	ethash_mkcache(cache, params, seed);
 }
 
 
