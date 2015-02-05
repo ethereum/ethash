@@ -35,7 +35,7 @@ type Ethash struct {
 	hash     *C.uint8_t     // return from ethash
 }
 
-func blockNum(block pow.Block) (uint64, error) {
+func blockNonce(block pow.Block) (uint64, error) {
 	nonce := block.N()
 	nonceBuf := bytes.NewBuffer(nonce)
 	nonceInt, err := binary.ReadUvarint(nonceBuf)
@@ -46,13 +46,9 @@ func blockNum(block pow.Block) (uint64, error) {
 	return nonceInt, nil
 }
 
-func New(seedHash []byte, block pow.Block) (*Ethash, error) {
+func New(seedHash []byte, blocknum uint32) *Ethash {
 	params := new(C.ethash_params)
-	n, err := blockNum(block)
-	if err != nil {
-		return &Ethash{}, err
-	}
-	C.ethash_params_init(params, C.uint32_t(n))
+	C.ethash_params_init(params, C.uint32_t(blocknum))
 	log.Println("Params", params)
 
 	var mem unsafe.Pointer
@@ -60,6 +56,7 @@ func New(seedHash []byte, block pow.Block) (*Ethash, error) {
 
 	cache := new(C.ethash_cache)
 	C.ethash_cache_init(cache, mem)
+	C.ethash_mkcache(cache, params, (unsafe.Pointer)(&seed[0]))
 
 	log.Println("making full data")
 	start := time.Now()
