@@ -35,20 +35,35 @@ type Ethash struct {
 	hash     *C.uint8_t     // return from ethash
 }
 
-func New(seedHash []byte) *Ethash {
+func blockNum(block pow.Block) (uint64, error) {
+	nonce := block.N()
+	nonceBuf := bytes.NewBuffer(nonce)
+	nonceInt, err := binary.ReadUvarint(nonceBuf)
+	if err != nil {
+		return 0, err
+	}
+
+	return nonceInt, nil
+}
+
+func New(seedHash []byte, block pow.Block) (*Ethash, error) {
 	params := new(C.ethash_params)
-	C.ethash_params_init(params)
+	n, err := blockNum(block)
+	if err != nil {
+		return &Ethash{}, err
+	}
+	C.ethash_params_init(params, C.uint32_t(n))
 	log.Println("Params", params)
 
 	var mem unsafe.Pointer
-	mem = C.malloc(C.size_t(params.full_size)) //+ 4095 + 64)
+	mem = C.malloc(C.size_t(params.full_size))
 
 	cache := new(C.ethash_cache)
 	C.ethash_cache_init(cache, mem)
 
 	log.Println("making full data")
 	start := time.Now()
-	C.ethash_compute_full_data(mem, params, (*C.uint8_t)(unsafe.Pointer(&seedHash)))
+	C.ethash_compute_full_data(mem, params, cache)
 	log.Println("took:", time.Since(start))
 
 	var hash *C.uint8_t
@@ -60,7 +75,7 @@ func New(seedHash []byte) *Ethash {
 		cache:  cache,
 		mem:    mem,
 		hash:   hash,
-	}
+	}, nil
 }
 
 // TODO free everything
@@ -120,9 +135,7 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) []byte {
 }
 
 func (pow *Ethash) Verify(block pow.Block) bool {
-	nonce := block.N()
-	nonceBuf := bytes.NewBuffer(nonce)
-	nonceInt, err := binary.ReadUvarint(nonceBuf)
+	nonceInt, err := blockNum(block)
 	if err != nil {
 		log.Println("nonce to int err:", err)
 		return false
