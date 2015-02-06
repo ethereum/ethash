@@ -56,7 +56,7 @@ uint32_t ethash_get_cachesize(const uint32_t block_number) {
 void static ethash_compute_cache_nodes(node *const nodes, ethash_params const *params, const uint8_t seed[32]) {
     assert((params->cache_size % sizeof(node)) == 0);
     assert((params->cache_size % sizeof(node)) == 0);
-    unsigned const num_nodes = params->cache_size / sizeof(node);
+    uint64_t const num_nodes = params->cache_size / sizeof(node);
 
     SHA3_512(nodes[0].bytes, seed, 32);
 
