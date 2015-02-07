@@ -25,23 +25,22 @@
 #include "compiler.h"
 
 #define REVISION 11
-#define DAGSIZE_BYTES_INIT 1073741824
-#define DAGSIZE_BYTES_GROWTH 131072
-#define EPOCH_LENGTH 1000
+#define DAGSIZE_BYTES_INIT 1073741824U
+#define DAGSIZE_BYTES_GROWTH 131072U
+#define EPOCH_LENGTH 1000U
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define MIX_BYTES 8192
 #define HASH_BYTES 4096
 #define DAG_PARENTS 64
+#define HASH_READ_SIZE 32 * HASH_BYTES
 
 typedef struct ethash_params
 {
     unsigned full_size;					// Size of full data set (in bytes, multiple of page size (4096)).
     unsigned cache_size;				// Size of compute cache (in bytes, multiple of node size (64)).
-    unsigned hash_read_size;			// Size of data set to read for each hash (in bytes, multiple of page size (4096)).
 } ethash_params;
 
 uint32_t ethash_get_datasize(const uint32_t block_number);
@@ -52,7 +51,6 @@ static inline void ethash_params_init(ethash_params* params, const uint32_t bloc
 {
 	params->full_size = ethash_get_datasize(block_number);
     params->cache_size = ethash_get_cachesize(block_number);
-	params->hash_read_size = 32 * HASH_BYTES; // 128k
 }
 
 typedef struct ethash_cache

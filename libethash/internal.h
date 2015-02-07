@@ -15,8 +15,8 @@ extern "C" {
 #endif
 
 // compile time settings
-#define NODE_WORDS (64/4)
-#define PAGE_WORDS (4096/4)
+#define NODE_WORDS 16
+#define PAGE_WORDS 1024
 #define PAGE_NODES (PAGE_WORDS / NODE_WORDS)
 #define CACHE_ROUNDS 2
 #include <stdint.h>
@@ -32,7 +32,7 @@ typedef union node {
 
 } node;
 
-void ethash_compute_full_node(
+void ethash_calculate_dag_item(
         node *const ret,
         const unsigned node_index,
         ethash_params const *params,

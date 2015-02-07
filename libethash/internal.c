@@ -20,6 +20,8 @@
 */
 
 #include <assert.h>
+#include <stdio.h>
+#include <inttypes.h>
 #include "ethash.h"
 #include "blum_blum_shub.h"
 #include "fnv.h"
@@ -36,18 +38,25 @@
 #endif // WITH_CRYPTOPP
 
 uint32_t ethash_get_datasize(const uint32_t block_number) {
-    uint32_t datasize = (DAGSIZE_BYTES_INIT + DAGSIZE_BYTES_GROWTH * block_number) / (EPOCH_LENGTH * MIX_BYTES);
-    uint32_t i = 23000;
-    while (nth_prime(i++) < datasize);
-    return nth_prime(i - 1) * MIX_BYTES;
+    const uint32_t dag_size_in_bytes = DAGSIZE_BYTES_INIT + DAGSIZE_BYTES_GROWTH * (block_number / EPOCH_LENGTH);
+    uint32_t i = 82025;
+    while (nth_prime(++i) * PAGE_WORDS < dag_size_in_bytes);
+
+    printf("%"PRIu32" + %"PRIu32" = %"PRIu32"\n",
+            DAGSIZE_BYTES_INIT,
+            (DAGSIZE_BYTES_GROWTH * (block_number / EPOCH_LENGTH)),
+            (DAGSIZE_BYTES_INIT + DAGSIZE_BYTES_GROWTH * (block_number / EPOCH_LENGTH)));
+    printf("p: %"PRIu32"\n", nth_prime(i-1));
+    return nth_prime(i-1) * PAGE_WORDS;
 };
 
 uint32_t ethash_get_cachesize(const uint32_t block_number) {
     uint32_t
-            cachesize = ethash_get_datasize(block_number) / (32 * HASH_BYTES),
-            i = 0;
-    while (nth_prime(i++) < cachesize);
-    return nth_prime(i) * HASH_BYTES;
+            cachesize = ethash_get_datasize(block_number) / 32,
+            i = 1000;
+    while (nth_prime(++i) * HASH_BYTES < cachesize);
+//    printf("cache i: %u\n", nth_prime(i-1));
+    return nth_prime(i-1) * HASH_BYTES;
 };
 
 // Follows Sergio's "STRICT MEMORY HARD HASHING FUNCTIONS" (2014)
@@ -62,6 +71,7 @@ void static ethash_compute_cache_nodes(node *const nodes, ethash_params const *p
 
     for (unsigned i = 1; i != num_nodes; ++i) {
         SHA3_512(nodes[i].bytes, nodes[i - 1].bytes, 64);
+
     }
 
     for (unsigned j = 0; j != CACHE_ROUNDS; j++) {
@@ -89,11 +99,11 @@ void ethash_mkcache(ethash_cache *cache, ethash_params const *params, const uint
     init_power_table_mod_prime1(cache->rng_table, make_seed1(nodes[0].words[0]));
 }
 
-void ethash_compute_full_node(
+void ethash_calculate_dag_item(
         node *const ret,
         const unsigned node_index,
-        ethash_params const *params,
-        ethash_cache const *cache
+        const struct ethash_params *params,
+        const struct ethash_cache *cache
 ) {
     size_t num_parent_nodes = params->cache_size / sizeof(node);
     node const *cache_nodes = (node const *) cache->mem;
@@ -158,7 +168,7 @@ void ethash_compute_full_data(
 
     // now compute full nodes
     for (unsigned n = 0; n != (params->full_size / sizeof(node)); ++n) {
-        ethash_compute_full_node(&(full_nodes[n]), n, params, cache);
+        ethash_calculate_dag_item(&(full_nodes[n]), n, params, cache);
     }
 }
 
@@ -196,7 +206,7 @@ static void ethash_hash(
 
     unsigned const
             page_size = sizeof(uint32_t) * PAGE_WORDS,
-            accesses = params->hash_read_size / page_size,
+            accesses = HASH_READ_SIZE / page_size,
             num_full_pages = params->full_size / page_size;
 
     for (unsigned i = 0; i != accesses; ++i) {
@@ -208,7 +218,7 @@ static void ethash_hash(
 			node const* dag_node = &full_nodes[PAGE_NODES * index + n];
             if (!full_nodes) {
                 node tmp_node;
-                ethash_compute_full_node(&tmp_node, index * PAGE_NODES + n, params, cache);
+                ethash_calculate_dag_item(&tmp_node, index * PAGE_NODES + n, params, cache);
 				dag_node = &tmp_node;
 			}
 
