@@ -14,7 +14,7 @@ set(FILES 	util.c
           	endian.h
           	compiler.h
           	fnv.h
-          	nth_prime.h)
+          	data_sizes.h)
 
 if (NOT CRYPTOPP_FOUND)
 	find_package(CryptoPP 5.6.2)

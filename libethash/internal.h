@@ -3,7 +3,6 @@
 #include "endian.h"
 #include "ethash.h"
 
-// todo: flag not needed?
 #define ENABLE_SSE 1
 
 #if defined(_M_X64) && ENABLE_SSE
@@ -16,15 +15,14 @@ extern "C" {
 
 // compile time settings
 #define NODE_WORDS 16
-#define PAGE_WORDS 1024
+#define PAGE_WORDS (MIX_BYTES / 4)
 #define PAGE_NODES (PAGE_WORDS / NODE_WORDS)
-#define CACHE_ROUNDS 2
 #include <stdint.h>
 
 typedef union node {
-    uint8_t bytes[NODE_WORDS*4];
+    uint8_t bytes[NODE_WORDS * 4];
     uint32_t words[NODE_WORDS];
-    uint64_t double_words[NODE_WORDS/2];
+    uint64_t double_words[NODE_WORDS / 2];
 
 #if defined(_M_X64) && ENABLE_SSE
 	__m128i xmm[NODE_WORDS/4];

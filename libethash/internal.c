@@ -27,7 +27,7 @@
 #include "fnv.h"
 #include "endian.h"
 #include "internal.h"
-#include "nth_prime.h"
+#include "data_sizes.h"
 
 #ifdef WITH_CRYPTOPP
 
@@ -38,26 +38,14 @@
 #endif // WITH_CRYPTOPP
 
 uint32_t ethash_get_datasize(const uint32_t block_number) {
-    const uint32_t dag_size_in_bytes = DAGSIZE_BYTES_INIT + DAGSIZE_BYTES_GROWTH * (block_number / EPOCH_LENGTH);
-    uint32_t i = 82025;
-    while (nth_prime(++i) * PAGE_WORDS < dag_size_in_bytes);
-
-    printf("%"PRIu32" + %"PRIu32" = %"PRIu32"\n",
-            DAGSIZE_BYTES_INIT,
-            (DAGSIZE_BYTES_GROWTH * (block_number / EPOCH_LENGTH)),
-            (DAGSIZE_BYTES_INIT + DAGSIZE_BYTES_GROWTH * (block_number / EPOCH_LENGTH)));
-    printf("p: %"PRIu32"\n", nth_prime(i-1));
-    return nth_prime(i-1) * PAGE_WORDS;
-};
+    assert(block_number / EPOCH_LENGTH < 20000);
+    return dag_sizes[block_number / EPOCH_LENGTH];
+}
 
 uint32_t ethash_get_cachesize(const uint32_t block_number) {
-    uint32_t
-            cachesize = ethash_get_datasize(block_number) / 32,
-            i = 1000;
-    while (nth_prime(++i) * HASH_BYTES < cachesize);
-//    printf("cache i: %u\n", nth_prime(i-1));
-    return nth_prime(i-1) * HASH_BYTES;
-};
+    assert(block_number / EPOCH_LENGTH < 20000);
+    return cache_sizes[block_number / EPOCH_LENGTH];
+}
 
 // Follows Sergio's "STRICT MEMORY HARD HASHING FUNCTIONS" (2014)
 // https://bitslog.files.wordpress.com/2013/12/memohash-v0-3.pdf
@@ -206,10 +194,9 @@ static void ethash_hash(
 
     unsigned const
             page_size = sizeof(uint32_t) * PAGE_WORDS,
-            accesses = HASH_READ_SIZE / page_size,
             num_full_pages = params->full_size / page_size;
 
-    for (unsigned i = 0; i != accesses; ++i) {
+    for (unsigned i = 0; i != ACCESSES; ++i) {
         uint32_t const index = (rand2 ^ mix->words[i % PAGE_WORDS]) % num_full_pages;
         rand2 = cube_mod_safe_prime2(rand2);
 

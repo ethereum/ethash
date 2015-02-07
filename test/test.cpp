@@ -1,7 +1,6 @@
 #include <iomanip>
 #include <libethash/blum_blum_shub.h>
 #include <libethash/fnv.h>
-#include <libethash/nth_prime.h>
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
 
@@ -199,43 +198,21 @@ BOOST_AUTO_TEST_CASE(SHA512_check) {
                     << "actual: " << actual.c_str() << "\n");
 }
 
-BOOST_AUTO_TEST_CASE(nth_prime_check) {
-
-    {
-        const uint32_t
-                expected = 32609,
-                actual = nth_prime(3500);
-        BOOST_REQUIRE_MESSAGE(expected == actual,
-                "\nexpected: " << expected << "\n"
-                        << "actual: " << actual << "\n");
-    }
-
-
-    {
-        const uint32_t
-                expected = 1048573,
-                actual = nth_prime(82025);
-        BOOST_REQUIRE_MESSAGE(expected == actual,
-                "\nexpected: " << expected << "\n"
-                        << "actual: " << actual << "\n");
-    }
-}
-
 BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_check) {
     ethash_params params;
     ethash_params_init(&params, 0);
     BOOST_REQUIRE_MESSAGE(params.full_size  < DAGSIZE_BYTES_INIT,
             "\nfull size: " << params.full_size << "\n"
                     << "should be less than or equal to: " << DAGSIZE_BYTES_INIT << "\n");
-    BOOST_REQUIRE_MESSAGE(params.full_size + 4*PAGE_WORDS > DAGSIZE_BYTES_INIT,
-            "\nfull size + 4*PAGE_WORDS: " << params.full_size + 4*PAGE_WORDS << "\n"
+    BOOST_REQUIRE_MESSAGE(params.full_size + 8*MIX_BYTES >= DAGSIZE_BYTES_INIT,
+            "\nfull size + 8*MIX_BYTES: " << params.full_size + 8*MIX_BYTES << "\n"
                     << "should be greater than or equal to: " << DAGSIZE_BYTES_INIT << "\n");
     BOOST_REQUIRE_MESSAGE(params.cache_size < DAGSIZE_BYTES_INIT / 32,
             "\ncache size: " << params.cache_size << "\n"
-                    << "actual: " << DAGSIZE_BYTES_INIT / 32 << "\n");
-    BOOST_REQUIRE_MESSAGE(params.cache_size + 4*HASH_BYTES > DAGSIZE_BYTES_INIT / 32 ,
-            "\ncache size + 4*HASH_BYTES: " << params.cache_size + 4*HASH_BYTES << "\n"
-                    << "actual: " << DAGSIZE_BYTES_INIT / 32 << "\n");
+                    << "should be less than or equal to: " << DAGSIZE_BYTES_INIT / 32 << "\n");
+    BOOST_REQUIRE_MESSAGE(params.cache_size + HASH_BYTES >= DAGSIZE_BYTES_INIT / 32 ,
+            "\ncache size + HASH_BYTES: " << params.cache_size + HASH_BYTES << "\n"
+                    << "should be greater than or equal to: " << DAGSIZE_BYTES_INIT / 32 << "\n");
 }
 
 BOOST_AUTO_TEST_CASE(ethash_params_init_3_year_check) {
@@ -245,94 +222,94 @@ BOOST_AUTO_TEST_CASE(ethash_params_init_3_year_check) {
     BOOST_REQUIRE_MESSAGE(params.full_size  < three_year_dag_size,
             "\nfull size: " << params.full_size << "\n"
                     << "should be less than or equal to: " << three_year_dag_size << "\n");
-    BOOST_REQUIRE_MESSAGE(params.full_size + 4*PAGE_WORDS > three_year_dag_size,
-            "\nfull size + 4*PAGE_WORDS: " << params.full_size + 4*PAGE_WORDS << "\n"
+    BOOST_REQUIRE_MESSAGE(params.full_size + DAGSIZE_BYTES_INIT / 3 > three_year_dag_size,
+            "\nfull size + DAGSIZE_BYTES_INIT / 3: " << params.full_size + DAGSIZE_BYTES_INIT / 3 << "\n"
                     << "should be greater than or equal to: " << three_year_dag_size << "\n");
-//    BOOST_REQUIRE_MESSAGE(params.cache_size < three_year_dag_size / 32,
-//            "\ncache size: " << params.cache_size << "\n"
-//                    << "actual: " << three_year_dag_size / 32 << "\n");
-//    BOOST_REQUIRE_MESSAGE(params.cache_size + 4*HASH_BYTES > three_year_dag_size / 32 ,
-//            "\ncache size + 4*HASH_BYTES: " << params.cache_size + 4*HASH_BYTES << "\n"
-//                    << "actual: " << three_year_dag_size / 32 << "\n");
+    BOOST_REQUIRE_MESSAGE(params.cache_size < three_year_dag_size / 32,
+            "\ncache size: " << params.cache_size << "\n"
+                    << "actual: " << three_year_dag_size / 32 << "\n");
+    BOOST_REQUIRE_MESSAGE(params.cache_size + DAGSIZE_BYTES_INIT / 3 / 32 > three_year_dag_size / 32 ,
+            "\ncache size + DAGSIZE_BYTES_INIT / 3 / 32: " << params.cache_size + DAGSIZE_BYTES_INIT / 3 / 32 << "\n"
+                    << "actual: " << three_year_dag_size / 32 << "\n");
 }
-//
-//BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
-//    ethash_params params;
-//    uint8_t seed[32], previous_hash[32], light_out[32], full_out[32];
-//    memcpy(seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
-//    memcpy(previous_hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
-//    ethash_params_init(&params, 0);
-//    params.cache_size = 1024;
-//    params.full_size = 1024 * 32;
-//    ethash_cache cache;
-//    cache.mem = alloca(params.cache_size);
-//    ethash_mkcache(&cache, &params, seed);
-//    node * full_mem = (node *) alloca(params.full_size);
-//    ethash_compute_full_data(full_mem, &params, &cache);
-//
-//    {
-//        const std::string
-//                expected = "cfd4b2e864f54aaf40f38a193077c99a9575145c567ef07cadd0b57c22136bd8c5f92ac1e8cfe6073c5714945c340c5468aaa82f5e93469e8037c634e2d86fa86072107ab022802e3f2eb51516f9b9ee945c7b3f11d353595ebde40a1dc04054b43a33687bf76574c84dee7b926044442e484778322be2becba3b3c770ed412357a0ecc0757da95ed4d07e57a3b77efce8081c7c20821c7849198ad090665046596756adff7a73a5dbcdfaff2e84b06cd4ae253c58e2ebddda7340616d3e3c3a641f60c5e6cb3b5f9cc2768ed437ae83e592a762e9d412cf127881e6697a0027b6b4d4c76fa234e34bc7d934221ceb754a67b9a0d8419162b32f368ef2d7d4b19ee7144451962196cf8d06607d609e0784e7ee3701bf9c1283f4cf4faaa437585d39ab2e3cbfef322ba3814b668790184a70d3bfeb8758034bea6ac817469f8c0592d171ddeaf4c4ac95a116d761d650dd3cca7d7461f15d50b03cd67fa1bcdd2b398ac585f37f854777b96dcd5a3a0b5f70920295db9511c1c4b88c49fab4404dc8b258f5e22d3c4d2288ec2b16b121299b912ca030787a5a4be987747708ab099149c41b088176f2f44f5b4470c484d6ea63d69ee3bda9d0a29a1a4f72e17411088ecbce085342f95d2896c37187d89756c9861d2f53ec7175e9c5975cd40f8516e879ca936ca7dfd41acc3b542e016354e7f4f5c97255907761f6c972c68f0b137d9ee3c13122027f438de8de53b87ebf622b13d24c5fb66588633fd2218dbe0ed59ca7cf46b4522768e4b3323c2ce685c50eec2040fe48bc6bb24fcd82abfcb41965f19b76373730395198b9e52a2bd2875916b7d3fccded247290652fb8067cca1aba67a5fb741dcec7c588c70d4a942277e524e3d28c2c2681d113f81050926f6db80ad5d2fb14f02c074e35a64ac20d3d3409d3296c50cea22b79d4bcd06d65455fa86f90fe2b9d0b07b07324f94739d07b9c115e57ed6443279945bd3c41fb32e998a1c3a94d9dfd42ef633306d7f72bc56d3509386601315cdccd7bbf4df8b61bc7f046a330c03e50d908b12d0c162f7d390dfcde47d2d32573e1418de18b2cec9ec3664264b0043e8ed4fa794e3a3381bbffcc6385567b33a839c79fbb8f0d46e2a264fd21ace9a3dafad31950252d80da310f0841d511e990624f6fad74b514033e71a54bc20d106450456aa7107a99dc2a8aad8d81ade72a8189dfd69baad2e3142b6489bcfb89bbd82bbf8cd71faec08aafa974640c1389c7b2d82fd66d8b00bcd60ee0d863cc35bf1277527e2dd2ea0362834bda4d732415f15fd0455f7e9006ed61129a23cab8488aa72d5a703905cb12dba61887826498a1ffd31be7cfb506faa7732df638b86bbad728ef1cbfad16484f2019dd23362ced06e497154f820afe8972cf5a576ba6af4f1b257334816580a7614ac03c161517",
-//                actual = bytesToHexString((uint8_t const *) cache.mem, params.cache_size);
-//
-//        BOOST_REQUIRE_MESSAGE(expected == actual,
-//                "\nexpected: " << expected.c_str() << "\n"
-//                        << "actual: " << actual.c_str() << "\n");
-//    }
-//
-//    {
-//        for (int i = 0; i < 32; ++i)
-//            BOOST_REQUIRE(cache.rng_table[i] % SAFE_PRIME == cache.rng_table[i]);
-//    }
-//
-//    {
-//        uint64_t tmp = make_seed1(((node *) cache.mem)[0].words[0]);
-//        for (int i = 0; i < 32; ++i) {
-//            BOOST_REQUIRE_MESSAGE(tmp % SAFE_PRIME == cache.rng_table[i],
-//                    "\npower: " << i << "\n"
-//                            << "expected: " << tmp << "\n"
-//                            << "actual: " << cache.rng_table[i] << "\n");
-//            tmp *= tmp;
-//            tmp %= SAFE_PRIME;
-//        }
-//    }
-//
-//    {
-//        uint64_t tmp = make_seed1(((node *) cache.mem)[0].words[0]);
-//        for (int i = 0; i < 32; ++i) {
-//            BOOST_REQUIRE_MESSAGE(tmp % SAFE_PRIME == cache.rng_table[i],
-//                    "\npower: " << i << "\n"
-//                            << "expected: " << tmp << "\n"
-//                            << "actual: " << cache.rng_table[i] << "\n");
-//            tmp *= tmp;
-//            tmp %= SAFE_PRIME;
-//        }
-//    }
-//
-//    {
-//        for (int i = 0 ; i < params.full_size / sizeof(node) ; ++i ) {
-//            for (uint32_t j = 0; j < 32; ++j) {
-//                node expected_node;
-//                ethash_calculate_dag_item(&expected_node, j, &params, &cache);
-//                const std::string
-//                        actual = bytesToHexString((uint8_t const *) &(full_mem[j]), sizeof(node)),
-//                        expected = bytesToHexString((uint8_t const *) &expected_node, sizeof(node));
-//                BOOST_REQUIRE_MESSAGE(actual == expected,
-//                        "\ni: " << j << "\n"
-//                                << "expected: " << expected.c_str() << "\n"
-//                                << "actual: " << actual.c_str() << "\n");
-//            }
-//        }
-//    }
-//
-//    {
-//        ethash_full(full_out, full_mem, &params, previous_hash, 5);
-//        ethash_light(light_out, &cache, &params, previous_hash, 5);
-//        const std::string
-//                light_string = bytesToHexString(light_out, 32),
-//                full_string = bytesToHexString(full_out, 32);
-//        BOOST_REQUIRE_MESSAGE(light_string == full_string,
-//                "\nlight: " << light_string.c_str() << "\n"
-//                        << "full: " << full_string.c_str() << "\n");
-//    }
-//}
+
+BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
+    ethash_params params;
+    uint8_t seed[32], previous_hash[32], light_out[32], full_out[32];
+    memcpy(seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+    memcpy(previous_hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+    ethash_params_init(&params, 0);
+    params.cache_size = 1024;
+    params.full_size = 1024 * 32;
+    ethash_cache cache;
+    cache.mem = alloca(params.cache_size);
+    ethash_mkcache(&cache, &params, seed);
+    node * full_mem = (node *) alloca(params.full_size);
+    ethash_compute_full_data(full_mem, &params, &cache);
+
+    {
+        const std::string
+                expected = "cfd4b2e864f54aaf40f38a193077c99a9575145c567ef07cadd0b57c22136bd8c5f92ac1e8cfe6073c5714945c340c5468aaa82f5e93469e8037c634e2d86fa86072107ab022802e3f2eb51516f9b9ee945c7b3f11d353595ebde40a1dc04054b43a33687bf76574c84dee7b926044442e484778322be2becba3b3c770ed412357a0ecc0757da95ed4d07e57a3b77efce8081c7c20821c7849198ad090665046596756adff7a73a5dbcdfaff2e84b06cd4ae253c58e2ebddda7340616d3e3c3a641f60c5e6cb3b5f9cc2768ed437ae83e592a762e9d412cf127881e6697a0027b6b4d4c76fa234e34bc7d934221ceb754a67b9a0d8419162b32f368ef2d7d4b19ee7144451962196cf8d06607d609e0784e7ee3701bf9c1283f4cf4faaa437585d39ab2e3cbfef322ba3814b668790184a70d3bfeb8758034bea6ac817469f8c0592d171ddeaf4c4ac95a116d761d650dd3cca7d7461f15d50b03cd67fa1bcdd2b398ac585f37f854777b96dcd5a3a0b5f70920295db9511c1c4b88c49fab4404dc8b258f5e22d3c4d2288ec2b16b121299b912ca030787a5a4be987747708ab099149c41b088176f2f44f5b4470c484d6ea63d69ee3bda9d0a29a1a4f72e17411088ecbce085342f95d2896c37187d89756c9861d2f53ec7175e9c5975cd40f8516e879ca936ca7dfd41acc3b542e016354e7f4f5c97255907761f6c972c68f0b137d9ee3c13122027f438de8de53b87ebf622b13d24c5fb66588633fd2218dbe0ed59ca7cf46b4522768e4b3323c2ce685c50eec2040fe48bc6bb24fcd82abfcb41965f19b76373730395198b9e52a2bd2875916b7d3fccded247290652fb8067cca1aba67a5fb741dcec7c588c70d4a942277e524e3d28c2c2681d113f81050926f6db80ad5d2fb14f02c074e35a64ac20d3d3409d3296c50cea22b79d4bcd06d65455fa86f90fe2b9d0b07b07324f94739d07b9c115e57ed6443279945bd3c41fb32e998a1c3a94d9dfd42ef633306d7f72bc56d3509386601315cdccd7bbf4df8b61bc7f046a330c03e50d908b12d0c162f7d390dfcde47d2d32573e1418de18b2cec9ec3664264b0043e8ed4fa794e3a3381bbffcc6385567b33a839c79fbb8f0d46e2a264fd21ace9a3dafad31950252d80da310f0841d511e990624f6fad74b514033e71a54bc20d106450456aa7107a99dc2a8aad8d81ade72a8189dfd69baad2e3142b6489bcfb89bbd82bbf8cd71faec08aafa974640c1389c7b2d82fd66d8b00bcd60ee0d863cc35bf1277527e2dd2ea0362834bda4d732415f15fd0455f7e9006ed61129a23cab8488aa72d5a703905cb12dba61887826498a1ffd31be7cfb506faa7732df638b86bbad728ef1cbfad16484f2019dd23362ced06e497154f820afe8972cf5a576ba6af4f1b257334816580a7614ac03c161517",
+                actual = bytesToHexString((uint8_t const *) cache.mem, params.cache_size);
+
+        BOOST_REQUIRE_MESSAGE(expected == actual,
+                "\nexpected: " << expected.c_str() << "\n"
+                        << "actual: " << actual.c_str() << "\n");
+    }
+
+    {
+        for (int i = 0; i < 32; ++i)
+            BOOST_REQUIRE(cache.rng_table[i] % SAFE_PRIME == cache.rng_table[i]);
+    }
+
+    {
+        uint64_t tmp = make_seed1(((node *) cache.mem)[0].words[0]);
+        for (int i = 0; i < 32; ++i) {
+            BOOST_REQUIRE_MESSAGE(tmp % SAFE_PRIME == cache.rng_table[i],
+                    "\npower: " << i << "\n"
+                            << "expected: " << tmp << "\n"
+                            << "actual: " << cache.rng_table[i] << "\n");
+            tmp *= tmp;
+            tmp %= SAFE_PRIME;
+        }
+    }
+
+    {
+        uint64_t tmp = make_seed1(((node *) cache.mem)[0].words[0]);
+        for (int i = 0; i < 32; ++i) {
+            BOOST_REQUIRE_MESSAGE(tmp % SAFE_PRIME == cache.rng_table[i],
+                    "\npower: " << i << "\n"
+                            << "expected: " << tmp << "\n"
+                            << "actual: " << cache.rng_table[i] << "\n");
+            tmp *= tmp;
+            tmp %= SAFE_PRIME;
+        }
+    }
+
+    {
+        for (int i = 0 ; i < params.full_size / sizeof(node) ; ++i ) {
+            for (uint32_t j = 0; j < 32; ++j) {
+                node expected_node;
+                ethash_calculate_dag_item(&expected_node, j, &params, &cache);
+                const std::string
+                        actual = bytesToHexString((uint8_t const *) &(full_mem[j]), sizeof(node)),
+                        expected = bytesToHexString((uint8_t const *) &expected_node, sizeof(node));
+                BOOST_REQUIRE_MESSAGE(actual == expected,
+                        "\ni: " << j << "\n"
+                                << "expected: " << expected.c_str() << "\n"
+                                << "actual: " << actual.c_str() << "\n");
+            }
+        }
+    }
+
+    {
+        ethash_full(full_out, full_mem, &params, previous_hash, 5);
+        ethash_light(light_out, &cache, &params, previous_hash, 5);
+        const std::string
+                light_string = bytesToHexString(light_out, 32),
+                full_string = bytesToHexString(full_out, 32);
+        BOOST_REQUIRE_MESSAGE(light_string == full_string,
+                "\nlight: " << light_string.c_str() << "\n"
+                        << "full: " << full_string.c_str() << "\n");
+    }
+}

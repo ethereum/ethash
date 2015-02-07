@@ -28,14 +28,16 @@
 #define DAGSIZE_BYTES_INIT 1073741824U
 #define DAGSIZE_BYTES_GROWTH 131072U
 #define EPOCH_LENGTH 1000U
+#define MIX_BYTES 4096
+#define HASH_BYTES 64
+#define DAG_PARENTS 64
+#define CACHE_ROUNDS 2
+#define ACCESSES 32
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define HASH_BYTES 4096
-#define DAG_PARENTS 64
-#define HASH_READ_SIZE 32 * HASH_BYTES
 
 typedef struct ethash_params
 {
