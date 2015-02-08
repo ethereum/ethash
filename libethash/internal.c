@@ -66,10 +66,13 @@ void static ethash_compute_cache_nodes(
     for (unsigned j = 0; j != CACHE_ROUNDS; j++) {
         for (unsigned i = 0; i != num_nodes; i++) {
             uint32_t const idx = (uint32_t) (fix_endian64(nodes[i].double_words[0]) % num_nodes);
-            node data[2];
-            data[0] = nodes[(num_nodes - 1 + i) % num_nodes];
-            data[1] = nodes[idx];
-            SHA3_512(nodes[i].bytes, data[0].bytes, sizeof(data));
+            node data;
+            data = nodes[(num_nodes - 1 + i) % num_nodes];
+			for (unsigned w = 0; w != NODE_WORDS; ++w)
+			{
+				data.words[w] ^= nodes[idx].words[w];
+			}
+            SHA3_512(nodes[i].bytes, data.bytes, sizeof(data));
         }
     }
 
@@ -192,15 +195,13 @@ static void ethash_hash(
         mix->words[w] = s_mix[0].words[w % NODE_WORDS];
     }
 
-    uint32_t rand2 = make_seed2(mix->words[0]);
-
     unsigned const
             page_size = sizeof(uint32_t) * PAGE_WORDS,
             num_full_pages = params->full_size / page_size;
 
-    for (unsigned i = 0; i != ACCESSES; ++i) {
-        uint32_t const index = (rand2 ^ mix->words[i % PAGE_WORDS]) % num_full_pages;
-        rand2 = cube_mod_safe_prime2(rand2);
+    unsigned const accesses = params->hash_read_size / (PAGE_WORDS * 4);
+    for (unsigned i = 0; i != accesses; ++i) {
+        uint32_t const index = (mix->words[i % PAGE_WORDS]) % num_full_pages;
 
         for (unsigned n = 0; n != PAGE_NODES; ++n) {
 
@@ -241,8 +242,8 @@ static void ethash_hash(
 #endif
 
     // final Keccak hashes
-    SHA3_256(s_mix[1].bytes, s_mix->bytes, sizeof(s_mix));  // Keccak-256(s + mix)
-    SHA3_256(ret, s_mix->bytes, 64+32);                     // Keccak-256(s + Keccak-256(s + mix))
+    SHA3_256(s_mix[1].bytes, s_mix[1].bytes, PAGE_WORDS*4);  // Keccak-256(mix)
+    SHA3_256(ret, s_mix->bytes, 64+32);                      // Keccak-256(s + Keccak-256(s + mix))
 }
 
 void ethash_full(uint8_t ret[32], void const *full_mem, ethash_params const *params, const uint8_t previous_hash[32], const uint64_t nonce) {
