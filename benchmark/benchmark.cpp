@@ -22,12 +22,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include "libethash/ethash.h"
-#include "libethash/util.h"
+#include <libethash/ethash.h>
+#include <libethash/util.h>
 #include <vector>
 
 #ifdef WITH_CRYPTOPP
-#include "libethash/SHA3_cryptopp.h"
+#include <libethash/SHA3_cryptopp.h>
+#include <string>
+
 #else
 #include "libethash/sha3.h"
 #endif // WITH_CRYPTOPP
@@ -36,22 +38,22 @@ uint8_t g_hash[32];
 
 static char nibbleToChar(unsigned nibble)
 {
-	return (nibble >= 10 ? 'a'-10 : '0') + nibble;
+	return (char) ((nibble >= 10 ? 'a'-10 : '0') + nibble);
 }
 
-static unsigned charToNibble(char chr)
+static uint8_t charToNibble(char chr)
 {
 	if (chr >= '0' && chr <= '9')
 	{
-		return chr - '0';
+		return (uint8_t) (chr - '0');
 	}
 	if (chr >= 'a' && chr <= 'z')
 	{
-		return chr - 'a' + 10;
+		return (uint8_t) (chr - 'a' + 10);
 	}
 	if (chr >= 'A' && chr <= 'Z')
 	{
-		return chr - 'A' + 10;
+		return (uint8_t) (chr - 'A' + 10);
 	}
 	return 0;
 }
@@ -76,13 +78,6 @@ static std::string bytesToHexString(uint8_t const* bytes, unsigned size)
 		str += nibbleToChar(bytes[i] & 0xf);
 	}
 	return str;
-}
-
-extern "C" void dump(void* data, unsigned size)
-{
-	auto c = bytesToHexString((uint8_t*)data, size);
-	debugf("%s\n", c.data());
-	exit(0);
 }
 
 extern "C" int main(void)
@@ -128,47 +123,21 @@ extern "C" int main(void)
 		#endif // FULL
 	}
 
-	// print a couple of test hashes
-	ethash_light(g_hash, &cache, &params, previous_hash, 0);
-	debugf("ethash_light test: %s\n", bytesToHexString(g_hash, 32).data());
-
+    // print a couple of test hashes
+    {
+        const clock_t startTime = clock();
+        ethash_light(g_hash, &cache, &params, previous_hash, 0);
+        const clock_t time = clock() - startTime;
+        debugf("ethash_light test: %ums, %s\n", (unsigned)((time*1000)/CLOCKS_PER_SEC), bytesToHexString(g_hash, 32).data());
+    }
 #ifdef FULL
-	ethash_full(g_hash, full_mem, &params, previous_hash, 0);
-	debugf("ethash_full test: %s\n", bytesToHexString(g_hash, 32).data());
+    {
+        const clock_t startTime = clock();
+        ethash_full(g_hash, full_mem, &params, previous_hash, 0);
+        const clock_t time = clock() - startTime;
+        debugf("ethash_full test: %uns, %s\n", (unsigned)((time*1000000)/CLOCKS_PER_SEC), bytesToHexString(g_hash, 32).data());
+    }
 #endif
-
-	exit(0);
-
-	// trial different numbers of accesses
-	for (unsigned read_size = 4096; read_size <= 4096*256; read_size <<= 1)
-	{
-		params.hash_read_size = read_size;
-		
-		clock_t startTime = clock();
-
-        #ifdef MPI
-		#pragma omp parallel for
-		#endif // MPI
-		for (int nonce = 0; nonce < trials; ++nonce)
-		{
-			#ifdef FULL
-				ethash_full(g_hash, full_mem, &params, previous_hash, nonce);
-			#else
-				ethash_light(g_hash, &cache, &params, previous_hash, nonce);
-			#endif // FULL
-		}
-		clock_t time = clock() - startTime;
-
-		debugf("read_size %5ukb, hashrate: %6u, bw: %5u MB/s\n",
-			read_size / 1024,
-			(unsigned)((trials*CLOCKS_PER_SEC)/time),
-			(unsigned)((((uint64_t)trials*read_size*CLOCKS_PER_SEC)/time) / (1024*1024))
-			);
-	}
-
-	free(cache_mem_buf);
-	free(full_mem_buf);
-
-	return 0;
+    exit(0);
 }
 

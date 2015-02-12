@@ -215,6 +215,19 @@ BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_check) {
                     << "should be greater than or equal to: " << DAGSIZE_BYTES_INIT / 32 << "\n");
 }
 
+BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_calcifide_check) {
+    ethash_params params;
+    ethash_params_init(&params, 0);
+    const uint32_t expected_full_size = 1073721344;
+    const uint32_t expected_cache_size = 33554368;
+    BOOST_REQUIRE_MESSAGE(params.full_size  == expected_full_size,
+            "\nexpected: " << expected_cache_size << "\n"
+                    << "actual: " << params.full_size << "\n");
+    BOOST_REQUIRE_MESSAGE(params.cache_size  == expected_cache_size,
+            "\nexpected: " << expected_cache_size << "\n"
+                    << "actual: " << params.cache_size << "\n");
+}
+
 BOOST_AUTO_TEST_CASE(ethash_params_init_3_year_check) {
     ethash_params params;
     ethash_params_init(&params, 7884*1000);
@@ -287,6 +300,17 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
     }
 
     {
+        node node;
+        ethash_calculate_dag_item(&node, 0, &params, &cache);
+        const std::string
+                actual = bytesToHexString((uint8_t const *) &node, sizeof(node)),
+                expected = "ec4849a8b7a015428582536e8c4b4b6dc0a1191d939448e619637bbd9136e22c4ea24c83a428ce3a44a411a85cab44fe4eb4fad68da2b130df25568b5b84b7e3";
+        BOOST_REQUIRE_MESSAGE(actual == expected,
+                "\n" << "expected: " << expected.c_str() << "\n"
+                        << "actual: " << actual.c_str() << "\n");
+    }
+
+    {
         for (int i = 0 ; i < params.full_size / sizeof(node) ; ++i ) {
             for (uint32_t j = 0; j < 32; ++j) {
                 node expected_node;
@@ -302,6 +326,16 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
         }
     }
 
+    {
+        ethash_full(full_out, full_mem, &params, previous_hash, 0x7c7c597c);
+        ethash_light(light_out, &cache, &params, previous_hash, 0x7c7c597c);
+        const std::string
+                light_string = bytesToHexString(light_out, 32),
+                full_string = bytesToHexString(full_out, 32);
+        BOOST_REQUIRE_MESSAGE(light_string == full_string,
+                "\nlight: " << light_string.c_str() << "\n"
+                        << "full: " << full_string.c_str() << "\n");
+    }
     {
         ethash_full(full_out, full_mem, &params, previous_hash, 5);
         ethash_light(light_out, &cache, &params, previous_hash, 5);
