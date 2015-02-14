@@ -42,7 +42,6 @@ func blockNonce(block pow.Block) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-
 	return nonceInt, nil
 }
 
@@ -56,7 +55,7 @@ func New(seedHash []byte, blocknum uint32) *Ethash {
 
 	cache := new(C.ethash_cache)
 	C.ethash_cache_init(cache, mem)
-	C.ethash_mkcache(cache, params, (unsafe.Pointer)(&seed[0]))
+	C.ethash_mkcache(cache, params, (*C.uint8_t)((unsafe.Pointer)(&seedHash[0])))
 
 	log.Println("making full data")
 	start := time.Now()
@@ -72,7 +71,7 @@ func New(seedHash []byte, blocknum uint32) *Ethash {
 		cache:  cache,
 		mem:    mem,
 		hash:   hash,
-	}, nil
+	}
 }
 
 // TODO free everything
@@ -132,7 +131,7 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) []byte {
 }
 
 func (pow *Ethash) Verify(block pow.Block) bool {
-	nonceInt, err := blockNum(block)
+	nonceInt, err := blockNonce(block)
 	if err != nil {
 		log.Println("nonce to int err:", err)
 		return false
