@@ -16,7 +16,7 @@ func TestEthash(t *testing.T) {
 		panic(err)
 	}
 
-	e := New(seedHash)
+	e := New(seedHash, 10000)
 
 	miningHash := make([]byte, 32)
 	if _, err := rand.Read(miningHash); err != nil {

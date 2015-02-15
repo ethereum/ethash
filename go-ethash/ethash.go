@@ -31,7 +31,7 @@ type Ethash struct {
 	HashRate int64
 	params   *C.ethash_params
 	cache    *C.ethash_cache
-	mem      unsafe.Pointer // full GB of memory for dag
+	fullMem  unsafe.Pointer // full GB of memory for dag
 	hash     *C.uint8_t     // return from ethash
 }
 
@@ -50,27 +50,28 @@ func New(seedHash []byte, blocknum uint32) *Ethash {
 	C.ethash_params_init(params, C.uint32_t(blocknum))
 	log.Println("Params", params)
 
-	var mem unsafe.Pointer
-	mem = C.malloc(C.size_t(params.full_size))
+	var cacheMem, fullMem unsafe.Pointer
+	fullMem = C.malloc(C.size_t(params.full_size))
+	cacheMem = C.malloc(C.size_t(params.cache_size))
 
 	cache := new(C.ethash_cache)
-	C.ethash_cache_init(cache, mem)
+	C.ethash_cache_init(cache, cacheMem)
 	C.ethash_mkcache(cache, params, (*C.uint8_t)((unsafe.Pointer)(&seedHash[0])))
 
 	log.Println("making full data")
 	start := time.Now()
-	C.ethash_compute_full_data(mem, params, cache)
+	C.ethash_compute_full_data(fullMem, params, cache)
 	log.Println("took:", time.Since(start))
 
 	var hash *C.uint8_t
 	hash = (*C.uint8_t)(C.malloc(32))
 
 	return &Ethash{
-		turbo:  false,
-		params: params,
-		cache:  cache,
-		mem:    mem,
-		hash:   hash,
+		turbo:   false,
+		params:  params,
+		cache:   cache,
+		fullMem: fullMem,
+		hash:    hash,
 	}
 }
 
@@ -112,7 +113,7 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) []byte {
 			cnonce := C.uint64_t(nonce)
 			log.Println("seed hash, nonce:", miningHash, nonce)
 			// pow.hash is the output/return of ethash_full
-			C.ethash_full(pow.hash, pow.cache.mem, pow.params, cMiningHash, cnonce)
+			C.ethash_full(pow.hash, pow.fullMem, pow.params, cMiningHash, cnonce)
 			ghash := C.GoBytes(unsafe.Pointer(pow.hash), 32)
 			log.Println("ethhash full (on nonce):", ghash, nonce)
 
@@ -166,7 +167,7 @@ func (pow *Ethash) full(nonce uint64, miningHash []byte) []byte {
 	cnonce := C.uint64_t(nonce)
 	log.Println("seed hash, nonce:", miningHash, nonce)
 	// pow.hash is the output/return of ethash_full
-	C.ethash_full(pow.hash, pow.cache.mem, pow.params, cMiningHash, cnonce)
+	C.ethash_full(pow.hash, pow.fullMem, pow.params, cMiningHash, cnonce)
 	ghash_full := C.GoBytes(unsafe.Pointer(pow.hash), 32)
 	return ghash_full
 }
