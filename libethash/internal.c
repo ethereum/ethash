@@ -177,7 +177,13 @@ static void ethash_hash(
     // pack previous_hash and nonce together into first 40 bytes of s_mix
     node s_mix[PAGE_NODES + 1];
     memcpy(s_mix[0].bytes, previous_hash, 32);
+
+#if BYTE_ORDER != LITTLE_ENDIAN
+    s_mix[0].double_words[4] = fix_endian64(nonce);
+#else
     s_mix[0].double_words[4] = nonce;
+#endif
+
     // compute sha3-512 hash and replicate across mix
     SHA3_512(s_mix->bytes, s_mix->bytes, 40);
 
