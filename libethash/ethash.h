@@ -41,8 +41,8 @@ extern "C" {
 
 typedef struct ethash_params
 {
-    size_t full_size;					// Size of full data set (in bytes, multiple of page size (4096)).
-    size_t cache_size;				// Size of compute cache (in bytes, multiple of node size (64)).
+    size_t full_size;               // Size of full data set (in bytes, multiple of page size (4096)).
+    size_t cache_size;              // Size of compute cache (in bytes, multiple of node size (64)).
 } ethash_params;
 
 uint32_t ethash_get_datasize(const uint32_t block_number);
@@ -51,22 +51,21 @@ uint32_t ethash_get_cachesize(const uint32_t block_number);
 // initialize the parameters
 static inline void ethash_params_init(ethash_params* params, const uint32_t block_number)
 {
-	params->full_size = ethash_get_datasize(block_number);
+    params->full_size = ethash_get_datasize(block_number);
     params->cache_size = ethash_get_cachesize(block_number);
 }
 
 typedef struct ethash_cache
 {
-	void* mem;
-	uint32_t rng_table[32];
+    void* mem;
+    uint32_t rng_table[32];
 } ethash_cache;
 
 static inline void ethash_cache_init(ethash_cache* cache, void* mem)
 {
-	memset(cache, 0, sizeof(*cache));
-	cache->mem = mem;
+    memset(cache, 0, sizeof(*cache));
+    cache->mem = mem;
 }
-
 
 void ethash_mkcache(ethash_cache *cache, ethash_params const *params, const uint8_t seed[32]);
 void ethash_compute_full_data(void *mem, ethash_params const *params, ethash_cache const *cache);

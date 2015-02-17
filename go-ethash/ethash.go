@@ -15,6 +15,7 @@ import "C"
 import (
 	"bytes"
 	"encoding/binary"
+	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/ethutil"
 	"github.com/ethereum/go-ethereum/logger"
 	"github.com/ethereum/go-ethereum/pow"
@@ -27,12 +28,13 @@ import (
 var powlogger = logger.NewLogger("POW")
 
 type Ethash struct {
-	turbo    bool
-	HashRate int64
-	params   *C.ethash_params
-	cache    *C.ethash_cache
-	fullMem  unsafe.Pointer // full GB of memory for dag
-	hash     *C.uint8_t     // return from ethash
+	turbo        bool
+	HashRate     int64
+	params       *C.ethash_params
+	cache        *C.ethash_cache
+	chainManager *core.ChainManager
+	dag          unsafe.Pointer // full GB of memory for dag
+	hash         *C.uint8_t     // return from ethash
 }
 
 func blockNonce(block pow.Block) (uint64, error) {
@@ -45,45 +47,73 @@ func blockNonce(block pow.Block) (uint64, error) {
 	return nonceInt, nil
 }
 
+const epochLength uint64 = 1000
+
+func getSeedHash(cm *core.ChainManager) []byte {
+	blockNum := cm.CurrentBlock().NumberU64()
+	var seedBlock uint64 = 0
+	if blockNum >= 2*epochLength {
+		seedBlock = ((blockNum / epochLength) - 1) * epochLength
+	}
+	return cm.GetBlockByNumber(seedBlock).Header().ParentHash
+}
+
+func getNextSeedHash(cm *core.ChainManager) []byte {
+	blockNum := cm.CurrentBlock().NumberU64()
+	seedBlock := (blockNum / epochLength) * epochLength
+	return cm.GetBlockByNumber(seedBlock).Header().ParentHash
+}
+
+func makeCache(seedHash []byte, params *C.ethash_params) *C.ethash_cache {
+	var cacheMem unsafe.Pointer
+	cacheMem = C.malloc(params.cache_size)
+	cache := new(C.ethash_cache)
+	C.ethash_cache_init(cache, cacheMem)
+	C.ethash_mkcache(cache, params, (*C.uint8_t)((unsafe.Pointer)(&seedHash[0])))
+	return cache
+}
+
+func makeDAG(cache *C.ethash_cache, params *C.ethash_params) unsafe.Pointer {
+	var dag unsafe.Pointer
+	dag = C.malloc(params.full_size)
+	C.ethash_compute_full_data(dag, params, cache)
+	return dag
+}
+
 func New(seedHash []byte, blocknum uint32) *Ethash {
 	params := new(C.ethash_params)
 	C.ethash_params_init(params, C.uint32_t(blocknum))
 	log.Println("Params", params)
 
-	var cacheMem, fullMem unsafe.Pointer
-	fullMem = C.malloc(C.size_t(params.full_size))
-	cacheMem = C.malloc(C.size_t(params.cache_size))
+	cache := makeCache(seedHash, params)
 
-	cache := new(C.ethash_cache)
-	C.ethash_cache_init(cache, cacheMem)
-	C.ethash_mkcache(cache, params, (*C.uint8_t)((unsafe.Pointer)(&seedHash[0])))
-
-	log.Println("making full data")
+	log.Println("making dag")
 	start := time.Now()
-	C.ethash_compute_full_data(fullMem, params, cache)
+	dag := makeDAG(cache, params)
 	log.Println("took:", time.Since(start))
 
 	var hash *C.uint8_t
 	hash = (*C.uint8_t)(C.malloc(32))
 
 	return &Ethash{
-		turbo:   false,
-		params:  params,
-		cache:   cache,
-		fullMem: fullMem,
-		hash:    hash,
+		turbo:  false,
+		params: params,
+		cache:  cache,
+		dag:    dag,
+		hash:   hash,
 	}
 }
 
 // TODO free everything
 func (pow *Ethash) Stop() {
+	C.free(pow.cache.mem)
+	C.free(pow.dag)
 }
 
 func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) []byte {
 	//r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	miningHash := block.HashNoNonce()
 	diff := block.Difficulty()
-	//diff = big.NewInt(10000)
 	log.Println("difficulty", diff)
 	i := int64(0)
 	start := time.Now().UnixNano()
@@ -113,7 +143,7 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) []byte {
 			cnonce := C.uint64_t(nonce)
 			log.Println("seed hash, nonce:", miningHash, nonce)
 			// pow.hash is the output/return of ethash_full
-			C.ethash_full(pow.hash, pow.fullMem, pow.params, cMiningHash, cnonce)
+			C.ethash_full(pow.hash, pow.dag, pow.params, cMiningHash, cnonce)
 			ghash := C.GoBytes(unsafe.Pointer(pow.hash), 32)
 			log.Println("ethhash full (on nonce):", ghash, nonce)
 
@@ -127,8 +157,6 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) []byte {
 			time.Sleep(20 * time.Microsecond)
 		}
 	}
-
-	return nil
 }
 
 func (pow *Ethash) Verify(block pow.Block) bool {
@@ -167,7 +195,7 @@ func (pow *Ethash) full(nonce uint64, miningHash []byte) []byte {
 	cnonce := C.uint64_t(nonce)
 	log.Println("seed hash, nonce:", miningHash, nonce)
 	// pow.hash is the output/return of ethash_full
-	C.ethash_full(pow.hash, pow.fullMem, pow.params, cMiningHash, cnonce)
+	C.ethash_full(pow.hash, pow.dag, pow.params, cMiningHash, cnonce)
 	ghash_full := C.GoBytes(unsafe.Pointer(pow.hash), 32)
 	return ghash_full
 }
