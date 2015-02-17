@@ -9,5 +9,6 @@ if (WIN32 AND WANT_CRYPTOPP)
 endif()
 
 add_subdirectory(libethash)
+add_subdirectory(libethash-cl EXCLUDE_FROM_ALL)
 add_subdirectory(benchmark EXCLUDE_FROM_ALL)
 add_subdirectory(test EXCLUDE_FROM_ALL)

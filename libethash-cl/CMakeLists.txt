@@ -1,0 +1,11 @@
+set(LIBRARY ethash-cl)
+set(CMAKE_BUILD_TYPE Release)
+
+if (NOT OpenCL_FOUND)
+	find_package(OpenCL)
+endif()
+if (OpenCL_FOUND)
+	include_directories(${OpenCL_INCLUDE_DIRS})
+	add_library(${LIBRARY} ethash_cl_miner.cpp ethash_cl_miner.h)
+	TARGET_LINK_LIBRARIES(${LIBRARY} ${OpenCL_LIBRARIES} ethash)
+endif()

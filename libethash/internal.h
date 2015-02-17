@@ -14,8 +14,8 @@ extern "C" {
 #endif
 
 // compile time settings
-#define NODE_WORDS 16
-#define PAGE_WORDS (MIX_BYTES / 4)
+#define NODE_WORDS (64/4)
+#define PAGE_WORDS (128/4)
 #define PAGE_NODES (PAGE_WORDS / NODE_WORDS)
 #include <stdint.h>
 

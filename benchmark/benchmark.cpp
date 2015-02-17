@@ -24,6 +24,9 @@
 #include <time.h>
 #include <libethash/ethash.h>
 #include <libethash/util.h>
+#ifdef OPENCL
+#include <libethash-cl/ethash_cl_miner.h>
+#endif
 #include <vector>
 
 #ifdef WITH_CRYPTOPP
@@ -34,7 +37,14 @@
 #include "libethash/sha3.h"
 #endif // WITH_CRYPTOPP
 
-uint8_t g_hash[32];
+#if defined(OPENCL)
+const unsigned trials = 1024*1024;
+#elif defined(FULL)
+const unsigned trials = 1024*1024/8;
+#else
+const unsigned trials = 1024*1024/1024;
+#endif
+uint8_t g_hashes[32*trials];
 
 static char nibbleToChar(unsigned nibble)
 {
@@ -87,20 +97,21 @@ extern "C" int main(void)
 	ethash_params_init(&params, 0);
 	params.full_size = 262147 * 4096;	// 1GBish;
 	//params.full_size = 32771 * 4096;	// 128MBish;
+	//params.full_size = 8209 * 4096;	// 8MBish;
 	params.cache_size = 8209*4096;
 	//params.cache_size = 2053*4096;
 	uint8_t seed[32], previous_hash[32];
 
 	memcpy(seed, hexStringToBytes("9410b944535a83d9adf6bbdcc80e051f30676173c16ca0d32d6f1263fc246466").data(), 32);
 	memcpy(previous_hash, hexStringToBytes("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470").data(), 32);
-
-	const unsigned trials = 1000;
 	
 	// allocate page aligned buffer for dataset
 	void* full_mem_buf = malloc(params.full_size + 4095);
-	void* cache_mem_buf = malloc(params.cache_size + 4095);
+	void* cache_mem_buf = malloc(params.cache_size + 63);
+#ifdef FULL
 	void* full_mem = (void*)((uintptr_t(full_mem_buf) + 4095) & ~4095);
-	void* cache_mem = (void*)((uintptr_t(cache_mem_buf) + 4095) & ~4095);
+#endif
+	void* cache_mem = (void*)((uintptr_t(cache_mem_buf) + 63) & ~63);
 
 	ethash_cache cache;
 	ethash_cache_init(&cache, cache_mem);
@@ -123,21 +134,110 @@ extern "C" int main(void)
 		#endif // FULL
 	}
 
+#ifdef OPENCL
+	ethash_cl_miner miner;
+	{
+		const clock_t startTime = clock();
+		if (!miner.init(params, seed))
+			exit(-1);
+		const clock_t time = clock() - startTime;
+        debugf("ethash_cl_miner init: %ums\n", (unsigned)((time*1000)/CLOCKS_PER_SEC));
+	}
+#endif
+
     // print a couple of test hashes
     {
         const clock_t startTime = clock();
-        ethash_light(g_hash, &cache, &params, previous_hash, 0);
+        ethash_light(g_hashes, &cache, &params, previous_hash, 0);
         const clock_t time = clock() - startTime;
-        debugf("ethash_light test: %ums, %s\n", (unsigned)((time*1000)/CLOCKS_PER_SEC), bytesToHexString(g_hash, 32).data());
+        debugf("ethash_light test: %ums, %s\n", (unsigned)((time*1000)/CLOCKS_PER_SEC), bytesToHexString(g_hashes, 32).data());
     }
 #ifdef FULL
     {
         const clock_t startTime = clock();
-        ethash_full(g_hash, full_mem, &params, previous_hash, 0);
+        ethash_full(g_hashes, full_mem, &params, previous_hash, 0);
         const clock_t time = clock() - startTime;
-        debugf("ethash_full test: %uns, %s\n", (unsigned)((time*1000000)/CLOCKS_PER_SEC), bytesToHexString(g_hash, 32).data());
+        debugf("ethash_full test: %uns, %s\n", (unsigned)((time*1000000)/CLOCKS_PER_SEC), bytesToHexString(g_hashes, 32).data());
     }
 #endif
-    exit(0);
+
+#ifdef OPENCL
+	// validate 1024 hashes against CPU
+	miner.hashes(g_hashes, previous_hash, 0, 1024);
+	for (unsigned i = 0; i != 1024; ++i)
+	{
+		uint8_t g_hash2[32];
+		ethash_light(g_hash2, &cache, &params, previous_hash, i);
+		if (memcmp(g_hash2, g_hashes + 32*i, 32) != 0)
+		{
+			debugf("nonce %u failed: %s %s\n", i, bytesToHexString(g_hashes + 32*i, 32).c_str(), bytesToHexString(g_hash2, 32).c_str());
+			static unsigned c = 0;
+			if (++c == 16)
+			{
+				exit(-1);
+			}
+		}
+	}
+#endif
+
+	// trial different numbers of accesses
+#ifdef OPENCL
+	for (unsigned pass = 0; pass != 2; ++pass)
+#endif
+	for (unsigned read_size = 4096; read_size <= 4096*32; read_size <<= 1)
+	{
+		params.hash_read_size = read_size;
+
+		clock_t startTime = clock();
+
+		clock_t time = 0;
+		#ifdef OPENCL
+		{
+			if (pass == 1)
+			{
+				time = miner.hashes(g_hashes, previous_hash, 0, trials, read_size, true);
+			}
+			else
+			{
+				miner.hashes(g_hashes, previous_hash, 0, trials, read_size, false);
+			}
+		}
+		#else
+		{
+			//#pragma omp parallel for
+			for (int nonce = 0; nonce < trials; ++nonce)
+			{
+				#ifdef FULL
+					ethash_full(g_hashes + 32*nonce, full_mem, &params, previous_hash, nonce);
+				#else
+					ethash_light(g_hashes + 32*nonce, &cache, &params, previous_hash, nonce);
+				#endif // FULL
+			}
+		}
+		#endif
+		if (!time)
+		{
+			time = clock() - startTime;
+		}
+		
+		debugf(			
+			"%sread_size %5ukb, hashrate: %8u, bw: %6u MB/s\n",
+#ifdef OPENCL
+			pass ? "inner " : "outer ",
+#else
+			"",
+#endif
+			read_size / 1024,
+			(unsigned)(((uint64_t)trials*CLOCKS_PER_SEC)/time),
+			(unsigned)((((uint64_t)trials*read_size*CLOCKS_PER_SEC)/time) / (1024*1024))
+			);
+	}
+
+	free(cache_mem_buf);
+#ifdef FULL
+	free(full_mem_buf);
+#endif
+
+	return 0;
 }
 

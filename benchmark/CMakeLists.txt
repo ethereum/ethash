@@ -18,6 +18,14 @@ if (CRYPTOPP_FOUND)
 	add_definitions(-DWITH_CRYPTOPP)
 endif()
 
+if (NOT OpenCL_FOUND)
+	find_package(OpenCL)
+endif()
+if (OpenCL_FOUND)
+	add_definitions(-DWITH_OPENCL)
+	include_directories(${OpenCL_INCLUDE_DIRS})
+	list(APPEND FILES ethash_cl_miner.cpp ethash_cl_miner.h)
+endif()
 
 if (MPI_FOUND)
     include_directories(${MPI_INCLUDE_PATH})
@@ -36,3 +44,10 @@ SET_TARGET_PROPERTIES(Benchmark_FULL PROPERTIES COMPILE_FLAGS "${COMPILE_FLAGS} 
 
 add_executable (Benchmark_LIGHT benchmark.cpp)
 target_link_libraries (Benchmark_LIGHT ${ETHHASH_LIBS})
+
+if (OpenCL_FOUND)
+	add_executable (Benchmark_CL benchmark.cpp)
+	target_link_libraries (Benchmark_CL ${ETHHASH_LIBS} ethash-cl)
+	SET_TARGET_PROPERTIES(Benchmark_CL PROPERTIES COMPILE_FLAGS "${COMPILE_FLAGS} -DOPENCL")
+endif()
+

@@ -25,7 +25,7 @@
 #pragma once
 
 #include <stdint.h>
-#include <Security/Security.h>
+//#include <Security/Security.h>
 #include "compiler.h"
 
 #ifdef __cplusplus
@@ -4064,7 +4064,7 @@ static const uint32_t dag_sizes[] = {
 //             Sow[Prime[i-1]*HashBytes];
 //             j++]]]][[2]][[1]]
 
-const uint32 cache_sizes[] = {
+const uint32_t cache_sizes[] = {
         33554368U, 33558464U, 33562432U, 33564992U, 33569344U, 33574336U, 33578816U,
         33582784U, 33586496U, 33591232U, 33594944U, 33598912U, 33602752U, 33606464U,
         33610688U, 33615808U, 33619136U, 33623872U, 33628096U, 33631552U, 33634624U,
