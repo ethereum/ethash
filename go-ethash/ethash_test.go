@@ -29,6 +29,9 @@ func loadChain(fn string, t *testing.T) (types.Blocks, error) {
 		return nil, err
 	}
 
+	blocks := ([]*types.Block)(chain)
+	chain = types.Blocks(blocks[1:])
+
 	return chain, nil
 }
 
@@ -53,6 +56,9 @@ func TestEthash(t *testing.T) {
 
 	var eventMux event.TypeMux
 	chainMan := core.NewChainManager(db, &eventMux)
+	txPool := core.NewTxPool(&eventMux)
+	blockMan := core.NewBlockProcessor(db, txPool, chainMan, &eventMux)
+	chainMan.SetProcessor(blockMan)
 	chain1, err := loadChain("valid1", t)
 	if err != nil {
 		panic(err)
