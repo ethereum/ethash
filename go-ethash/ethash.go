@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/pow"
 	"log"
 	"math/big"
+	"math/rand"
 	"time"
 	"unsafe"
 )
@@ -28,13 +29,18 @@ import (
 var powlogger = logger.NewLogger("POW")
 
 type Ethash struct {
-	turbo        bool
-	HashRate     int64
-	params       *C.ethash_params
-	cache        *C.ethash_cache
-	chainManager *core.ChainManager
-	dag          unsafe.Pointer // full GB of memory for dag
-	hash         *C.uint8_t     // return from ethash
+	turbo             bool
+	HashRate          int64
+	params            *C.ethash_params
+	cache             *C.ethash_cache
+	chainManager      *core.ChainManager
+	SeedBlockNum      uint64
+	SeedBlockHash     []byte
+	NextSeedBlockNum  uint64
+	NextSeedBlockHash []byte
+	dag               unsafe.Pointer // full GB of memory for dag
+	nextdag           unsafe.Pointer
+	hash              *C.uint8_t // return from ethash
 }
 
 func blockNonce(block pow.Block) (uint64, error) {
@@ -49,19 +55,16 @@ func blockNonce(block pow.Block) (uint64, error) {
 
 const epochLength uint64 = 1000
 
-func getSeedHash(cm *core.ChainManager) []byte {
-	blockNum := cm.CurrentBlock().NumberU64()
-	var seedBlock uint64 = 0
+func getSeedBlockNum(blockNum uint64) uint64 {
+	var seedBlockNum uint64 = 0
 	if blockNum >= 2*epochLength {
-		seedBlock = ((blockNum / epochLength) - 1) * epochLength
+		seedBlockNum = ((blockNum / epochLength) - 1) * epochLength
 	}
-	return cm.GetBlockByNumber(seedBlock).Header().ParentHash
+	return seedBlockNum
 }
 
-func getNextSeedHash(cm *core.ChainManager) []byte {
-	blockNum := cm.CurrentBlock().NumberU64()
-	seedBlock := (blockNum / epochLength) * epochLength
-	return cm.GetBlockByNumber(seedBlock).Header().ParentHash
+func getSeedHash(cm *core.ChainManager, blockNum uint64) []byte {
+	return cm.GetBlockByNumber(getSeedBlockNum(blockNum)).Header().Hash()
 }
 
 func makeCache(seedHash []byte, params *C.ethash_params) *C.ethash_cache {
@@ -73,6 +76,9 @@ func makeCache(seedHash []byte, params *C.ethash_params) *C.ethash_cache {
 	return cache
 }
 
+func (ethash Ethash) makeFrontDAG() {
+}
+
 func makeDAG(cache *C.ethash_cache, params *C.ethash_params) unsafe.Pointer {
 	var dag unsafe.Pointer
 	dag = C.malloc(params.full_size)
@@ -80,38 +86,38 @@ func makeDAG(cache *C.ethash_cache, params *C.ethash_params) unsafe.Pointer {
 	return dag
 }
 
-func New(seedHash []byte, blocknum uint32) *Ethash {
+func New(cm *core.ChainManager) *Ethash {
 	params := new(C.ethash_params)
-	C.ethash_params_init(params, C.uint32_t(blocknum))
+	seedBlockNum := getSeedBlockNum(cm.CurrentBlock().NumberU64())
+	seedHash := getSeedHash(cm, seedBlockNum)
+	C.ethash_params_init(params, C.uint32_t(seedBlockNum))
 	log.Println("Params", params)
 
 	cache := makeCache(seedHash, params)
 
-	log.Println("making dag")
+	log.Println("Making Dag")
 	start := time.Now()
 	dag := makeDAG(cache, params)
-	log.Println("took:", time.Since(start))
-
-	var hash *C.uint8_t
-	hash = (*C.uint8_t)(C.malloc(32))
+	log.Println("Took:", time.Since(start))
 
 	return &Ethash{
-		turbo:  false,
-		params: params,
-		cache:  cache,
-		dag:    dag,
-		hash:   hash,
+		turbo:        false,
+		params:       params,
+		cache:        cache,
+		dag:          dag,
+		hash:         (*C.uint8_t)(C.malloc(32)),
+		SeedBlockNum: seedBlockNum,
 	}
 }
 
-// TODO free everything
 func (pow *Ethash) Stop() {
 	C.free(pow.cache.mem)
+	C.free(unsafe.Pointer(pow.hash))
 	C.free(pow.dag)
 }
 
 func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) []byte {
-	//r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	miningHash := block.HashNoNonce()
 	diff := block.Difficulty()
 	log.Println("difficulty", diff)
@@ -119,7 +125,7 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) []byte {
 	start := time.Now().UnixNano()
 	t := time.Now()
 
-	nonce := uint64(0) //uint64(r.Int63())
+	nonce := uint64(r.Int63())
 
 	for {
 		select {
