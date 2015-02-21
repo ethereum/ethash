@@ -3,7 +3,6 @@ package ethash
 import (
 	"bytes"
 	"crypto/rand"
-	"fmt"
 	"log"
 	"math/big"
 	"os"
@@ -18,7 +17,7 @@ import (
 )
 
 func loadChain(fn string, t *testing.T) (types.Blocks, error) {
-	fh, err := os.OpenFile(path.Join(os.Getenv("GOPATH"), "src", "github.com", "ethereum", "go-ethereum", "_data", fn), os.O_RDONLY, os.ModePerm)
+	fh, err := os.OpenFile(path.Join(os.Getenv("GOPATH"), "src", "github.com", "ethereum", "c-ethash", "go-ethash", "_testdat", fn), os.O_RDONLY, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}
@@ -59,14 +58,14 @@ func TestEthash(t *testing.T) {
 	txPool := core.NewTxPool(&eventMux)
 	blockMan := core.NewBlockProcessor(db, txPool, chainMan, &eventMux)
 	chainMan.SetProcessor(blockMan)
-	chain1, err := loadChain("valid1", t)
+	chain1, err := loadChain("chain1", t)
 	if err != nil {
 		panic(err)
 	}
 	insertChain(chainMan, chain1, t)
 	log.Println(chainMan)
 
-	e := New(seedHash, 10000)
+	e := New(chainMan)
 
 	miningHash := make([]byte, 32)
 	if _, err := rand.Read(miningHash); err != nil {
@@ -78,12 +77,12 @@ func TestEthash(t *testing.T) {
 	nonce := uint64(0)
 
 	ghash_full := e.full(nonce, miningHash)
-	log.Println("ethhash full (on nonce):", ghash_full, nonce)
+	log.Printf("ethhash full (on nonce): %x %x\n", ghash_full, nonce)
 
 	ghash_light := e.light(nonce, miningHash)
-	log.Println("ethash light (on nonce)", ghash_light, nonce)
+	log.Printf("ethash light (on nonce): %x %x\n", ghash_light, nonce)
 
 	if bytes.Compare(ghash_full, ghash_light) != 0 {
-		t.Fatal(fmt.Sprintf("full: %x, light: %x", ghash_full, ghash_light))
+		t.Errorf("full: %x, light: %x", ghash_full, ghash_light)
 	}
 }
