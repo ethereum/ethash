@@ -15,15 +15,16 @@ import "C"
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/ethutil"
-	"github.com/ethereum/go-ethereum/logger"
-	"github.com/ethereum/go-ethereum/pow"
 	"log"
 	"math/big"
 	"math/rand"
 	"time"
 	"unsafe"
+
+	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/ethutil"
+	"github.com/ethereum/go-ethereum/logger"
+	"github.com/ethereum/go-ethereum/pow"
 )
 
 var powlogger = logger.NewLogger("POW")
@@ -147,11 +148,11 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) []byte {
 
 			cMiningHash := (*C.uint8_t)(unsafe.Pointer(&miningHash))
 			cnonce := C.uint64_t(nonce)
-			log.Println("seed hash, nonce:", miningHash, nonce)
+			log.Printf("seed hash, nonce: %x %x\n", miningHash, nonce)
 			// pow.hash is the output/return of ethash_full
 			C.ethash_full(pow.hash, pow.dag, pow.params, cMiningHash, cnonce)
 			ghash := C.GoBytes(unsafe.Pointer(pow.hash), 32)
-			log.Println("ethhash full (on nonce):", ghash, nonce)
+			log.Printf("ethhash full (on nonce): %x %x\n", ghash, nonce)
 
 			if pow.verify(miningHash, diff, nonce) {
 				return ghash
