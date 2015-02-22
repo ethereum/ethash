@@ -41,9 +41,9 @@ extern "C" {
 
 typedef struct ethash_params
 {
-    size_t full_size;					// Size of full data set (in bytes, multiple of page size (4096)).
-    size_t cache_size;				// Size of compute cache (in bytes, multiple of node size (64)).
-	size_t hash_read_size;
+    uint64_t full_size;				// Size of full data set (in bytes, multiple of mix size (128)).
+    uint64_t cache_size;				// Size of compute cache (in bytes, multiple of node size (64)).
+	uint32_t hash_read_size;
 } ethash_params;
 
 uint32_t ethash_get_datasize(const uint32_t block_number);

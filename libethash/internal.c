@@ -203,7 +203,7 @@ static void ethash_hash(
 
     unsigned const
             page_size = sizeof(uint32_t) * PAGE_WORDS,
-            num_full_pages = params->full_size / page_size;
+            num_full_pages = (unsigned)(params->full_size / page_size);
 
     unsigned const accesses = params->hash_read_size / (PAGE_WORDS * 4);
     for (unsigned i = 0; i != accesses; ++i) {

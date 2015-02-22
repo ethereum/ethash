@@ -316,7 +316,7 @@ bool ethash_cl_miner::init(ethash_params const& params, const uint8_t seed[32])
 	replace(code, "$INIT_SIZE", INIT_SIZE);
 	replace(code, "$MIX_SIZE", MIX_SIZE);
 	replace(code, "$HASH_SIZE", 32);
-	replace(code, "$DAG_SIZE", params.full_size);
+	replace(code, "$DAG_SIZE", (unsigned)params.full_size);
 	//debugf("%s", code.c_str());
 
 	// create miner OpenCL program
@@ -348,6 +348,7 @@ bool ethash_cl_miner::init(ethash_params const& params, const uint8_t seed[32])
 		ethash_cache_init(&cache, (void*)(((uintptr_t)cache_mem + 63) & ~63));
 		ethash_mkcache(&cache, &params, seed);
 
+		// if this throws then it's because we probably need to subdivide the dag uploads for compatibility
 		void* dag_ptr = m_queue.enqueueMapBuffer(m_dag, true, CL_MAP_WRITE_INVALIDATE_REGION, 0, params.full_size);
 		ethash_compute_full_data(dag_ptr, &params, &cache);
 		m_queue.enqueueUnmapMemObject(m_dag, dag_ptr);
