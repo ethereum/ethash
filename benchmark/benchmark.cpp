@@ -95,10 +95,10 @@ extern "C" int main(void)
 	// params for ethash
 	ethash_params params;
 	ethash_params_init(&params, 0);
-	params.full_size = 262147 * 4096;	// 1GBish;
+	//params.full_size = 262147 * 4096;	// 1GBish;
 	//params.full_size = 32771 * 4096;	// 128MBish;
 	//params.full_size = 8209 * 4096;	// 8MBish;
-	params.cache_size = 8209*4096;
+	//params.cache_size = 8209*4096;
 	//params.cache_size = 2053*4096;
 	uint8_t seed[32], previous_hash[32];
 
@@ -106,11 +106,11 @@ extern "C" int main(void)
 	memcpy(previous_hash, hexStringToBytes("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470").data(), 32);
 	
 	// allocate page aligned buffer for dataset
-	void* full_mem_buf = malloc(params.full_size + 4095);
-	void* cache_mem_buf = malloc(params.cache_size + 63);
 #ifdef FULL
+	void* full_mem_buf = malloc(params.full_size + 4095);
 	void* full_mem = (void*)((uintptr_t(full_mem_buf) + 4095) & ~4095);
 #endif
+	void* cache_mem_buf = malloc(params.cache_size + 63);
 	void* cache_mem = (void*)((uintptr_t(cache_mem_buf) + 63) & ~63);
 
 	ethash_cache cache;
