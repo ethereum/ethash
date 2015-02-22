@@ -24,15 +24,13 @@
 #include <string.h>
 #include "compiler.h"
 
-#define REVISION 11
+#define REVISION 14
 #define DAGSIZE_BYTES_INIT 1073741824U
 #define DAGSIZE_BYTES_GROWTH 131072U
 #define EPOCH_LENGTH 1000U
-#define MIX_BYTES 4096
-#define HASH_BYTES 64
-#define DAG_PARENTS 64
-#define CACHE_ROUNDS 2
-#define ACCESSES 32
+#define MIX_BYTES 128
+#define DAG_PARENTS 256
+#define CACHE_ROUNDS 3
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,9 +50,9 @@ uint32_t ethash_get_cachesize(const uint32_t block_number);
 // initialize the parameters
 static inline void ethash_params_init(ethash_params* params, const uint32_t block_number)
 {
-	params->full_size = ethash_get_datasize(block_number);
-    params->cache_size = ethash_get_cachesize(block_number);
-	params->hash_read_size = 8*1024;
+	params->full_size = DAGSIZE_BYTES_INIT;	// todo: ethash_get_datasize(block_number);
+    params->cache_size = 33554432;			// todo: ethash_get_cachesize(block_number);
+	params->hash_read_size = 16*1024;
 }
 
 typedef struct ethash_cache
