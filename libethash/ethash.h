@@ -24,7 +24,7 @@
 #include <string.h>
 #include "compiler.h"
 
-#define REVISION 14
+#define REVISION 15
 #define DAGSIZE_BYTES_INIT 1073741824U
 #define EPOCH_LENGTH 30000U
 #define MIX_BYTES 4096
