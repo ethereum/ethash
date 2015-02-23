@@ -54,18 +54,17 @@ void static ethash_compute_cache_nodes(
         ethash_params const *params,
         const uint8_t seed[32]) {
     assert((params->cache_size % sizeof(node)) == 0);
-    uint64_t const num_nodes = params->cache_size / sizeof(node);
+    uint32_t const num_nodes = (uint32_t)(params->cache_size / sizeof(node));
 
     SHA3_512(nodes[0].bytes, seed, 32);
 
     for (unsigned i = 1; i != num_nodes; ++i) {
         SHA3_512(nodes[i].bytes, nodes[i - 1].bytes, 64);
-
     }
 
     for (unsigned j = 0; j != CACHE_ROUNDS; j++) {
         for (unsigned i = 0; i != num_nodes; i++) {
-            uint32_t const idx = (uint32_t) (fix_endian64(nodes[i].double_words[0]) % num_nodes);
+            uint32_t const idx = nodes[i].words[0] % num_nodes;
             node data;
             data = nodes[(num_nodes - 1 + i) % num_nodes];
 			for (unsigned w = 0; w != NODE_WORDS; ++w)
@@ -100,33 +99,28 @@ void ethash_calculate_dag_item(
         const struct ethash_params *params,
         const struct ethash_cache *cache) {
 
-    size_t num_parent_nodes = params->cache_size / sizeof(node);
+    uint32_t num_parent_nodes = (uint32_t)(params->cache_size / sizeof(node));
     node const *cache_nodes = (node const *) cache->mem;
     node const *init = &cache_nodes[node_index % num_parent_nodes];
 
+	memcpy(ret, init, sizeof(node));
+	ret->words[0] ^= node_index;
+	SHA3_512(ret->bytes, ret->bytes, sizeof(node));
+
 #if defined(_M_X64) && ENABLE_SSE
     __m128i const fnv_prime = _mm_set1_epi32(FNV_PRIME);
-    __m128i xmm0 = init->xmm[0];
-    __m128i xmm1 = init->xmm[1];
-    __m128i xmm2 = init->xmm[2];
-    __m128i xmm3 = init->xmm[3];
-    ret->xmm[0] = xmm0;
-    ret->xmm[1] = xmm1;
-    ret->xmm[2] = xmm2;
-    ret->xmm[3] = xmm3;
-#else
-    memcpy(ret, init, sizeof(node));
+    __m128i xmm0 = ret->xmm[0];
+    __m128i xmm1 = ret->xmm[1];
+    __m128i xmm2 = ret->xmm[2];
+    __m128i xmm3 = ret->xmm[3];
 #endif
 
-    uint32_t rand2 = make_seed2(quick_bbs(cache->rng_table, node_index));
-    for (unsigned i = 0; i != DAG_PARENTS; ++i) {
-
-        const size_t parent_index = (rand2 ^ ret->words[i % NODE_WORDS]) % num_parent_nodes;
-        rand2 = cube_mod_safe_prime2(rand2);
-
+    for (unsigned i = 0; i != DAG_PARENTS; ++i)
+	{
+        uint32_t parent_index = ((node_index ^ i)*FNV_PRIME ^ ret->words[i % NODE_WORDS]) % num_parent_nodes;
         node const *parent = &cache_nodes[parent_index];
 
-#if defined(_M_X64) && ENABLE_SSE
+		#if defined(_M_X64) && ENABLE_SSE
         {
             xmm0 = _mm_mullo_epi32(xmm0, fnv_prime);
             xmm1 = _mm_mullo_epi32(xmm1, fnv_prime);
@@ -149,15 +143,17 @@ void ethash_calculate_dag_item(
                 ret->words[w] = fnv_hash(ret->words[w], parent->words[w]);
             }
         }
-#endif
+		#endif
     }
+
+	SHA3_512(ret->bytes, ret->bytes, sizeof(node));
 }
 
 void ethash_compute_full_data(
         void *mem,
         ethash_params const *params,
         ethash_cache const *cache) {
-    assert((params->full_size % (sizeof(uint32_t) * PAGE_WORDS)) == 0);
+    assert((params->full_size % (sizeof(uint32_t) * MIX_WORDS)) == 0);
     assert((params->full_size % sizeof(node)) == 0);
     node *full_nodes = mem;
 
@@ -175,17 +171,12 @@ static void ethash_hash(
         const uint8_t previous_hash[32],
         const uint64_t nonce) {
 
-    assert((params->full_size % PAGE_WORDS) == 0);
+    assert((params->full_size % MIX_WORDS) == 0);
 
     // pack previous_hash and nonce together into first 40 bytes of s_mix
-    node s_mix[PAGE_NODES + 1];
+    node s_mix[MIX_NODES + 1];
     memcpy(s_mix[0].bytes, previous_hash, 32);
-
-#if BYTE_ORDER != LITTLE_ENDIAN
     s_mix[0].double_words[4] = fix_endian64(nonce);
-#else
-    s_mix[0].double_words[4] = nonce;
-#endif
 
     // compute sha3-512 hash and replicate across mix
     SHA3_512(s_mix->bytes, s_mix->bytes, 40);
@@ -197,29 +188,30 @@ static void ethash_hash(
 #endif
 
     node* const mix = s_mix + 1;
-    for (unsigned w = 0; w != PAGE_WORDS; ++w) {
+    for (unsigned w = 0; w != MIX_WORDS; ++w) {
         mix->words[w] = s_mix[0].words[w % NODE_WORDS];
     }
 
     unsigned const
-            page_size = sizeof(uint32_t) * PAGE_WORDS,
-            num_full_pages = params->full_size / page_size;
+            page_size = sizeof(uint32_t) * MIX_WORDS,
+            num_full_pages = (unsigned)(params->full_size / page_size);
 
-    unsigned const accesses = params->hash_read_size / (PAGE_WORDS * 4);
-    for (unsigned i = 0; i != accesses; ++i) {
-        uint32_t const index = (mix->words[i % PAGE_WORDS]) % num_full_pages;
+    unsigned const accesses = params->hash_read_size / (MIX_WORDS * 4);
+    for (unsigned i = 0; i != accesses; ++i)
+	{
+        uint32_t const index = ((s_mix->words[0] ^ i)*FNV_PRIME ^ mix->words[i % MIX_WORDS]) % num_full_pages;
 
-        for (unsigned n = 0; n != PAGE_NODES; ++n) {
-
-            const node * dag_node = &full_nodes[PAGE_NODES * index + n];
+        for (unsigned n = 0; n != 1; ++n)
+		{
+            const node * dag_node = &full_nodes[MIX_NODES * index + n];
 
             if (!full_nodes) {
                 node tmp_node;
-                ethash_calculate_dag_item(&tmp_node, index * PAGE_NODES + n, params, cache);
+                ethash_calculate_dag_item(&tmp_node, index * MIX_NODES + n, params, cache);
                 dag_node = &tmp_node;
             }
 
-#if defined(_M_X64) && ENABLE_SSE
+			#if defined(_M_X64) && ENABLE_SSE
             {
                 __m128i fnv_prime = _mm_set1_epi32(FNV_PRIME);
                 __m128i xmm0 = _mm_mullo_epi32(fnv_prime, mix[n].xmm[0]);
@@ -241,15 +233,25 @@ static void ethash_hash(
         }
 
     }
+
+	// compress mix
+	for (unsigned w = 0; w != MIX_WORDS; w += 4)
+	{
+		uint32_t reduction = mix->words[w+0];
+		reduction = reduction*FNV_PRIME ^ mix->words[w+1];
+		reduction = reduction*FNV_PRIME ^ mix->words[w+2];
+		reduction = reduction*FNV_PRIME ^ mix->words[w+3];
+		mix->words[w/4] = reduction;
+	}
+
 #if BYTE_ORDER != LITTLE_ENDIAN
-    for (unsigned w = 0; w != PAGE_WORDS; ++w) {
+    for (unsigned w = 0; w != MIX_WORDS/4; ++w) {
         mix->words[w] = fix_endian32(mix->words[w]);
     }
 #endif
 
-    // final Keccak hashes
-    SHA3_256(s_mix[1].bytes, s_mix[1].bytes, PAGE_WORDS*4);  // Keccak-256(mix)
-    SHA3_256(ret, s_mix->bytes, 64+32);                      // Keccak-256(s + Keccak-256(s + mix))
+    // final Keccak hash
+    SHA3_256(ret, s_mix->bytes, 64+32);	// Keccak-256(s + compressed_mix)
 }
 
 void ethash_full(uint8_t ret[32], void const *full_mem, ethash_params const *params, const uint8_t previous_hash[32], const uint64_t nonce) {

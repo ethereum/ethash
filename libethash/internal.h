@@ -15,8 +15,8 @@ extern "C" {
 
 // compile time settings
 #define NODE_WORDS (64/4)
-#define PAGE_WORDS (128/4)
-#define PAGE_NODES (PAGE_WORDS / NODE_WORDS)
+#define MIX_WORDS (MIX_BYTES/4)
+#define MIX_NODES (MIX_WORDS / NODE_WORDS)
 #include <stdint.h>
 
 typedef union node {

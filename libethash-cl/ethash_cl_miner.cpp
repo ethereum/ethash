@@ -2,6 +2,7 @@
 #include <queue>
 #include "ethash_cl_miner.h"
 #include "../libethash/util.h"
+#include "../libethash/ethash.h"
 
 
 #undef min
@@ -9,7 +10,6 @@
 
 #define HASH_SIZE 32
 #define INIT_SIZE 64
-#define MIX_SIZE 128
 #define GROUP_SIZE 64
 
 static char const ethash_inner_code[] = R"(
@@ -217,23 +217,30 @@ __kernel  void ethash(
 		mix.u64[i+INIT_SIZE/8] = mix.u64[i % (INIT_SIZE/8)];
 	}
 
-	uint npi = mix.u32[0];
+	uint mix_val = mix.u32[0];
+	uint init0 = mix.u32[0];
 	for (uint a = 0; a != accesses; ++a)
 	{
-		uint pi = npi % (DAG_SIZE / MIX_SIZE);
+		uint pi = ((init0 ^ a)*FNV_PRIME ^ mix_val) % (DAG_SIZE / MIX_SIZE);
 		uint n = (a+1) % (MIX_SIZE / 4);
 
 		#pragma unroll
 		for (uint i = 0; i != (MIX_SIZE / 4); ++i)
 		{
 			mix.u32[i] = mix.u32[i]*FNV_PRIME ^ g_dag[pi*(MIX_SIZE/4) + i];
-			npi = i == n ? mix.u32[i] : npi;
+			mix_val = i == n ? mix.u32[i] : mix_val;
 		}
 	}
 
-	// keccak_256(mix)
-	keccak_f1600_terminate(mix.u64, MIX_SIZE/8, HASH_SIZE/8);
-	keccak_f1600(mix.u64, keccak_rounds);
+	// reduce mix
+	for (uint i = 0; i != MIX_SIZE/4; i += 4)
+	{
+		uint reduction = mix.u32[i+0];
+		reduction = reduction*FNV_PRIME ^ mix.u32[i+1];
+		reduction = reduction*FNV_PRIME ^ mix.u32[i+2];
+		reduction = reduction*FNV_PRIME ^ mix.u32[i+3];
+		mix.u32[i/4] = reduction;
+	}
 
 	// keccak_256(keccak_512(header..nonce)..keccak_256(mix));
 	for (uint i = 0; i != HASH_SIZE/8; ++i)
@@ -314,9 +321,9 @@ bool ethash_cl_miner::init(ethash_params const& params, const uint8_t seed[32])
 	std::string code = ethash_inner_code;
 	replace(code, "$GROUP_SIZE", GROUP_SIZE);
 	replace(code, "$INIT_SIZE", INIT_SIZE);
-	replace(code, "$MIX_SIZE", MIX_SIZE);
+	replace(code, "$MIX_SIZE", MIX_BYTES);
 	replace(code, "$HASH_SIZE", 32);
-	replace(code, "$DAG_SIZE", params.full_size);
+	replace(code, "$DAG_SIZE", (unsigned)params.full_size);
 	//debugf("%s", code.c_str());
 
 	// create miner OpenCL program
@@ -348,6 +355,7 @@ bool ethash_cl_miner::init(ethash_params const& params, const uint8_t seed[32])
 		ethash_cache_init(&cache, (void*)(((uintptr_t)cache_mem + 63) & ~63));
 		ethash_mkcache(&cache, &params, seed);
 
+		// if this throws then it's because we probably need to subdivide the dag uploads for compatibility
 		void* dag_ptr = m_queue.enqueueMapBuffer(m_dag, true, CL_MAP_WRITE_INVALIDATE_REGION, 0, params.full_size);
 		ethash_compute_full_data(dag_ptr, &params, &cache);
 		m_queue.enqueueUnmapMemObject(m_dag, dag_ptr);
@@ -391,7 +399,7 @@ clock_t ethash_cl_miner::hashes(uint8_t* ret, uint8_t const* header, uint64_t no
 	m_kernel.setArg(1, m_header);
 	m_kernel.setArg(2, m_dag);
 	m_kernel.setArg(3, nonce);
-	m_kernel.setArg(4, (hash_read_size ? hash_read_size : m_params.hash_read_size) / MIX_SIZE);
+	m_kernel.setArg(4, (hash_read_size ? hash_read_size : m_params.hash_read_size) / MIX_BYTES);
 	m_kernel.setArg(5, 24); // have to pass this to stop the compile unrolling the loop
 
 	unsigned buf = 0;

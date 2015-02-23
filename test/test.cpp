@@ -210,9 +210,6 @@ BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_check) {
     BOOST_REQUIRE_MESSAGE(params.cache_size < DAGSIZE_BYTES_INIT / 32,
             "\ncache size: " << params.cache_size << "\n"
                     << "should be less than or equal to: " << DAGSIZE_BYTES_INIT / 32 << "\n");
-    BOOST_REQUIRE_MESSAGE(params.cache_size + HASH_BYTES >= DAGSIZE_BYTES_INIT / 32 ,
-            "\ncache size + HASH_BYTES: " << params.cache_size + HASH_BYTES << "\n"
-                    << "should be greater than or equal to: " << DAGSIZE_BYTES_INIT / 32 << "\n");
 }
 
 BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_calcifide_check) {
