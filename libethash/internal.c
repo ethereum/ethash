@@ -37,12 +37,12 @@
 #endif // WITH_CRYPTOPP
 
 uint32_t ethash_get_datasize(const uint32_t block_number) {
-    assert(block_number / EPOCH_LENGTH < 20000);
+    assert(block_number / EPOCH_LENGTH < 260);
     return dag_sizes[block_number / EPOCH_LENGTH];
 }
 
 uint32_t ethash_get_cachesize(const uint32_t block_number) {
-    assert(block_number / EPOCH_LENGTH < 20000);
+    assert(block_number / EPOCH_LENGTH < 260);
     return cache_sizes[block_number / EPOCH_LENGTH];
 }
 

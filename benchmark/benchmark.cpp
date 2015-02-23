@@ -126,6 +126,14 @@ extern "C" int main(void)
 		SHA3_256(cache_hash, (uint8_t const*)cache_mem, params.cache_size);
 		debugf("ethash_mkcache: %ums, sha3: %s\n", (unsigned)((time*1000)/CLOCKS_PER_SEC), bytesToHexString(cache_hash,sizeof(cache_hash)).data());
 
+		// print a couple of test hashes
+		{
+			const clock_t startTime = clock();
+			ethash_light(g_hashes, &cache, &params, previous_hash, 0);
+			const clock_t time = clock() - startTime;
+			debugf("ethash_light test: %ums, %s\n", (unsigned)((time*1000)/CLOCKS_PER_SEC), bytesToHexString(g_hashes, 32).data());
+		}
+
 		#ifdef FULL
 			startTime = clock();
 			ethash_compute_full_data(full_mem, &params, &cache);
@@ -145,13 +153,7 @@ extern "C" int main(void)
 	}
 #endif
 
-    // print a couple of test hashes
-    {
-        const clock_t startTime = clock();
-        ethash_light(g_hashes, &cache, &params, previous_hash, 0);
-        const clock_t time = clock() - startTime;
-        debugf("ethash_light test: %ums, %s\n", (unsigned)((time*1000)/CLOCKS_PER_SEC), bytesToHexString(g_hashes, 32).data());
-    }
+
 #ifdef FULL
     {
         const clock_t startTime = clock();

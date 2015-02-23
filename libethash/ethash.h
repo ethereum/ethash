@@ -26,13 +26,11 @@
 
 #define REVISION 11
 #define DAGSIZE_BYTES_INIT 1073741824U
-#define DAGSIZE_BYTES_GROWTH 131072U
-#define EPOCH_LENGTH 1000U
+#define EPOCH_LENGTH 30000U
 #define MIX_BYTES 4096
 #define HASH_BYTES 64
-#define DAG_PARENTS 64
+#define DAG_PARENTS 8192
 #define CACHE_ROUNDS 2
-#define ACCESSES 32
 
 #ifdef __cplusplus
 extern "C" {
