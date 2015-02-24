@@ -40,7 +40,8 @@ type Ethash struct {
 	dag          unsafe.Pointer // full GB of memory for dag
 	nextdag      unsafe.Pointer
 	hash         *C.uint8_t // return from ethash
-	mutex        *sync.Mutex
+	dagMutex     *sync.Mutex
+	cacheMutex   *sync.Mutex
 }
 
 func blockNonce(block pow.Block) (uint64, error) {
@@ -53,7 +54,7 @@ func blockNonce(block pow.Block) (uint64, error) {
 	return nonceInt, nil
 }
 
-const epochLength uint64 = 1000
+const epochLength uint64 = 30000
 
 func getSeedBlockNum(blockNum uint64) uint64 {
 	var seedBlockNum uint64 = 0
@@ -63,17 +64,27 @@ func getSeedBlockNum(blockNum uint64) uint64 {
 	return seedBlockNum
 }
 
-func getSeedHash(cm *core.ChainManager, blockNum uint64) []byte {
-	return cm.GetBlockByNumber(getSeedBlockNum(blockNum)).Header().Hash()
-}
-
-func makeCache(seedHash []byte, params *C.ethash_params) *C.ethash_cache {
+func makeParamsAndCache(cm *core.ChainManager, blockNum uint64) (*C.ethash_params, *C.ethash_cache) {
 	var cacheMem unsafe.Pointer
+	params := new(C.ethash_params)
+	C.ethash_params_init(params, C.uint32_t(seedBlockNum))
+	log.Println("Params", params)
+
+	log.Println("Making Cache")
+	start := time.Now()
 	cacheMem = C.malloc(params.cache_size)
 	cache := new(C.ethash_cache)
-	C.ethash_cache_init(cache, cacheMem)
+
+	seedHash := cm.GetBlockByNumber(getSeedBlockNum(blockNum)).Header().Hash()
 	C.ethash_mkcache(cache, params, (*C.uint8_t)((unsafe.Pointer)(&seedHash[0])))
-	return cache
+	log.Println("Took:", time.Since(start))
+	return cache, params
+}
+
+func (pow *Ethash) updateCache() {
+	pow.cacheMutex.Lock()
+	pow.params, pow.cache = makeParamsAndCache(pow.cm, cm.CurrentBlock().NumberU64())
+	pow.cacheMutex.Unlock()
 }
 
 func makeDAG(cache *C.ethash_cache, params *C.ethash_params) unsafe.Pointer {
@@ -83,61 +94,81 @@ func makeDAG(cache *C.ethash_cache, params *C.ethash_params) unsafe.Pointer {
 	return dag
 }
 
-func New(cm *core.ChainManager) *Ethash {
-	params := new(C.ethash_params)
-	seedBlockNum := getSeedBlockNum(cm.CurrentBlock().NumberU64())
-	seedHash := getSeedHash(cm, seedBlockNum)
-	C.ethash_params_init(params, C.uint32_t(seedBlockNum))
-	log.Println("Params", params)
-
-	cache := makeCache(seedHash, params)
-
+func (pow *Ethash) updateDAG() {
+	pow.cacheMutex.Lock()
+	pow.dagMutex.Lock()
+	pow.dag = nil
 	log.Println("Making Dag")
 	start := time.Now()
-	dag := makeDAG(cache, params)
+	pow.dag = makeDAG(pow.cache, pow.params)
 	log.Println("Took:", time.Since(start))
+	pow.dagMutex.Unlock()
+	pow.cacheMutex.Unlock()
+}
 
-	return &Ethash{
+func New(cm *core.ChainManager) *Ethash {
+	seedBlockNum := getSeedBlockNum(cm.CurrentBlock().NumberU64())
+
+	cache, params := makeCacheAndParams(cm, getSeedBlockNum(cm.CurrentBlock().NumberU64()))
+
+	e := &Ethash{
 		turbo:        false,
 		params:       params,
 		cache:        cache,
 		chainManager: cm,
-		dag:          dag,
+		dag:          nil,
 		hash:         (*C.uint8_t)(C.malloc(32)),
 		SeedBlockNum: seedBlockNum,
-		mutex:        new(sync.Mutex),
+		cacheMutex:   new(sync.Mutex),
+		dagMutex:     new(sync.Mutex),
 	}
+
+	go e.updateDAG()
+
+	return e
+}
+
+func (pow *Ethash) DAGSize() uint64 {
+	return uint64(pow.params.full_size)
+}
+
+func (pow *Ethash) CacheSize() uint64 {
+	return uint64(pow.params.cache_size)
 }
 
 func (pow *Ethash) Stop() {
-	C.free(pow.cache.mem)
+	pow.cacheMutex.Lock()
+	pow.dagMutex.Lock()
+	if pow.cache != nil {
+		C.free(pow.cache.mem)
+	}
 	C.free(unsafe.Pointer(pow.hash))
-	C.free(pow.dag)
+	if pow.dag != nil {
+		C.free(pow.dag)
+	}
+	pow.dagMutex.Unlock()
+	pow.cacheMutex.Unlock()
 }
 
 func (pow *Ethash) Update() {
 	seedBlockNum := getSeedBlockNum(pow.chainManager.CurrentBlock().NumberU64())
 	if pow.SeedBlockNum != seedBlockNum {
-		pow.mutex.Lock()
 		pow.Stop()
 		seedHash := getSeedHash(pow.chainManager, seedBlockNum)
 		params := new(C.ethash_params)
 		C.ethash_params_init(params, C.uint32_t(seedBlockNum))
 		log.Println("New Params", params)
-		cache := makeCache(seedHash, params)
-		dag := makeDAG(cache, params)
 		pow.params = params
-		pow.cache = cache
-		pow.dag = dag
 		pow.SeedBlockNum = seedBlockNum
-		pow.mutex.Unlock()
+		pow.cache = makeCache(seedHash, params)
+		go pow.updateDAG()
 	}
 }
 
 func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) []byte {
 	pow.Update()
 	// Not very elegant, multiple mining instances are not supported
-	pow.mutex.Lock()
+	pow.dagMutex.Lock()
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	miningHash := block.HashNoNonce()

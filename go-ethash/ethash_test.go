@@ -63,7 +63,7 @@ func TestEthash(t *testing.T) {
 		panic(err)
 	}
 	insertChain(chainMan, chain1, t)
-	log.Println(chainMan)
+	log.Println("Block Number: ", chainMan.CurrentBlock().Number())
 
 	e := New(chainMan)
 
