@@ -32,7 +32,6 @@
 #ifdef WITH_CRYPTOPP
 
 #include "SHA3_cryptopp.h"
-#include "../../../../../../usr/local/Cellar/emscripten/1.28.0/libexec/system/include/libc/bits/alltypes.h"
 
 #else
 #include "sha3.h"
