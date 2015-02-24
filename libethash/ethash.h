@@ -24,7 +24,6 @@
 #include <string.h>
 #include <stddef.h>
 #include "compiler.h"
-#include "../../../../../../usr/local/Cellar/emscripten/1.28.0/libexec/system/include/libc/bits/alltypes.h"
 
 #define REVISION 16
 #define DAGSIZE_BYTES_INIT 1073741824U
@@ -41,9 +40,9 @@ extern "C" {
 
 typedef struct ethash_params
 {
-    size_t full_size;				// Size of full data set (in bytes, multiple of mix size (128)).
-    size_t cache_size;				// Size of compute cache (in bytes, multiple of node size (64)).
-	uint32_t hash_read_size;
+    size_t full_size;               // Size of full data set (in bytes, multiple of mix size (128)).
+    size_t cache_size;              // Size of compute cache (in bytes, multiple of node size (64)).
+    uint32_t hash_read_size;
 } ethash_params;
 
 size_t const ethash_get_datasize(const uint32_t block_number);
@@ -52,9 +51,9 @@ size_t const ethash_get_cachesize(const uint32_t block_number);
 // initialize the parameters
 static inline void ethash_params_init(ethash_params* params, const uint32_t block_number)
 {
-	params->full_size = ethash_get_datasize(block_number);
+    params->full_size = ethash_get_datasize(block_number);
     params->cache_size = ethash_get_cachesize(block_number);
-	params->hash_read_size = 8*1024;
+    params->hash_read_size = 8*1024;
 }
 
 typedef struct ethash_cache
