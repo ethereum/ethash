@@ -22,15 +22,17 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stddef.h>
 #include "compiler.h"
+#include "../../../../../../usr/local/Cellar/emscripten/1.28.0/libexec/system/include/libc/bits/alltypes.h"
 
-#define REVISION 15
+#define REVISION 16
 #define DAGSIZE_BYTES_INIT 1073741824U
 #define EPOCH_LENGTH 30000U
 #define MIX_BYTES 4096
 #define HASH_BYTES 64
-#define DAG_PARENTS 8192
-#define CACHE_ROUNDS 2
+#define DAG_PARENTS 1024
+#define CACHE_ROUNDS 3
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,13 +41,13 @@ extern "C" {
 
 typedef struct ethash_params
 {
-    uint64_t full_size;				// Size of full data set (in bytes, multiple of mix size (128)).
-    uint64_t cache_size;				// Size of compute cache (in bytes, multiple of node size (64)).
+    size_t full_size;				// Size of full data set (in bytes, multiple of mix size (128)).
+    size_t cache_size;				// Size of compute cache (in bytes, multiple of node size (64)).
 	uint32_t hash_read_size;
 } ethash_params;
 
-uint32_t ethash_get_datasize(const uint32_t block_number);
-uint32_t ethash_get_cachesize(const uint32_t block_number);
+size_t const ethash_get_datasize(const uint32_t block_number);
+size_t const ethash_get_cachesize(const uint32_t block_number);
 
 // initialize the parameters
 static inline void ethash_params_init(ethash_params* params, const uint32_t block_number)

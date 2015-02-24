@@ -15,6 +15,7 @@
 
 #include <boost/test/unit_test.hpp>
 #include <libethash/ethash.h>
+#include <iostream>
 
 std::string bytesToHexString(const uint8_t *str, const size_t s) {
     std::ostringstream ret;
@@ -216,7 +217,7 @@ BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_calcifide_check) {
     ethash_params params;
     ethash_params_init(&params, 0);
     const uint32_t expected_full_size = 1073721344;
-    const uint32_t expected_cache_size = 33554368;
+    const uint32_t expected_cache_size = 1048384;
     BOOST_REQUIRE_MESSAGE(params.full_size  == expected_full_size,
             "\nexpected: " << expected_cache_size << "\n"
                     << "actual: " << params.full_size << "\n");
@@ -225,22 +226,22 @@ BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_calcifide_check) {
                     << "actual: " << params.cache_size << "\n");
 }
 
-BOOST_AUTO_TEST_CASE(ethash_params_init_3_year_check) {
+BOOST_AUTO_TEST_CASE(ethash_params_init_check) {
     ethash_params params;
-    ethash_params_init(&params, 7884*1000);
-    const uint64_t three_year_dag_size = 2*DAGSIZE_BYTES_INIT;
-    BOOST_REQUIRE_MESSAGE(params.full_size  < three_year_dag_size,
+    ethash_params_init(&params, 1971000);
+    const uint64_t nine_month_size = (uint64_t) 8*DAGSIZE_BYTES_INIT;
+    BOOST_REQUIRE_MESSAGE(params.full_size  < nine_month_size,
             "\nfull size: " << params.full_size << "\n"
-                    << "should be less than or equal to: " << three_year_dag_size << "\n");
-    BOOST_REQUIRE_MESSAGE(params.full_size + DAGSIZE_BYTES_INIT / 3 > three_year_dag_size,
-            "\nfull size + DAGSIZE_BYTES_INIT / 3: " << params.full_size + DAGSIZE_BYTES_INIT / 3 << "\n"
-                    << "should be greater than or equal to: " << three_year_dag_size << "\n");
-    BOOST_REQUIRE_MESSAGE(params.cache_size < three_year_dag_size / 32,
+                    << "should be less than or equal to: " << nine_month_size << "\n");
+    BOOST_REQUIRE_MESSAGE(params.full_size + DAGSIZE_BYTES_INIT / 4 > nine_month_size,
+            "\nfull size + DAGSIZE_BYTES_INIT / 4: " << params.full_size + DAGSIZE_BYTES_INIT / 4 << "\n"
+                    << "should be greater than or equal to: " << nine_month_size << "\n");
+    BOOST_REQUIRE_MESSAGE(params.cache_size < nine_month_size / 1024,
             "\ncache size: " << params.cache_size << "\n"
-                    << "actual: " << three_year_dag_size / 32 << "\n");
-    BOOST_REQUIRE_MESSAGE(params.cache_size + DAGSIZE_BYTES_INIT / 3 / 32 > three_year_dag_size / 32 ,
-            "\ncache size + DAGSIZE_BYTES_INIT / 3 / 32: " << params.cache_size + DAGSIZE_BYTES_INIT / 3 / 32 << "\n"
-                    << "actual: " << three_year_dag_size / 32 << "\n");
+                    << "actual: " << nine_month_size / 1024 << "\n");
+    BOOST_REQUIRE_MESSAGE(params.cache_size + DAGSIZE_BYTES_INIT / 4 / 1024 > nine_month_size / 1024 ,
+            "\ncache size + DAGSIZE_BYTES_INIT / 4 / 1024: " << params.cache_size + DAGSIZE_BYTES_INIT / 4 / 1024 << "\n"
+                    << "actual: " << nine_month_size / 32 << "\n");
 }
 
 BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
@@ -259,7 +260,7 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
 
     {
         const std::string
-                expected = "933f4e31924be948a03b5b781b7d2e5f5a719e5b61fc721a1354521d5b78e0250b1467feca786b254ddc4475f210a29da72fce00140c22ed9a836ddc4e9d564d00a673421a8c82e056565512aa4552350dff1eed248949390578cadf0692c9756014d3614702ab32d4f30e908a89e620ad3038183fbb80a4d600d410c54ec7061132b0ae1b0ff2c290aa7590d36ef381c9fd69c0e08441b728059c9776841c39368742acaa994867a211fc93701f92eceabec6db26e6cd6cf1868d3cee52e87dd7969b0aeca110a2468710a859419974046121953811f983de249eccad48899dfd82be638966be19d27c286ac506e68fb87f86223b9403651d04a8e122c30f02f97d6f4205eb6e80b21cd1db3d52eec2257a09f4e76135f16ff985564f60a96a7de52521cd5988425244d88522dd3cd920c0f4994bf35fa96812d36d2907365bf656b3a36e2c9a75f7ec69ad915a27ccbb85526609b1de45913880dd737388fc102dc2f498237bc215f68ee3d78efacff99a771e34651f473598385d9afd5875a8620b2ebeca41fbc773bb837b5e724d6eb2de570d99858df0d7d97067fb8103b21757873b735097b35d3bea8fd1c359a9e8a63c1540c76c9784cf8d975e995ca8620b2ebeca41fbc773bb837b5e724d6eb2de570d99858df0d7d97067fb8103b21757873b735097b35d3bea8fd1c359a9e8a63c1540c76c9784cf8d975e995cfe32df43abded04643f87e3aa526c116f38efaf8e0a77b5634cffc67504b60c4a8169e4e6a21860b60fedfa7fe4bc6694c9ff9ca633dd2370116aa239819817f00598cadd08fb97ffd5832f1120e15474327e4d077ea4a7e1aba694bde022471b03b1e3fc6924a077c001362043b8d76d1837a91b157c7fac94df52c59d0f0b5bf534b40e40459ff8dc0d6a057a43d803a50122f38edcff71cafd59dbb737ec70589ee87b00b897c86648a519d6955fa200c6834dd0757ec23374098ea3edc487d654cc2255b52c97617275e463848bf89eccaeb4a5a9c588ae6c6764fa69416c13ad8cd209da9f724273bb44c9a34f926228f0dc1a097bd6fa1d4d0b19d863020a5256284581717e02269e339ebbfcde86ee22b18dd4d6026de16b59baa2dbac818d474cd6b7abc05e844edae9ed404fb77d2819df6267639861a02435ba443d2837b725b933025a55785774490431a1aa6ba9af3155e4fc619ded36190dffbc50b36cb7b57fb5c6aeb0bac69d829757136e0f07df4925a7c5e3af1e2134d57d80b714ec24d6754d713507ba666bad33dab202041229d5af6f30ea1443a673e5b6bc86aa961879f6f5da478900def77e87fbd0979385419feee8442326bc76a02bf53b49e6619d52094df401f4ce6d5b1bbe59a2d15243189557fb04d76cb3d8ee4c9def3d4b4e0cde01e0d43bdd7318ecf7df17b3effa812b8ef32c4dcbb04",
+                expected = "2da2b506f21070e1143d908e867962486d6b0a02e31d468fd5e3a7143aafa76a14201f63374314e2a6aaf84ad2eb57105dea3378378965a1b3873453bb2b78f9a8620b2ebeca41fbc773bb837b5e724d6eb2de570d99858df0d7d97067fb8103b21757873b735097b35d3bea8fd1c359a9e8a63c1540c76c9784cf8d975e995ca8620b2ebeca41fbc773bb837b5e724d6eb2de570d99858df0d7d97067fb8103b21757873b735097b35d3bea8fd1c359a9e8a63c1540c76c9784cf8d975e995ca8620b2ebeca41fbc773bb837b5e724d6eb2de570d99858df0d7d97067fb8103b21757873b735097b35d3bea8fd1c359a9e8a63c1540c76c9784cf8d975e995c259440b89fa3481c2c33171477c305c8e1e421f8d8f6d59585449d0034f3e421808d8da6bbd0b6378f567647cc6c4ba6c434592b198ad444e7284905b7c6adaf70bf43ec2daa7bd5e8951aa609ab472c124cf9eba3d38cff5091dc3f58409edcc386c743c3bd66f92408796ee1e82dd149eaefbf52b00ce33014a6eb3e50625413b072a58bc01da28262f42cbe4f87d4abc2bf287d15618405a1fe4e386fcdafbb171064bd99901d8f81dd6789396ce5e364ac944bbbd75a7827291c70b42d26385910cd53ca535ab29433dd5c5714d26e0dce95514c5ef866329c12e958097e84462197c2b32087849dab33e88b11da61d52f9dbc0b92cc61f742c07dbbf751c49d7678624ee60dfbe62e5e8c47a03d8247643f3d16ad8c8e663953bcda1f59d7e2d4a9bf0768e789432212621967a8f41121ad1df6ae1fa78782530695414c6213942865b2730375019105cae91a4c17a558d4b63059661d9f108362143107babe0b848de412e4da59168cce82bfbff3c99e022dd6ac1e559db991f2e3f7bb910cefd173e65ed00a8d5d416534e2c8416ff23977dbf3eb7180b75c71580d08ce95efeb9b0afe904ea12285a392aff0c8561ff79fca67f694a62b9e52377485c57cc3598d84cac0a9d27960de0cc31ff9bbfe455acaa62c8aa5d2cce96f345da9afe843d258a99c4eaf3650fc62efd81c7b81cd0d534d2d71eeda7a6e315d540b4473c80f8730037dc2ae3e47b986240cfc65ccc565f0d8cde0bc68a57e39a271dda57440b3598bee19f799611d25731a96b5dbbbefdff6f4f656161462633030d62560ea4e9c161cf78fc96a2ca5aaa32453a6c5dea206f766244e8c9d9a8dc61185ce37f1fc804459c5f07434f8ecb34141b8dcae7eae704c950b55556c5f40140c3714b45eddb02637513268778cbf937a33e4e33183685f9deb31ef54e90161e76d969587dd782eaa94e289420e7c2ee908517f5893a26fdb5873d68f92d118d4bcf98d7a4916794d6ab290045e30f9ea00ca547c584b8482b0331ba1539a0f2714fddc3a0b06b0cfbb6a607b8339c39bcfd6640b1f653e9d70ef6c985b",
                 actual = bytesToHexString((uint8_t const *) cache.mem, params.cache_size);
 
         BOOST_REQUIRE_MESSAGE(expected == actual,
@@ -301,7 +302,7 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
         ethash_calculate_dag_item(&node, 0, &params, &cache);
         const std::string
                 actual = bytesToHexString((uint8_t const *) &node, sizeof(node)),
-                expected = "88fd2b9b0a4fcdcbadebd87afe1b37418c3b9d806f5823d48d8b9916c9c94f15d1c119520999d189bf969181ecb51b1bdf3ae6f31782e5f71618a804b6daa438";
+                expected = "62580450c02505fbc7ac940c7fd6019402babcec255db94c9c7fac62caeeffc0be7a5cc1cd42e0298b8dc00b9ad94126952b747bf10cb1eaed3ae98c2ba0ea8b";
         BOOST_REQUIRE_MESSAGE(actual == expected,
                 "\n" << "expected: " << expected.c_str() << "\n"
                         << "actual: " << actual.c_str() << "\n");

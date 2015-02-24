@@ -21,6 +21,7 @@
 
 #include <assert.h>
 #include <inttypes.h>
+#include <stddef.h>
 #include "ethash.h"
 #include "blum_blum_shub.h"
 #include "fnv.h"
@@ -31,18 +32,19 @@
 #ifdef WITH_CRYPTOPP
 
 #include "SHA3_cryptopp.h"
+#include "../../../../../../usr/local/Cellar/emscripten/1.28.0/libexec/system/include/libc/bits/alltypes.h"
 
 #else
 #include "sha3.h"
 #endif // WITH_CRYPTOPP
 
-uint32_t ethash_get_datasize(const uint32_t block_number) {
-    assert(block_number / EPOCH_LENGTH < 260);
+size_t const ethash_get_datasize(const uint32_t block_number) {
+    assert(block_number / EPOCH_LENGTH < 500);
     return dag_sizes[block_number / EPOCH_LENGTH];
 }
 
-uint32_t ethash_get_cachesize(const uint32_t block_number) {
-    assert(block_number / EPOCH_LENGTH < 260);
+size_t const ethash_get_cachesize(const uint32_t block_number) {
+    assert(block_number / EPOCH_LENGTH < 500);
     return cache_sizes[block_number / EPOCH_LENGTH];
 }
 
