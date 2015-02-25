@@ -345,3 +345,26 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
                         << "full: " << full_string.c_str() << "\n");
     }
 }
+
+BOOST_AUTO_TEST_CASE(ethash_check_difficulty_check) {
+    uint8_t hash[32], target[32];
+    memset(hash, 0, 32);
+    memset(target, 0, 32);
+
+    memcpy(hash, "11111111111111111111111111111111", 32);
+    memcpy(target, "22222222222222222222222222222222", 32);
+    BOOST_REQUIRE_MESSAGE(
+            ethash_check_difficulty(hash, target),
+            "\nexpected \"" << hash << "\" to have less difficulty than \"" << target << "\"\n");
+    BOOST_REQUIRE_MESSAGE(
+            !ethash_check_difficulty(hash, hash),
+            "\nexpected \"" << hash << "\" to have the same difficulty as \"" << hash << "\"\n");
+    memcpy(target, "11111111111111111111111111111112", 32);
+    BOOST_REQUIRE_MESSAGE(
+            ethash_check_difficulty(hash, target),
+            "\nexpected \"" << hash << "\" to have less difficulty than \"" << target << "\"\n");
+    memcpy(target, "11111111111111111111111111111110", 32);
+    BOOST_REQUIRE_MESSAGE(
+            !ethash_check_difficulty(hash, target),
+            "\nexpected \"" << hash << "\" to have more difficulty than \"" << target << "\"\n");
+}
