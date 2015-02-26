@@ -209,7 +209,7 @@ static ethash_return_value ethash_hash(
 	{
         uint32_t const index = ((s_mix->words[0] ^ i)*FNV_PRIME ^ mix->words[i % MIX_WORDS]) % num_full_pages;
 
-        for (unsigned n = 0; n != 1; ++n)
+        for (unsigned n = 0; n != MIX_NODES; ++n)
 		{
             const node * dag_node = &full_nodes[MIX_NODES * index + n];
 
