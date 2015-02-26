@@ -1,9 +1,7 @@
 package ethash
 
 /*
-#cgo CFLAGS: -std=gnu99 -Wno-error
-#cgo darwin CFLAGS: -I/usr/local/include
-#cgo darwin LDFLAGS: -L/usr/local/lib
+#cgo CFLAGS: -std=gnu99 -Wall
 #include "../libethash/ethash.h"
 #include "../libethash/util.c"
 #include "../libethash/internal.c"
