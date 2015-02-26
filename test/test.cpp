@@ -246,9 +246,10 @@ BOOST_AUTO_TEST_CASE(ethash_params_init_check) {
 
 BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
     ethash_params params;
-    uint8_t seed[32], previous_hash[32], light_out[32], full_out[32];
+    uint8_t seed[32], hash[32];
+    ethash_return_value light_out, full_out;
     memcpy(seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
-    memcpy(previous_hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+    memcpy(hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
     ethash_params_init(&params, 0);
     params.cache_size = 1024;
     params.full_size = 1024 * 32;
@@ -325,24 +326,46 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
     }
 
     {
-        ethash_full(full_out, full_mem, &params, previous_hash, 0x7c7c597c);
-        ethash_light(light_out, &cache, &params, previous_hash, 0x7c7c597c);
+        uint64_t nonce = 0x7c7c597c;
+        ethash_full(&full_out, full_mem, &params, hash, nonce);
+        ethash_light(&light_out, &cache, &params, hash, nonce);
         const std::string
-                light_string = bytesToHexString(light_out, 32),
-                full_string = bytesToHexString(full_out, 32);
-        BOOST_REQUIRE_MESSAGE(light_string == full_string,
-                "\nlight: " << light_string.c_str() << "\n"
-                        << "full: " << full_string.c_str() << "\n");
+                light_result_string = bytesToHexString(light_out.result, 32),
+                full_result_string = bytesToHexString(full_out.result, 32);
+        BOOST_REQUIRE_MESSAGE(light_result_string == full_result_string,
+                "\nlight result: " << light_result_string.c_str() << "\n"
+                        << "full result: " << full_result_string.c_str() << "\n");
+        const std::string
+                light_mix_hash_string = bytesToHexString(light_out.mix_hash, 32),
+                full_mix_hash_string = bytesToHexString(full_out.mix_hash, 32);
+        BOOST_REQUIRE_MESSAGE(full_mix_hash_string == light_mix_hash_string,
+                "\nlight mix hash: " << light_mix_hash_string.c_str() << "\n"
+                        << "full mix hash: " << full_mix_hash_string.c_str() << "\n");
+        BOOST_REQUIRE_MESSAGE(
+                ethash_check_return_value(full_out, hash, nonce),
+                "\nThe return value from the full memory hasher for hash " << hash << " and nonce " << nonce << " did not check out");
     }
     {
-        ethash_full(full_out, full_mem, &params, previous_hash, 5);
-        ethash_light(light_out, &cache, &params, previous_hash, 5);
-        const std::string
-                light_string = bytesToHexString(light_out, 32),
-                full_string = bytesToHexString(full_out, 32);
-        BOOST_REQUIRE_MESSAGE(light_string == full_string,
-                "\nlight: " << light_string.c_str() << "\n"
-                        << "full: " << full_string.c_str() << "\n");
+        ethash_full(&full_out, full_mem, &params, hash, 5);
+        std::string
+                light_result_string = bytesToHexString(light_out.result, 32),
+                full_result_string = bytesToHexString(full_out.result, 32);
+
+        BOOST_REQUIRE_MESSAGE(light_result_string != full_result_string,
+                "\nlight result and full result should differ: " << light_result_string.c_str() << "\n");
+
+        ethash_light(&light_out, &cache, &params, hash, 5);
+        light_result_string = bytesToHexString(light_out.result, 32);
+        BOOST_REQUIRE_MESSAGE(light_result_string == full_result_string,
+                "\nlight result and full result should be the same\n"
+                        << "light result: " << light_result_string.c_str() << "\n"
+                        << "full result: " << full_result_string.c_str() << "\n");
+        std::string
+                light_mix_hash_string = bytesToHexString(light_out.mix_hash, 32),
+                full_mix_hash_string = bytesToHexString(full_out.mix_hash, 32);
+        BOOST_REQUIRE_MESSAGE(full_mix_hash_string == light_mix_hash_string,
+                "\nlight mix hash: " << light_mix_hash_string.c_str() << "\n"
+                        << "full mix hash: " << full_mix_hash_string.c_str() << "\n");
     }
 }
 

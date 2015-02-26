@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <stddef.h>
+#include <stdio.h>
 #include "ethash.h"
 #include "blum_blum_shub.h"
 #include "fnv.h"
@@ -164,20 +165,26 @@ void ethash_compute_full_data(
     }
 }
 
-static void ethash_hash(
-        uint8_t ret[32],
+static ethash_return_value ethash_hash(
+        ethash_return_value * ret,
         node const *full_nodes,
         ethash_cache const *cache,
         ethash_params const *params,
-        const uint8_t previous_hash[32],
+        const uint8_t header_hash[32],
         const uint64_t nonce) {
 
     assert((params->full_size % MIX_WORDS) == 0);
 
-    // pack previous_hash and nonce together into first 40 bytes of s_mix
+    // pack hash and nonce together into first 40 bytes of s_mix
+    assert(sizeof(node)*8 == 512);
     node s_mix[MIX_NODES + 1];
-    memcpy(s_mix[0].bytes, previous_hash, 32);
+    memcpy(s_mix[0].bytes, header_hash, 32);
+
+#if BYTE_ORDER != LITTLE_ENDIAN
     s_mix[0].double_words[4] = fix_endian64(nonce);
+#else
+    s_mix[0].double_words[4] = nonce;
+#endif
 
     // compute sha3-512 hash and replicate across mix
     SHA3_512(s_mix->bytes, s_mix->bytes, 40);
@@ -251,14 +258,34 @@ static void ethash_hash(
     }
 #endif
 
+    memcpy(ret->mix_hash, mix->bytes, 32);
     // final Keccak hash
-    SHA3_256(ret, s_mix->bytes, 64+32);	// Keccak-256(s + compressed_mix)
+    SHA3_256(ret->result, s_mix->bytes, 64+32);	// Keccak-256(s + compressed_mix)
 }
 
-void ethash_full(uint8_t ret[32], void const *full_mem, ethash_params const *params, const uint8_t previous_hash[32], const uint64_t nonce) {
+int ethash_check_return_value(
+        const ethash_return_value ret,
+        const uint8_t header_hash[32],
+        const uint64_t nonce) {
+
+    uint8_t buf[64+32];
+    memcpy(buf, header_hash, 32);
+#if BYTE_ORDER != LITTLE_ENDIAN
+    nonce = fix_endian64(nonce);
+#endif
+    memcpy(&(buf[32]), &nonce, 8);
+    SHA3_512(buf, buf, 40);
+    memcpy(&(buf[64]), ret.mix_hash, 32);
+    SHA3_256(buf, buf, 64+32);
+    for (int i = 0 ; i < 32 ; i++)
+        if (buf[i] != ret.result[i]) return 0;
+    return 1;
+}
+
+void ethash_full(ethash_return_value * ret, void const *full_mem, ethash_params const *params, const uint8_t previous_hash[32], const uint64_t nonce) {
     ethash_hash(ret, (node const *) full_mem, NULL, params, previous_hash, nonce);
 }
 
-void ethash_light(uint8_t ret[32], ethash_cache const *cache, ethash_params const *params, const uint8_t previous_hash[32], const uint64_t nonce) {
+void ethash_light(ethash_return_value * ret, ethash_cache const *cache, ethash_params const *params, const uint8_t previous_hash[32], const uint64_t nonce) {
     ethash_hash(ret, NULL, cache, params, previous_hash, nonce);
 }
