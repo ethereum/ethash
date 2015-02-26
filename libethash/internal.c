@@ -22,9 +22,7 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <stddef.h>
-#include <stdio.h>
 #include "ethash.h"
-#include "blum_blum_shub.h"
 #include "fnv.h"
 #include "endian.h"
 #include "internal.h"
@@ -92,7 +90,6 @@ void ethash_mkcache(
         const uint8_t seed[32]) {
     node *nodes = (node *) cache->mem;
     ethash_compute_cache_nodes(nodes, params, seed);
-    init_power_table_mod_prime1(cache->rng_table, make_seed1(nodes[0].words[0]));
 }
 
 void ethash_calculate_dag_item(
@@ -165,7 +162,7 @@ void ethash_compute_full_data(
     }
 }
 
-static ethash_return_value ethash_hash(
+static void ethash_hash(
         ethash_return_value * ret,
         node const *full_nodes,
         ethash_cache const *cache,
@@ -204,8 +201,8 @@ static ethash_return_value ethash_hash(
             page_size = sizeof(uint32_t) * MIX_WORDS,
             num_full_pages = (unsigned)(params->full_size / page_size);
 
-    unsigned const accesses = params->hash_read_size / (MIX_WORDS * 4);
-    for (unsigned i = 0; i != accesses; ++i)
+
+    for (unsigned i = 0; i != ACCESSES; ++i)
 	{
         uint32_t const index = ((s_mix->words[0] ^ i)*FNV_PRIME ^ mix->words[i % MIX_WORDS]) % num_full_pages;
 

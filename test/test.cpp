@@ -1,5 +1,4 @@
 #include <iomanip>
-#include <libethash/blum_blum_shub.h>
 #include <libethash/fnv.h>
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
@@ -24,141 +23,6 @@ std::string bytesToHexString(const uint8_t *str, const size_t s) {
         ret << std::hex << std::setfill('0') << std::setw(2) << std::nouppercase << (int) str[i];
 
     return ret.str();
-}
-
-BOOST_AUTO_TEST_CASE(cube_mod_safe_prime1_check) {
-    const uint32_t expected = 4294966087U,
-            actual = cube_mod_safe_prime1(4294967077U);
-
-    BOOST_REQUIRE_MESSAGE(actual == expected,
-            "\nexpected: " << expected << "\n"
-                    << "actual: " << actual << "\n");
-
-}
-
-BOOST_AUTO_TEST_CASE(cube_mod_safe_prime2_check) {
-    const uint32_t
-            expected = 1728000000U,
-            actual = cube_mod_safe_prime2(4294964987U);
-
-    BOOST_REQUIRE_MESSAGE(actual == expected,
-            "\nexpected: " << expected << "\n"
-                    << "actual: " << actual << "\n");
-}
-
-BOOST_AUTO_TEST_CASE(three_pow_mod_totient_check) {
-    {
-        const uint32_t
-                expected = 1,
-                actual = three_pow_mod_totient1(0);
-
-        BOOST_REQUIRE_MESSAGE(actual == expected,
-                "\nexpected: " << expected << "\n"
-                        << "actual: " << actual << "\n");
-    }
-    {
-        const uint32_t
-                expected = 3,
-                actual = three_pow_mod_totient1(1);
-
-        BOOST_REQUIRE_MESSAGE(actual == expected,
-                "\nexpected: " << expected << "\n"
-                        << "actual: " << actual << "\n");
-    }
-    {
-        const uint32_t
-                expected = 9,
-                actual = three_pow_mod_totient1(2);
-
-        BOOST_REQUIRE_MESSAGE(actual == expected,
-                "\nexpected: " << expected << "\n"
-                        << "actual: " << actual << "\n");
-    }
-    {
-        const uint32_t
-                expected = 27,
-                actual = three_pow_mod_totient1(3);
-
-        BOOST_REQUIRE_MESSAGE(actual == expected,
-                "\nexpected: " << expected << "\n"
-                        << "actual: " << actual << "\n");
-    }
-    {
-        const uint32_t
-                expected = 3748161571U,
-                actual = three_pow_mod_totient1(4294967295U);
-
-        BOOST_REQUIRE_MESSAGE(actual == expected,
-                "\nexpected: " << expected << "\n"
-                        << "actual: " << actual << "\n");
-    }
-    {
-        const uint32_t
-                expected = 3106101787U,
-                actual = three_pow_mod_totient1(2147483648U);
-
-        BOOST_REQUIRE_MESSAGE(actual == expected,
-                "\nexpected: " << expected << "\n"
-                        << "actual: " << actual << "\n");
-    }
-}
-
-BOOST_AUTO_TEST_CASE(init_power_table_mod_prime_check) {
-    const uint32_t expected[32] = {
-            1758178831, 3087151933U, 2181741089U, 2215739027U, 1172752426U,
-            2166186118U, 952137455U, 1932908534U, 2055989032U, 3668501270U,
-            3361953768U, 2864264791U, 346776217U, 589953143U, 46265863U,
-            87348622U, 368498995U, 237438963U, 2748204571U, 3669701545U,
-            3941733513U, 1373024902U, 477501137U, 1476916330U, 3722281540U,
-            2393041984U, 3169721271U, 680334287U, 3255565205U, 2133070878U,
-            4212360994U, 202306615U};
-    uint32_t actual[32];
-    init_power_table_mod_prime1(actual, 1758178831U);
-    for(int i = 0; i < 32 ; ++i)
-        BOOST_REQUIRE_MESSAGE(actual[i] == expected[i],
-                "\nexpected: " << expected[i] << "\n"
-                        << "actual: " << actual[i] << "\n");
-}
-
-BOOST_AUTO_TEST_CASE(quick_bbs_check) {
-    uint32_t table[32];
-    init_power_table_mod_prime1(table, 1799198831U);
-    {
-        const uint32_t
-                expected = 1799198831U,
-                actual = quick_bbs(table,0);
-
-        BOOST_REQUIRE_MESSAGE(actual == expected,
-                "\nexpected: " << expected << "\n"
-                        << "actual: " << actual << "\n");
-    }
-    {
-        const uint32_t
-                expected = 2685204534U,
-                actual = quick_bbs(table,1);
-
-        BOOST_REQUIRE_MESSAGE(actual == expected,
-                "\nexpected: " << expected << "\n"
-                        << "actual: " << actual << "\n");
-    }
-    {
-        const uint32_t
-                expected = 542784404U,
-                actual = quick_bbs(table,0xFFFFFFFF);
-
-        BOOST_REQUIRE_MESSAGE(actual == expected,
-                "\nexpected: " << expected << "\n"
-                        << "actual: " << actual << "\n");
-    }
-    {
-        const uint32_t
-                expected = 4097726076U,
-                actual = quick_bbs(table,0xFFFFFFFFFFFFFFFF);
-
-        BOOST_REQUIRE_MESSAGE(actual == expected,
-                "\nexpected: " << expected << "\n"
-                        << "actual: " << actual << "\n");
-    }
 }
 
 BOOST_AUTO_TEST_CASE(fnv_hash_check) {
@@ -205,8 +69,8 @@ BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_check) {
     BOOST_REQUIRE_MESSAGE(params.full_size  < DAGSIZE_BYTES_INIT,
             "\nfull size: " << params.full_size << "\n"
                     << "should be less than or equal to: " << DAGSIZE_BYTES_INIT << "\n");
-    BOOST_REQUIRE_MESSAGE(params.full_size + 8*MIX_BYTES >= DAGSIZE_BYTES_INIT,
-            "\nfull size + 8*MIX_BYTES: " << params.full_size + 8*MIX_BYTES << "\n"
+    BOOST_REQUIRE_MESSAGE(params.full_size + 20*MIX_BYTES >= DAGSIZE_BYTES_INIT,
+            "\nfull size + 20*MIX_BYTES: " << params.full_size + 20*MIX_BYTES << "\n"
                     << "should be greater than or equal to: " << DAGSIZE_BYTES_INIT << "\n");
     BOOST_REQUIRE_MESSAGE(params.cache_size < DAGSIZE_BYTES_INIT / 32,
             "\ncache size: " << params.cache_size << "\n"
@@ -216,7 +80,7 @@ BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_check) {
 BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_calcifide_check) {
     ethash_params params;
     ethash_params_init(&params, 0);
-    const uint32_t expected_full_size = 1073721344;
+    const uint32_t expected_full_size = 1073739904;
     const uint32_t expected_cache_size = 1048384;
     BOOST_REQUIRE_MESSAGE(params.full_size  == expected_full_size,
             "\nexpected: " << expected_cache_size << "\n"
@@ -269,41 +133,14 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
                         << "actual: " << actual.c_str() << "\n");
     }
 
-    {
-        for (int i = 0; i < 32; ++i)
-            BOOST_REQUIRE(cache.rng_table[i] % SAFE_PRIME == cache.rng_table[i]);
-    }
 
-    {
-        uint64_t tmp = make_seed1(((node *) cache.mem)[0].words[0]);
-        for (int i = 0; i < 32; ++i) {
-            BOOST_REQUIRE_MESSAGE(tmp % SAFE_PRIME == cache.rng_table[i],
-                    "\npower: " << i << "\n"
-                            << "expected: " << tmp << "\n"
-                            << "actual: " << cache.rng_table[i] << "\n");
-            tmp *= tmp;
-            tmp %= SAFE_PRIME;
-        }
-    }
-
-    {
-        uint64_t tmp = make_seed1(((node *) cache.mem)[0].words[0]);
-        for (int i = 0; i < 32; ++i) {
-            BOOST_REQUIRE_MESSAGE(tmp % SAFE_PRIME == cache.rng_table[i],
-                    "\npower: " << i << "\n"
-                            << "expected: " << tmp << "\n"
-                            << "actual: " << cache.rng_table[i] << "\n");
-            tmp *= tmp;
-            tmp %= SAFE_PRIME;
-        }
-    }
 
     {
         node node;
         ethash_calculate_dag_item(&node, 0, &params, &cache);
         const std::string
                 actual = bytesToHexString((uint8_t const *) &node, sizeof(node)),
-                expected = "62580450c02505fbc7ac940c7fd6019402babcec255db94c9c7fac62caeeffc0be7a5cc1cd42e0298b8dc00b9ad94126952b747bf10cb1eaed3ae98c2ba0ea8b";
+                expected = "b1698f829f90b35455804e5185d78f549fcb1bdce2bee006d4d7e68eb154b596be1427769eb1c3c3e93180c760af75f81d1023da6a0ffbe321c153a7c0103597";
         BOOST_REQUIRE_MESSAGE(actual == expected,
                 "\n" << "expected: " << expected.c_str() << "\n"
                         << "actual: " << actual.c_str() << "\n");

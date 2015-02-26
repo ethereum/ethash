@@ -29,10 +29,11 @@
 #define REVISION 17
 #define DAGSIZE_BYTES_INIT 1073741824U
 #define EPOCH_LENGTH 30000U
-#define MIX_BYTES 4096
+#define MIX_BYTES 128
 #define HASH_BYTES 64
-#define DAG_PARENTS 1024
+#define DAG_PARENTS 256
 #define CACHE_ROUNDS 3
+#define ACCESSES 64
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,7 +42,6 @@ extern "C" {
 typedef struct ethash_params {
     size_t full_size;               // Size of full data set (in bytes, multiple of mix size (128)).
     size_t cache_size;              // Size of compute cache (in bytes, multiple of node size (64)).
-    uint32_t hash_read_size;
 } ethash_params;
 
 typedef struct ethash_return_value {
@@ -56,12 +56,10 @@ size_t const ethash_get_cachesize(const uint32_t block_number);
 static inline void ethash_params_init(ethash_params *params, const uint32_t block_number) {
     params->full_size = ethash_get_datasize(block_number);
     params->cache_size = ethash_get_cachesize(block_number);
-    params->hash_read_size = 8 * 1024;
 }
 
 typedef struct ethash_cache {
     void *mem;
-    uint32_t rng_table[32];
 } ethash_cache;
 
 static inline void ethash_cache_init(ethash_cache *cache, void *mem) {

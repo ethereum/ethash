@@ -9,8 +9,6 @@ set(FILES 	util.c
           	util.h
           	internal.c
           	ethash.h
-          	blum_blum_shub.c
-          	blum_blum_shub.h
           	endian.h
           	compiler.h
           	fnv.h
