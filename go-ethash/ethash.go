@@ -77,7 +77,7 @@ func makeParamsAndCache(chainManager *core.ChainManager, seedBlockNum uint64) *P
 		SeedBlockNum: seedBlockNum,
 	}
 	C.ethash_params_init(paramsAndCache.params, C.uint32_t(seedBlockNum))
-	cacheMem := C.malloc(paramsAndCache.params.cache_size)
+	paramsAndCache.cache.mem = C.malloc(paramsAndCache.params.cache_size)
 	seedHash := chainManager.GetBlockByNumber(getSeedBlockNum(seedBlockNum)).Header().Hash()
 	C.ethash_mkcache(paramsAndCache.cache, paramsAndCache.params, (*C.uint8_t)((unsafe.Pointer)(&seedHash[0])))
 	log.Println("Params", paramsAndCache.params)
@@ -219,9 +219,9 @@ func (pow *Ethash) verify(hash []byte, diff *big.Int, nonce uint64) bool {
 	C.ethash_light(pow.ret, pow.paramsAndCache.cache, pow.paramsAndCache.params, chash, cnonce)
 	verification := new(big.Int).Div(ethutil.BigPow(2, 256), diff)
 	res := ethutil.U256(new(big.Int).SetUint64(nonce))
-	ghash := C.GoBytes(unsafe.Pointer(pow.hash), 32)
+	ghash := C.GoBytes(unsafe.Pointer(&pow.ret.result[0]), 32)
 	log.Println("ethash light (on nonce)", ghash, nonce)
-	pow.mutex.Unlock()
+	pow.dagMutex.Unlock()
 	return res.Cmp(verification) <= 0
 }
 
