@@ -65,7 +65,7 @@ func TestEthash(t *testing.T) {
 	insertChain(chainMan, chain1, t)
 	log.Println("Block Number: ", chainMan.CurrentBlock().Number())
 
-	e := New(chainMan)
+	e := New(chainMan, true)
 
 	miningHash := make([]byte, 32)
 	if _, err := rand.Read(miningHash); err != nil {
