@@ -20,7 +20,6 @@ import (
 	"unsafe"
 
 	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/ethutil"
 	"github.com/ethereum/go-ethereum/logger"
 	"github.com/ethereum/go-ethereum/pow"
 )
@@ -70,7 +69,8 @@ func getSeedBlockNum(blockNum uint64) uint64 {
 	return seedBlockNum
 }
 
-func makeParamsAndCache(chainManager *core.ChainManager, seedBlockNum uint64) *ParamsAndCache {
+func makeParamsAndCache(chainManager *core.ChainManager, blockNum uint64) *ParamsAndCache {
+	seedBlockNum := getSeedBlockNum(blockNum)
 	paramsAndCache := &ParamsAndCache{
 		params:       new(C.ethash_params),
 		cache:        new(C.ethash_cache),
@@ -78,7 +78,7 @@ func makeParamsAndCache(chainManager *core.ChainManager, seedBlockNum uint64) *P
 	}
 	C.ethash_params_init(paramsAndCache.params, C.uint32_t(seedBlockNum))
 	paramsAndCache.cache.mem = C.malloc(paramsAndCache.params.cache_size)
-	seedHash := chainManager.GetBlockByNumber(getSeedBlockNum(seedBlockNum)).Header().Hash()
+	seedHash := chainManager.GetBlockByNumber(seedBlockNum).Header().Hash()
 	log.Println("Params", paramsAndCache.params)
 
 	log.Println("Making Cache")
@@ -90,7 +90,10 @@ func makeParamsAndCache(chainManager *core.ChainManager, seedBlockNum uint64) *P
 
 func (pow *Ethash) updateCache() {
 	pow.cacheMutex.Lock()
-	pow.paramsAndCache = makeParamsAndCache(pow.chainManager, pow.chainManager.CurrentBlock().NumberU64())
+	seedNum := getSeedBlockNum(pow.chainManager.CurrentBlock().Number().Uint64())
+	if pow.paramsAndCache.SeedBlockNum != seedNum {
+		pow.paramsAndCache = makeParamsAndCache(pow.chainManager, pow.chainManager.CurrentBlock().NumberU64())
+	}
 	pow.cacheMutex.Unlock()
 }
 
@@ -123,7 +126,7 @@ func (pow *Ethash) updateDAG() {
 func New(chainManager *core.ChainManager, mine bool) *Ethash {
 	e := &Ethash{
 		turbo:          false,
-		paramsAndCache: makeParamsAndCache(chainManager, getSeedBlockNum(chainManager.CurrentBlock().NumberU64())),
+		paramsAndCache: makeParamsAndCache(chainManager, chainManager.CurrentBlock().NumberU64()),
 		chainManager:   chainManager,
 		dag:            nil,
 		ret:            new(C.ethash_return_value),
@@ -200,7 +203,8 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) []byte {
 			ghash := C.GoBytes(unsafe.Pointer(&pow.ret.result[0]), 32)
 			log.Printf("ethhash full (on nonce): %x %x\n", ghash, nonce)
 
-			if pow.verify(miningHash, diff, nonce) {
+			res := C.ethash_check_difficulty((*C.uint8_t)(&pow.ret.result[0]), (*C.uint8_t)(unsafe.Pointer(&diff.Bytes()[0])))
+			if res == 1 {
 				pow.dagMutex.Unlock()
 				return ghash
 			}
@@ -219,20 +223,29 @@ func (pow *Ethash) Verify(block pow.Block) bool {
 		log.Println("nonce to int err:", err)
 		return false
 	}
-	return pow.verify(block.HashNoNonce(), block.Difficulty(), nonceInt)
+	return pow.verify(block.HashNoNonce(), block.Difficulty(), block.Number().Uint64(), nonceInt)
 }
 
-func (pow *Ethash) verify(hash []byte, diff *big.Int, nonce uint64) bool {
-	pow.dagMutex.Lock()
+func (pow *Ethash) verify(hash []byte, diff *big.Int, blockNum uint64, nonce uint64) bool {
+	var pAc *ParamsAndCache
+	// if its an old block (doesnt use the current cache)
+	// get the cache for it but dont update (so we don't need the mutex)
+	// otherwise, its the current or future. if current, updateCache will
+	// do nothing.
+	if getSeedBlockNum(blockNum) < pow.paramsAndCache.SeedBlockNum {
+		pAc = makeParamsAndCache(pow.chainManager, blockNum)
+	} else {
+		pow.updateCache()
+		pow.cacheMutex.Lock()
+		defer pow.cacheMutex.Unlock()
+		pAc = pow.paramsAndCache
+	}
+
 	chash := (*C.uint8_t)(unsafe.Pointer(&hash))
 	cnonce := C.uint64_t(nonce)
-	C.ethash_light(pow.ret, pow.paramsAndCache.cache, pow.paramsAndCache.params, chash, cnonce)
-	verification := new(big.Int).Div(ethutil.BigPow(2, 256), diff)
-	res := ethutil.U256(new(big.Int).SetUint64(nonce))
-	ghash := C.GoBytes(unsafe.Pointer(&pow.ret.result[0]), 32)
-	log.Println("ethash light (on nonce)", ghash, nonce)
-	pow.dagMutex.Unlock()
-	return res.Cmp(verification) <= 0
+	C.ethash_light(pow.ret, pAc.cache, pAc.params, chash, cnonce)
+	res := C.ethash_check_difficulty((*C.uint8_t)(unsafe.Pointer(&pow.ret.result[0])), (*C.uint8_t)(unsafe.Pointer(&diff.Bytes()[0])))
+	return res == 1
 }
 
 func (pow *Ethash) GetHashrate() int64 {
