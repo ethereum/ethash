@@ -50,7 +50,7 @@ type Ethash struct {
 }
 
 func blockNonce(block pow.Block) (uint64, error) {
-	nonce := block.N()
+	nonce := block.Nonce()
 	nonceBuf := bytes.NewBuffer(nonce)
 	nonceInt, err := binary.ReadUvarint(nonceBuf)
 	if err != nil {
