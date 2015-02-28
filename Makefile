@@ -1,12 +1,14 @@
-.PHONY: test go-test clean
+.PHONY: test cpp-test go-test cpp-build clean
 
-test: go-test ./cpp-build/test/Test
+test: cpp-test go-test
+
+cpp-test: cpp-build/test/Test
 	./cpp-build/test/Test
 
 go-test:
 	make -C go-ethash test
 
-cpp-build/Makefile:
+cpp-build cpp-build/Makefile:
 	mkdir -p cpp-build/
 	cd cpp-build/ && cmake ..
 
