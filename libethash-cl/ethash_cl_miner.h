@@ -2,9 +2,13 @@
 
 #define __CL_ENABLE_EXCEPTIONS 
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
-#include <CL/cl.hpp>
+#ifdef __APPLE__
+#include <OpenCL/cl.h>
+#else
+#include <CL/cl.h>
+#endif
 #include <time.h>
-#include "../libethash/ethash.h"
+#include <libethash/ethash.h>
 
 class ethash_miner
 {

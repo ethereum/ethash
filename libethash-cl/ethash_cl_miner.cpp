@@ -1,8 +1,7 @@
 #include <assert.h>
 #include <queue>
 #include "ethash_cl_miner.h"
-#include "../libethash/util.h"
-#include "../libethash/ethash.h"
+#include <libethash/util.h>
 
 
 #undef min
