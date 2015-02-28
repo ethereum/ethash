@@ -15,7 +15,6 @@
   along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file ethash.h
-* @author Tim Hughes <tim@ethdev.org>
 * @date 2015
 */
 #pragma once

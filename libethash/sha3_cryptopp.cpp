@@ -16,7 +16,7 @@
 */
 
 /** @file sha3.cpp
-* @author Tim Hughes <tim@ethdev.org>
+* @author Tim Hughes <tim@twistedfury.com>
 * @date 2015
 */
 

@@ -15,7 +15,8 @@
   along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file dash.cpp
-* @author Tim Hughes <tim@ethdev.org>
+* @author Tim Hughes <tim@twistedfury.com>
+* @author Matthew Wampler-Doty
 * @date 2015
 */
 
