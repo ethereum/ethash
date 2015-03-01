@@ -277,6 +277,16 @@ void ethash_quick_hash(
     SHA3_256(return_hash, buf, 64+32);
 }
 
+int ethash_quick_check_difficulty(
+        const uint8_t header_hash[32],
+        const uint64_t nonce,
+        const uint8_t mix_hash[32],
+        const uint8_t difficulty[32]) {
+    uint8_t return_hash[32];
+    ethash_quick_hash(return_hash, header_hash, nonce, mix_hash);
+    return ethash_check_difficulty(return_hash, difficulty);
+}
+
 void ethash_full(ethash_return_value * ret, void const *full_mem, ethash_params const *params, const uint8_t previous_hash[32], const uint64_t nonce) {
     ethash_hash(ret, (node const *) full_mem, NULL, params, previous_hash, nonce);
 }
