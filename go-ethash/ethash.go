@@ -20,6 +20,7 @@ import (
 	"unsafe"
 
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/logger"
 	"github.com/ethereum/go-ethereum/pow"
 )
@@ -51,6 +52,16 @@ type Ethash struct {
 
 func blockNonce(block pow.Block) (uint64, error) {
 	nonce := block.Nonce()
+	nonceBuf := bytes.NewBuffer(nonce)
+	nonceInt, err := binary.ReadUvarint(nonceBuf)
+	if err != nil {
+		return 0, err
+	}
+	return nonceInt, nil
+}
+
+func headerNonce(header types.Header) (uint64, error) {
+	nonce := header.Nonce
 	nonceBuf := bytes.NewBuffer(nonce)
 	nonceInt, err := binary.ReadUvarint(nonceBuf)
 	if err != nil {
@@ -224,6 +235,16 @@ func (pow *Ethash) Verify(block pow.Block) bool {
 		return false
 	}
 	return pow.verify(block.HashNoNonce(), block.Difficulty(), block.Number().Uint64(), nonceInt)
+}
+
+func (pow *Ethash) VerifyHeader(header types.Header) bool {
+	nonceInt, err := headerNonce(header)
+	if err != nil {
+		log.Println("nonce to int err:", err)
+		return false
+	}
+	return pow.verify(header.HashNoNonce(), header.Difficulty(), header.Number().Uint64(), nonceInt)
+
 }
 
 func (pow *Ethash) verify(hash []byte, diff *big.Int, blockNum uint64, nonce uint64) bool {
