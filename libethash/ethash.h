@@ -70,6 +70,7 @@ void ethash_light(ethash_return_value *ret, ethash_cache const *cache, ethash_pa
 static inline int ethash_check_difficulty(
         const uint8_t hash[32],
         const uint8_t difficulty[32]) {
+    // Difficulty is big endian
     for (int i = 0; i < 32; i++) {
         if (hash[i] == difficulty[i]) continue;
         return hash[i] < difficulty[i];
