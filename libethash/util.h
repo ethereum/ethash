@@ -15,7 +15,7 @@
   along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file util.h
- * @author Tim Hughes <tim@ethdev.org>
+ * @author Tim Hughes <tim@twistedfury.com>
  * @date 2015
  */
 #pragma once

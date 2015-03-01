@@ -15,7 +15,6 @@
   along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file ethash.h
-* @author Tim Hughes <tim@ethdev.org>
 * @date 2015
 */
 #pragma once
@@ -30,7 +29,6 @@
 #define DAGSIZE_BYTES_INIT 1073741824U
 #define EPOCH_LENGTH 30000U
 #define MIX_BYTES 128
-#define HASH_BYTES 64
 #define DAG_PARENTS 256
 #define CACHE_ROUNDS 3
 #define ACCESSES 64
