@@ -58,14 +58,14 @@ static inline void ethash_params_init(ethash_params *params, const uint32_t bloc
     params->cache_size = ethash_get_cachesize(block_number);
 }
 
-  typedef struct ethash_cache {
+typedef struct ethash_cache {
     void *mem;
 } ethash_cache;
 
 void ethash_mkcache(ethash_cache *cache, ethash_params const *params, const uint8_t seed[32]);
 void ethash_compute_full_data(void *mem, ethash_params const *params, ethash_cache const *cache);
-void ethash_full(ethash_return_value * ret, void const *full_mem, ethash_params const *params, const uint8_t header_hash[32], const uint64_t nonce);
-void ethash_light(ethash_return_value * ret, ethash_cache const *cache, ethash_params const *params, const uint8_t header_hash[32], const uint64_t nonce);
+void ethash_full(ethash_return_value *ret, void const *full_mem, ethash_params const *params, const uint8_t header_hash[32], const uint64_t nonce);
+void ethash_light(ethash_return_value *ret, ethash_cache const *cache, ethash_params const *params, const uint8_t header_hash[32], const uint64_t nonce);
 
 static inline int ethash_check_difficulty(
         const uint8_t hash[32],
@@ -77,10 +77,12 @@ static inline int ethash_check_difficulty(
     return 0;
 }
 
-int ethash_check_return_value(
-        const ethash_return_value ret,
+void ethash_quick_hash(
+        uint8_t return_hash[32],
         const uint8_t header_hash[32],
-        const uint64_t nonce);
+        const uint64_t nonce,
+        const uint8_t mix_hash[32]);
+
 
 #ifdef __cplusplus
 }
