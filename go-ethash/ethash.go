@@ -19,7 +19,6 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/logger"
 	"github.com/ethereum/go-ethereum/pow"
 )
@@ -40,7 +39,7 @@ type ParamsAndCache struct {
 type Ethash struct {
 	turbo          bool
 	HashRate       int64
-	chainManager   *core.ChainManager
+	chainManager   pow.ChainManager
 	dag            *DAG
 	paramsAndCache *ParamsAndCache
 	nextdag        unsafe.Pointer
@@ -49,8 +48,7 @@ type Ethash struct {
 	cacheMutex     *sync.Mutex
 }
 
-func blockNonce(block pow.Block) (uint64, error) {
-	nonce := block.N()
+func parseNonce(nonce []byte) (uint64, error) {
 	nonceBuf := bytes.NewBuffer(nonce)
 	nonceInt, err := binary.ReadUvarint(nonceBuf)
 	if err != nil {
@@ -69,7 +67,7 @@ func getSeedBlockNum(blockNum uint64) uint64 {
 	return seedBlockNum
 }
 
-func makeParamsAndCache(chainManager *core.ChainManager, blockNum uint64) *ParamsAndCache {
+func makeParamsAndCache(chainManager pow.ChainManager, blockNum uint64) *ParamsAndCache {
 	seedBlockNum := getSeedBlockNum(blockNum)
 	paramsAndCache := &ParamsAndCache{
 		params:       new(C.ethash_params),
@@ -90,7 +88,7 @@ func makeParamsAndCache(chainManager *core.ChainManager, blockNum uint64) *Param
 
 func (pow *Ethash) updateCache() {
 	pow.cacheMutex.Lock()
-	seedNum := getSeedBlockNum(pow.chainManager.CurrentBlock().Number().Uint64())
+	seedNum := getSeedBlockNum(pow.chainManager.CurrentBlock().NumberU64())
 	if pow.paramsAndCache.SeedBlockNum != seedNum {
 		pow.paramsAndCache = makeParamsAndCache(pow.chainManager, pow.chainManager.CurrentBlock().NumberU64())
 	}
@@ -110,7 +108,7 @@ func (pow *Ethash) updateDAG() {
 	pow.cacheMutex.Lock()
 	pow.dagMutex.Lock()
 
-	seedNum := getSeedBlockNum(pow.chainManager.CurrentBlock().Number().Uint64())
+	seedNum := getSeedBlockNum(pow.chainManager.CurrentBlock().NumberU64())
 	if pow.dag == nil || pow.dag.SeedBlockNum != seedNum {
 		pow.dag = nil
 		log.Println("Making Dag")
@@ -123,8 +121,8 @@ func (pow *Ethash) updateDAG() {
 	pow.cacheMutex.Unlock()
 }
 
-func New(chainManager *core.ChainManager, mine bool) *Ethash {
-	e := &Ethash{
+func New(chainManager pow.ChainManager) *Ethash {
+	return &Ethash{
 		turbo:          false,
 		paramsAndCache: makeParamsAndCache(chainManager, chainManager.CurrentBlock().NumberU64()),
 		chainManager:   chainManager,
@@ -133,10 +131,6 @@ func New(chainManager *core.ChainManager, mine bool) *Ethash {
 		cacheMutex:     new(sync.Mutex),
 		dagMutex:       new(sync.Mutex),
 	}
-	if mine {
-		go e.updateDAG()
-	}
-	return e
 }
 
 func (pow *Ethash) DAGSize() uint64 {
@@ -145,6 +139,10 @@ func (pow *Ethash) DAGSize() uint64 {
 
 func (pow *Ethash) CacheSize() uint64 {
 	return uint64(pow.paramsAndCache.params.cache_size)
+}
+
+func (pow *Ethash) GetSeedHash(blockNum uint64) []byte {
+	return pow.chainManager.GetBlockByNumber(getSeedBlockNum(blockNum)).Header().Hash()
 }
 
 func (pow *Ethash) Stop() {
@@ -160,11 +158,14 @@ func (pow *Ethash) Stop() {
 	pow.cacheMutex.Unlock()
 }
 
-func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) []byte {
+func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) ([]byte, []byte, []byte) {
 	pow.updateDAG()
 
 	// Not very elegant, multiple mining instances are not supported
 	pow.dagMutex.Lock()
+	pow.cacheMutex.Lock()
+	defer pow.cacheMutex.Unlock()
+	defer pow.dagMutex.Unlock()
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	miningHash := block.HashNoNonce()
@@ -182,7 +183,7 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) []byte {
 			powlogger.Infoln("Breaking from mining")
 			pow.HashRate = 0
 			pow.dagMutex.Unlock()
-			return nil
+			return nil, nil, nil
 		default:
 			i++
 
@@ -200,13 +201,13 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) []byte {
 			log.Printf("seed hash, nonce: %x %x\n", miningHash, nonce)
 			// pow.hash is the output/return of ethash_full
 			C.ethash_full(pow.ret, pow.dag.dag, pow.paramsAndCache.params, cMiningHash, cnonce)
-			ghash := C.GoBytes(unsafe.Pointer(&pow.ret.result[0]), 32)
-			log.Printf("ethhash full (on nonce): %x %x\n", ghash, nonce)
-
 			res := C.ethash_check_difficulty((*C.uint8_t)(&pow.ret.result[0]), (*C.uint8_t)(unsafe.Pointer(&diff.Bytes()[0])))
 			if res == 1 {
-				pow.dagMutex.Unlock()
-				return ghash
+				mixDigest := C.GoBytes(unsafe.Pointer(&pow.ret.mix_hash[0]), 32)
+				// We don't really nead 32 bytes here
+				buf := make([]byte, 32)
+				binary.PutUvarint(buf, nonce)
+				return buf, mixDigest, pow.GetSeedHash(block.NumberU64())
 			}
 			nonce += 1
 		}
@@ -218,20 +219,39 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) []byte {
 }
 
 func (pow *Ethash) Verify(block pow.Block) bool {
-	nonceInt, err := blockNonce(block)
+	// Make sure the SeedHash is set correctly
+	if bytes.Compare(block.SeedHash(), pow.GetSeedHash(block.NumberU64())) != 0 {
+		log.Println("Block had wrong SeedHash")
+		log.Println("Expected: ", pow.GetSeedHash(block.NumberU64()))
+		log.Println("Actual: ", block.SeedHash())
+		return false
+	}
+
+	nonceInt, err := parseNonce(block.Nonce())
 	if err != nil {
 		log.Println("nonce to int err:", err)
 		return false
 	}
-	return pow.verify(block.HashNoNonce(), block.Difficulty(), block.Number().Uint64(), nonceInt)
+	return pow.verify(block.HashNoNonce(), block.MixDigest(), block.Difficulty(), block.NumberU64(), nonceInt)
 }
 
-func (pow *Ethash) verify(hash []byte, diff *big.Int, blockNum uint64, nonce uint64) bool {
+func (pow *Ethash) verify(hash []byte, mixDigest []byte, difficulty *big.Int, blockNum uint64, nonce uint64) bool {
+	// First check: make sure header, mixDigest, nonce are correct without hitting the DAG
+	// This is to prevent DOS attacks
+	chash := (*C.uint8_t)(unsafe.Pointer(&hash))
+	cnonce := C.uint64_t(nonce)
+	cmixDigest := (*C.uint8_t)(unsafe.Pointer(&mixDigest))
+	cdifficulty := (*C.uint8_t)(unsafe.Pointer(&difficulty.Bytes()[0]))
+	if C.ethash_quick_check_difficulty(chash, cnonce, cmixDigest, cdifficulty) != 1 {
+		log.Println("Failed to pass quick check.  Are you sure that the mix digest is correct?")
+		return false
+	}
+
 	var pAc *ParamsAndCache
-	// if its an old block (doesnt use the current cache)
-	// get the cache for it but dont update (so we don't need the mutex)
-	// otherwise, its the current or future. if current, updateCache will
-	// do nothing.
+	// If its an old block (doesn't use the current cache)
+	// get the cache for it but don't update (so we don't need the mutex)
+	// Otherwise, it's the current block or a future.
+	// If current, updateCache will do nothing.
 	if getSeedBlockNum(blockNum) < pow.paramsAndCache.SeedBlockNum {
 		pAc = makeParamsAndCache(pow.chainManager, blockNum)
 	} else {
@@ -241,10 +261,8 @@ func (pow *Ethash) verify(hash []byte, diff *big.Int, blockNum uint64, nonce uin
 		pAc = pow.paramsAndCache
 	}
 
-	chash := (*C.uint8_t)(unsafe.Pointer(&hash))
-	cnonce := C.uint64_t(nonce)
 	C.ethash_light(pow.ret, pAc.cache, pAc.params, chash, cnonce)
-	res := C.ethash_check_difficulty((*C.uint8_t)(unsafe.Pointer(&pow.ret.result[0])), (*C.uint8_t)(unsafe.Pointer(&diff.Bytes()[0])))
+	res := C.ethash_check_difficulty((*C.uint8_t)(unsafe.Pointer(&pow.ret.result[0])), cdifficulty)
 	return res == 1
 }
 
@@ -256,8 +274,7 @@ func (pow *Ethash) Turbo(on bool) {
 	pow.turbo = on
 }
 
-// just for testing
-func (pow *Ethash) full(nonce uint64, miningHash []byte) []byte {
+func (pow *Ethash) FullHash(nonce uint64, miningHash []byte) []byte {
 	pow.updateDAG()
 	pow.dagMutex.Lock()
 	defer pow.dagMutex.Unlock()
@@ -270,7 +287,7 @@ func (pow *Ethash) full(nonce uint64, miningHash []byte) []byte {
 	return ghash_full
 }
 
-func (pow *Ethash) light(nonce uint64, miningHash []byte) []byte {
+func (pow *Ethash) LightHash(nonce uint64, miningHash []byte) []byte {
 	cMiningHash := (*C.uint8_t)(unsafe.Pointer(&miningHash))
 	cnonce := C.uint64_t(nonce)
 	C.ethash_light(pow.ret, pow.paramsAndCache.cache, pow.paramsAndCache.params, cMiningHash, cnonce)

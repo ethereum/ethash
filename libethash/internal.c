@@ -15,7 +15,8 @@
   along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file dash.cpp
-* @author Tim Hughes <tim@ethdev.org>
+* @author Tim Hughes <tim@twistedfury.com>
+* @author Matthew Wampler-Doty
 * @date 2015
 */
 
@@ -260,10 +261,11 @@ static void ethash_hash(
     SHA3_256(ret->result, s_mix->bytes, 64+32);	// Keccak-256(s + compressed_mix)
 }
 
-int ethash_check_return_value(
-        const ethash_return_value ret,
+void ethash_quick_hash(
+        uint8_t return_hash[32],
         const uint8_t header_hash[32],
-        const uint64_t nonce) {
+        const uint64_t nonce,
+        const uint8_t mix_hash[32]) {
 
     uint8_t buf[64+32];
     memcpy(buf, header_hash, 32);
@@ -272,11 +274,18 @@ int ethash_check_return_value(
 #endif
     memcpy(&(buf[32]), &nonce, 8);
     SHA3_512(buf, buf, 40);
-    memcpy(&(buf[64]), ret.mix_hash, 32);
-    SHA3_256(buf, buf, 64+32);
-    for (int i = 0 ; i < 32 ; i++)
-        if (buf[i] != ret.result[i]) return 0;
-    return 1;
+    memcpy(&(buf[64]), mix_hash, 32);
+    SHA3_256(return_hash, buf, 64+32);
+}
+
+int ethash_quick_check_difficulty(
+        const uint8_t header_hash[32],
+        const uint64_t nonce,
+        const uint8_t mix_hash[32],
+        const uint8_t difficulty[32]) {
+    uint8_t return_hash[32];
+    ethash_quick_hash(return_hash, header_hash, nonce, mix_hash);
+    return ethash_check_difficulty(return_hash, difficulty);
 }
 
 void ethash_full(ethash_return_value * ret, void const *full_mem, ethash_params const *params, const uint8_t previous_hash[32], const uint64_t nonce) {

@@ -101,8 +101,8 @@ BOOST_AUTO_TEST_CASE(ethash_params_init_check) {
             "\nfull size + DAGSIZE_BYTES_INIT / 4: " << params.full_size + DAGSIZE_BYTES_INIT / 4 << "\n"
                     << "should be greater than or equal to: " << nine_month_size << "\n");
     BOOST_REQUIRE_MESSAGE(params.cache_size < nine_month_size / 1024,
-            "\ncache size: " << params.cache_size << "\n"
-                    << "actual: " << nine_month_size / 1024 << "\n");
+            "\nactual cache size: " << params.cache_size << "\n"
+                    << "expected: " << nine_month_size / 1024 << "\n");
     BOOST_REQUIRE_MESSAGE(params.cache_size + DAGSIZE_BYTES_INIT / 4 / 1024 > nine_month_size / 1024 ,
             "\ncache size + DAGSIZE_BYTES_INIT / 4 / 1024: " << params.cache_size + DAGSIZE_BYTES_INIT / 4 / 1024 << "\n"
                     << "actual: " << nine_month_size / 32 << "\n");
@@ -178,9 +178,12 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
         BOOST_REQUIRE_MESSAGE(full_mix_hash_string == light_mix_hash_string,
                 "\nlight mix hash: " << light_mix_hash_string.c_str() << "\n"
                         << "full mix hash: " << full_mix_hash_string.c_str() << "\n");
-        BOOST_REQUIRE_MESSAGE(
-                ethash_check_return_value(full_out, hash, nonce),
-                "\nThe return value from the full memory hasher for hash " << hash << " and nonce " << nonce << " did not check out");
+        uint8_t check_hash[32];
+        ethash_quick_hash(check_hash, hash, nonce, full_out.mix_hash);
+        const std::string check_hash_string = bytesToHexString(check_hash, 32);
+        BOOST_REQUIRE_MESSAGE(check_hash_string == full_result_string,
+                "\ncheck hash string: " << check_hash_string.c_str() << "\n"
+                        << "full result: " << full_result_string.c_str() << "\n");
     }
     {
         ethash_full(&full_out, full_mem, &params, hash, 5);
