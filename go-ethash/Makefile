@@ -6,7 +6,7 @@ build:
 
 test:
 	go get -d
-	go test
+	cd test && go test
 
 clean:
 	rm -rf go-ethash.test

@@ -19,7 +19,6 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/logger"
 	"github.com/ethereum/go-ethereum/pow"
 )
@@ -216,21 +215,12 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) []byte {
 	}
 }
 
-// In order to check an uncle, it must satisfy the difficulty determined by the current block
-func (pow *Ethash) VerifyUncle(uncleHeader types.Header, difficulty *big.Int) bool {
-	if bytes.Compare(uncleHeader.SeedHash, pow.GetSeedHash(header.Number.Uint64())) != 0 {
-		return false
-	}
-	nonceInt, err := parseNonce(uncleHeader.Nonce)
-	if err != nil {
-		log.Println("nonce to int err:", err)
-		return false
-	}
-	return pow.verify(uncleHeader.HashNoNonce(), uncleHeader.MixDigest, difficulty, header.Number.Uint64(), nonceInt)
-}
-
 func (pow *Ethash) Verify(block pow.Block) bool {
+	// Make sure the SeedHash is set correctly
 	if bytes.Compare(block.SeedHash(), pow.GetSeedHash(block.NumberU64())) != 0 {
+		log.Println("Block had wrong SeedHash")
+		log.Println("Expected: ", pow.GetSeedHash(block.NumberU64()))
+		log.Println("Actual: ", block.SeedHash())
 		return false
 	}
 
@@ -242,11 +232,16 @@ func (pow *Ethash) Verify(block pow.Block) bool {
 	return pow.verify(block.HashNoNonce(), block.MixDigest(), block.Difficulty(), block.NumberU64(), nonceInt)
 }
 
-func (pow *Ethash) verify(hash []byte, mixDigest []byte, diff *big.Int, blockNum uint64, nonce uint64) bool {
-	// Quick check the mixDigest
+func (pow *Ethash) verify(hash []byte, mixDigest []byte, difficulty *big.Int, blockNum uint64, nonce uint64) bool {
+	// First check: make sure header and so on are correct
 	chash := (*C.uint8_t)(unsafe.Pointer(&hash))
 	cnonce := C.uint64_t(nonce)
-	cmixDigest := (*C.uint8_t)(unsafe.Pointer(&hash))
+	cmixDigest := (*C.uint8_t)(unsafe.Pointer(&mixDigest))
+	cdifficulty := (*C.uint8_t)(unsafe.Pointer(&difficulty.Bytes()[0]))
+	if C.ethash_quick_check_difficulty(chash, cnonce, cmixDigest, cdifficulty) != 1 {
+		log.Println("Failed to pass quick check.  Are you sure that the mix digest is correct?")
+		return false
+	}
 
 	var pAc *ParamsAndCache
 	// If its an old block (doesn't use the current cache)
@@ -263,7 +258,7 @@ func (pow *Ethash) verify(hash []byte, mixDigest []byte, diff *big.Int, blockNum
 	}
 
 	C.ethash_light(pow.ret, pAc.cache, pAc.params, chash, cnonce)
-	res := C.ethash_check_difficulty((*C.uint8_t)(unsafe.Pointer(&pow.ret.result[0])), (*C.uint8_t)(unsafe.Pointer(&diff.Bytes()[0])))
+	res := C.ethash_check_difficulty((*C.uint8_t)(unsafe.Pointer(&pow.ret.result[0])), cdifficulty)
 	return res == 1
 }
 
@@ -275,8 +270,7 @@ func (pow *Ethash) Turbo(on bool) {
 	pow.turbo = on
 }
 
-// just for testing
-func (pow *Ethash) full(nonce uint64, miningHash []byte) []byte {
+func (pow *Ethash) FullHash(nonce uint64, miningHash []byte) []byte {
 	pow.updateDAG()
 	pow.dagMutex.Lock()
 	defer pow.dagMutex.Unlock()
@@ -289,7 +283,7 @@ func (pow *Ethash) full(nonce uint64, miningHash []byte) []byte {
 	return ghash_full
 }
 
-func (pow *Ethash) light(nonce uint64, miningHash []byte) []byte {
+func (pow *Ethash) LightHash(nonce uint64, miningHash []byte) []byte {
 	cMiningHash := (*C.uint8_t)(unsafe.Pointer(&miningHash))
 	cnonce := C.uint64_t(nonce)
 	C.ethash_light(pow.ret, pow.paramsAndCache.cache, pow.paramsAndCache.params, cMiningHash, cnonce)
