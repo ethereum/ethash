@@ -43,7 +43,7 @@ func TestEthash(t *testing.T) {
 	nonce := uint64(0)
 
 	ghash_full := e.FullHash(nonce, miningHash)
-	log.Printf("ethhash full (on nonce): %x %x\n", ghash_full, nonce)
+	log.Printf("ethash full (on nonce): %x %x\n", ghash_full, nonce)
 
 	ghash_light := e.LightHash(nonce, miningHash)
 	log.Printf("ethash light (on nonce): %x %x\n", ghash_light, nonce)

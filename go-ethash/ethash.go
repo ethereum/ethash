@@ -158,11 +158,14 @@ func (pow *Ethash) Stop() {
 	pow.cacheMutex.Unlock()
 }
 
-func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) []byte {
+func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) ([]byte, []byte, []byte) {
 	pow.updateDAG()
 
 	// Not very elegant, multiple mining instances are not supported
 	pow.dagMutex.Lock()
+	pow.cacheMutex.Lock()
+	defer pow.cacheMutex.Unlock()
+	defer pow.dagMutex.Unlock()
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	miningHash := block.HashNoNonce()
@@ -180,7 +183,7 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) []byte {
 			powlogger.Infoln("Breaking from mining")
 			pow.HashRate = 0
 			pow.dagMutex.Unlock()
-			return nil
+			return nil, nil, nil
 		default:
 			i++
 
@@ -198,13 +201,13 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) []byte {
 			log.Printf("seed hash, nonce: %x %x\n", miningHash, nonce)
 			// pow.hash is the output/return of ethash_full
 			C.ethash_full(pow.ret, pow.dag.dag, pow.paramsAndCache.params, cMiningHash, cnonce)
-			ghash := C.GoBytes(unsafe.Pointer(&pow.ret.result[0]), 32)
-			log.Printf("ethhash full (on nonce): %x %x\n", ghash, nonce)
-
 			res := C.ethash_check_difficulty((*C.uint8_t)(&pow.ret.result[0]), (*C.uint8_t)(unsafe.Pointer(&diff.Bytes()[0])))
 			if res == 1 {
-				pow.dagMutex.Unlock()
-				return ghash
+				mixDigest := C.GoBytes(unsafe.Pointer(&pow.ret.mix_hash[0]), 32)
+				// We don't really nead 32 bytes here
+				buf := make([]byte, 32)
+				binary.PutUvarint(buf, nonce)
+				return buf, mixDigest, pow.GetSeedHash(block.NumberU64())
 			}
 			nonce += 1
 		}
@@ -233,7 +236,8 @@ func (pow *Ethash) Verify(block pow.Block) bool {
 }
 
 func (pow *Ethash) verify(hash []byte, mixDigest []byte, difficulty *big.Int, blockNum uint64, nonce uint64) bool {
-	// First check: make sure header and so on are correct
+	// First check: make sure header, mixDigest, nonce are correct without hitting the DAG
+	// This is to prevent DOS attacks
 	chash := (*C.uint8_t)(unsafe.Pointer(&hash))
 	cnonce := C.uint64_t(nonce)
 	cmixDigest := (*C.uint8_t)(unsafe.Pointer(&mixDigest))
