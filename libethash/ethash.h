@@ -25,9 +25,9 @@
 #include <stddef.h>
 #include "compiler.h"
 
-#define REVISION 17
+#define REVISION 18
 #define DAGSIZE_BYTES_INIT 1073741824U
-#define DAG_GROWTH 119900000U
+#define DAG_GROWTH 113000000U
 #define EPOCH_LENGTH 30000U
 #define MIX_BYTES 128
 #define DAG_PARENTS 256
