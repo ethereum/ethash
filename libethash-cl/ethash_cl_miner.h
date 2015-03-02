@@ -2,11 +2,7 @@
 
 #define __CL_ENABLE_EXCEPTIONS 
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
-#ifdef __APPLE__
-#include <OpenCL/cl.h>
-#else
-#include <CL/cl.h>
-#endif
+#include "cl.hpp"
 #include <time.h>
 #include <libethash/ethash.h>
 
