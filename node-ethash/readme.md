@@ -5,3 +5,8 @@
 
 # To rebuild 
 `node-gyp rebuild`  
+
+
+# notes
+
+nan is good https://github.com/rvagg/nan
