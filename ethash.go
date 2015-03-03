@@ -2,10 +2,10 @@ package ethash
 
 /*
 #cgo CFLAGS: -std=gnu99 -Wall
-#include "../libethash/ethash.h"
-#include "../libethash/util.c"
-#include "../libethash/internal.c"
-#include "../libethash/sha3.c"
+#include "libethash/ethash.h"
+#include "libethash/util.c"
+#include "libethash/internal.c"
+#include "libethash/sha3.c"
 */
 import "C"
 
