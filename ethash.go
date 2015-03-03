@@ -12,6 +12,7 @@ import "C"
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"log"
 	"math/big"
 	"math/rand"
@@ -123,7 +124,7 @@ func (pow *Ethash) updateDAG() {
 
 func New(chainManager pow.ChainManager) *Ethash {
 	return &Ethash{
-		turbo:          false,
+		turbo:          true,
 		paramsAndCache: makeParamsAndCache(chainManager, chainManager.CurrentBlock().NumberU64()),
 		chainManager:   chainManager,
 		dag:            nil,
@@ -171,9 +172,10 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) ([]byte, []byte
 	miningHash := block.HashNoNonce()
 	diff := block.Difficulty()
 	log.Println("difficulty", diff)
+
 	i := int64(0)
 	start := time.Now().UnixNano()
-	t := time.Now()
+	starti := start
 
 	nonce := uint64(r.Int63())
 
@@ -182,28 +184,22 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) ([]byte, []byte
 		case <-stop:
 			powlogger.Infoln("Breaking from mining")
 			pow.HashRate = 0
-			pow.dagMutex.Unlock()
 			return nil, nil, nil
 		default:
 			i++
 
-			if time.Since(t) > (1 * time.Second) {
-				elapsed := time.Now().UnixNano() - start
-				hashes := ((float64(1e9) / float64(elapsed)) * float64(i)) / 1000
-				pow.HashRate = int64(hashes)
-				powlogger.Infoln("Hashing @", pow.HashRate, "khash")
-
-				t = time.Now()
-			}
+			elapsed := time.Now().UnixNano() - start
+			hashes := ((float64(1e9) / float64(elapsed)) * float64(i-starti)) / 1000
+			pow.HashRate = int64(hashes)
 
 			cMiningHash := (*C.uint8_t)(unsafe.Pointer(&miningHash))
 			cnonce := C.uint64_t(nonce)
-			log.Printf("seed hash, nonce: %x %x\n", miningHash, nonce)
 			// pow.hash is the output/return of ethash_full
 			C.ethash_full(pow.ret, pow.dag.dag, pow.paramsAndCache.params, cMiningHash, cnonce)
-			res := C.ethash_check_difficulty((*C.uint8_t)(&pow.ret.result[0]), (*C.uint8_t)(unsafe.Pointer(&diff.Bytes()[0])))
+			diffBytes := diff.Bytes()
+			res := C.ethash_check_difficulty((*C.uint8_t)(unsafe.Pointer(&pow.ret.result)), (*C.uint8_t)(unsafe.Pointer(&diffBytes)))
 			if res == 1 {
-				mixDigest := C.GoBytes(unsafe.Pointer(&pow.ret.mix_hash[0]), 32)
+				mixDigest := C.GoBytes(unsafe.Pointer(&pow.ret.mix_hash), 32)
 				// We don't really nead 32 bytes here
 				buf := make([]byte, 32)
 				binary.PutUvarint(buf, nonce)
@@ -236,12 +232,14 @@ func (pow *Ethash) Verify(block pow.Block) bool {
 }
 
 func (pow *Ethash) verify(hash []byte, mixDigest []byte, difficulty *big.Int, blockNum uint64, nonce uint64) bool {
+	fmt.Printf("%x\n%d\n%x\n%x\n", hash, nonce, mixDigest, difficulty.Bytes())
 	// First check: make sure header, mixDigest, nonce are correct without hitting the DAG
 	// This is to prevent DOS attacks
 	chash := (*C.uint8_t)(unsafe.Pointer(&hash))
 	cnonce := C.uint64_t(nonce)
 	cmixDigest := (*C.uint8_t)(unsafe.Pointer(&mixDigest))
-	cdifficulty := (*C.uint8_t)(unsafe.Pointer(&difficulty.Bytes()[0]))
+	diffBytes := difficulty.Bytes()
+	cdifficulty := (*C.uint8_t)(unsafe.Pointer(&diffBytes))
 	if C.ethash_quick_check_difficulty(chash, cnonce, cmixDigest, cdifficulty) != 1 {
 		log.Println("Failed to pass quick check.  Are you sure that the mix digest is correct?")
 		return false
@@ -262,7 +260,7 @@ func (pow *Ethash) verify(hash []byte, mixDigest []byte, difficulty *big.Int, bl
 	}
 
 	C.ethash_light(pow.ret, pAc.cache, pAc.params, chash, cnonce)
-	res := C.ethash_check_difficulty((*C.uint8_t)(unsafe.Pointer(&pow.ret.result[0])), cdifficulty)
+	res := C.ethash_check_difficulty((*C.uint8_t)(unsafe.Pointer(&pow.ret.result)), cdifficulty)
 	return res == 1
 }
 
@@ -280,10 +278,9 @@ func (pow *Ethash) FullHash(nonce uint64, miningHash []byte) []byte {
 	defer pow.dagMutex.Unlock()
 	cMiningHash := (*C.uint8_t)(unsafe.Pointer(&miningHash))
 	cnonce := C.uint64_t(nonce)
-	log.Println("seed hash, nonce:", miningHash, nonce)
 	// pow.hash is the output/return of ethash_full
 	C.ethash_full(pow.ret, pow.dag.dag, pow.paramsAndCache.params, cMiningHash, cnonce)
-	ghash_full := C.GoBytes(unsafe.Pointer(&pow.ret.result[0]), 32)
+	ghash_full := C.GoBytes(unsafe.Pointer(&pow.ret.result), 32)
 	return ghash_full
 }
 
@@ -291,6 +288,6 @@ func (pow *Ethash) LightHash(nonce uint64, miningHash []byte) []byte {
 	cMiningHash := (*C.uint8_t)(unsafe.Pointer(&miningHash))
 	cnonce := C.uint64_t(nonce)
 	C.ethash_light(pow.ret, pow.paramsAndCache.cache, pow.paramsAndCache.params, cMiningHash, cnonce)
-	ghash_light := C.GoBytes(unsafe.Pointer(&pow.ret.result[0]), 32)
+	ghash_light := C.GoBytes(unsafe.Pointer(&pow.ret.result), 32)
 	return ghash_light
 }
