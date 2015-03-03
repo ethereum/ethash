@@ -1,4 +1,4 @@
-#!/usr/bin/env bash -x
+#!/bin/bash -x
 
 SOURCE="${BASH_SOURCE[0]}"
 
