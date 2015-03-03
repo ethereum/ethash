@@ -159,7 +159,7 @@ func (pow *Ethash) Stop() {
 	pow.cacheMutex.Unlock()
 }
 
-func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) ([]byte, []byte, []byte) {
+func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) (uint64, []byte, []byte) {
 	pow.updateDAG()
 
 	// Not very elegant, multiple mining instances are not supported
@@ -184,7 +184,7 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) ([]byte, []byte
 		case <-stop:
 			powlogger.Infoln("Breaking from mining")
 			pow.HashRate = 0
-			return nil, nil, nil
+			return 0, nil, nil
 		default:
 			i++
 
@@ -200,10 +200,7 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) ([]byte, []byte
 			res := C.ethash_check_difficulty((*C.uint8_t)(unsafe.Pointer(&pow.ret.result)), (*C.uint8_t)(unsafe.Pointer(&diffBytes)))
 			if res == 1 {
 				mixDigest := C.GoBytes(unsafe.Pointer(&pow.ret.mix_hash), 32)
-				// We don't really nead 32 bytes here
-				buf := make([]byte, 32)
-				binary.PutUvarint(buf, nonce)
-				return buf, mixDigest, pow.GetSeedHash(block.NumberU64())
+				return nonce, mixDigest, pow.GetSeedHash(block.NumberU64())
 			}
 			nonce += 1
 		}
@@ -223,12 +220,7 @@ func (pow *Ethash) Verify(block pow.Block) bool {
 		return false
 	}
 
-	nonceInt, err := parseNonce(block.Nonce())
-	if err != nil {
-		log.Println("nonce to int err:", err)
-		return false
-	}
-	return pow.verify(block.HashNoNonce(), block.MixDigest(), block.Difficulty(), block.NumberU64(), nonceInt)
+	return pow.verify(block.HashNoNonce(), block.MixDigest(), block.Difficulty(), block.NumberU64(), block.Nonce())
 }
 
 func (pow *Ethash) verify(hash []byte, mixDigest []byte, difficulty *big.Int, blockNum uint64, nonce uint64) bool {
