@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.2)
+cmake_minimum_required(VERSION 3.1.3)
 project(ethash)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
