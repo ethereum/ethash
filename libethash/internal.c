@@ -283,6 +283,7 @@ int ethash_quick_check_difficulty(
         const uint64_t nonce,
         const uint8_t mix_hash[32],
         const uint8_t difficulty[32]) {
+
     uint8_t return_hash[32];
     ethash_quick_hash(return_hash, header_hash, nonce, mix_hash);
     return ethash_check_difficulty(return_hash, difficulty);

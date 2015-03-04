@@ -15,17 +15,16 @@
   along with cpp-ethereum.  If notUUU,see <http://www.gnu.org/licenses/>.
 */
 
-/** @file nth_prime.h
+/** @file data_sizes.h
 * @author Matthew Wampler-Doty <negacthulhu@gmail.com>
 * @date 2015
 */
 
-// TODO: Update this after ~7 years
+// TODO: Update this after ~3.5 years
 
 #pragma once
 
 #include <stdint.h>
-//#include <Security/Security.h>
 #include "compiler.h"
 
 #ifdef __cplusplus
