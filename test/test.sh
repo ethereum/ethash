@@ -19,6 +19,11 @@ echo "################# Testing CPP ##################"
   make Test ;
   test/Test )
 
+echo "################# Testing JS ##################"
+
+( cd $TEST_DIR/../libethash-js ; 
+  ./test.js )
+
 #echo "################# Testing Go ##################"
 #( rm -rf $TEST_DIR/../go-build ;
 #  export GOPATH=$TEST_DIR/../go-build ;
