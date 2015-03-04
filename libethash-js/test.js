@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // test.js
 // Tim Hughes <tim@twistedfury.com>
 
@@ -7,7 +6,7 @@
 
 var ethash = require('./ethash');
 var util = require('./util');
-var Keccak = require('./Keccak');
+var Keccak = require('./keccak');
 
 // sanity check hash functions
 var src = util.stringToBytes("");
