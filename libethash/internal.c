@@ -31,18 +31,18 @@
 
 #ifdef WITH_CRYPTOPP
 
-#include "SHA3_cryptopp.h"
+#include "sha3_cryptopp.h"
 
 #else
 #include "sha3.h"
 #endif // WITH_CRYPTOPP
 
-size_t const ethash_get_datasize(const uint32_t block_number) {
+size_t ethash_get_datasize(const uint32_t block_number) {
     assert(block_number / EPOCH_LENGTH < 500);
     return dag_sizes[block_number / EPOCH_LENGTH];
 }
 
-size_t const ethash_get_cachesize(const uint32_t block_number) {
+size_t ethash_get_cachesize(const uint32_t block_number) {
     assert(block_number / EPOCH_LENGTH < 500);
     return cache_sizes[block_number / EPOCH_LENGTH];
 }
