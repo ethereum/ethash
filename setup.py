@@ -9,8 +9,12 @@ pyethash_core = Extension('pyethash.core',
             'src/libethash/sha3.c'
             ])
  
-setup (name = 'pyethash',
-        version = '1.0',
-        description = 'Python wrappers for ethash, the ethereum proof of work hashing function',
-        ext_modules = [pyethash_core],
+setup (
+       name = 'pyethash',
+       author = "Matthew Wampler-Doty",
+       author_email = "matthew.wampler.doty@gmail.com",
+       license = 'GPL',
+       version = '1.0',
+       description = 'Python wrappers for ethash, the ethereum proof of work hashing function',
+       ext_modules = [pyethash_core],
       )
