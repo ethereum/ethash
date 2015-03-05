@@ -2,5 +2,8 @@
 .DS_Store
 */**/*un~
 .vagrant/
-cpp-build/
-go-build/
+*.pyc
+build/
+pyethash.egg-info/
+*.so
+*~
