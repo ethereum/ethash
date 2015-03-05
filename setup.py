@@ -3,10 +3,10 @@ from distutils.core import setup, Extension
  
 pyethash_core = Extension('pyethash.core', 
         sources = [
-            'python-src/core.c', 
-            'libethash/util.c', 
-            'libethash/internal.c',
-            'libethash/sha3.c'
+            'src/python/core.c', 
+            'src/libethash/util.c', 
+            'src/libethash/internal.c',
+            'src/libethash/sha3.c'
             ])
  
 setup (name = 'pyethash',

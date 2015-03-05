@@ -11,7 +11,6 @@ while [ -h "$SOURCE" ]; do
 done
 TEST_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
-echo "################# Testing Go ##################"
 rm -rf $TEST_DIR/go-build 
 # TODO: go-ethereum needs to integrate ethash for this to work
 #export GOPATH=$TEST_DIR/../go-build 
