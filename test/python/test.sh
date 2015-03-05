@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 # Strict mode
 set -e
@@ -11,10 +11,10 @@ while [ -h "$SOURCE" ]; do
 done
 TEST_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
-# rm -rf $TEST_DIR/python-virtual-env 
-# virtualenv --system-site-packages $TEST_DIR/python-virtual-env > /dev/null 
+rm -rf $TEST_DIR/python-virtual-env 
+virtualenv --system-site-packages $TEST_DIR/python-virtual-env > /dev/null 
 source $TEST_DIR/python-virtual-env/bin/activate 
-# pip install -r $TEST_DIR/requirements.txt > /dev/null
+pip install -r $TEST_DIR/requirements.txt > /dev/null
 pip install -e $TEST_DIR/../..
 cd $TEST_DIR
 nosetests --with-doctest -v
