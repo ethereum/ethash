@@ -11,6 +11,7 @@ import "C"
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"math/big"
@@ -62,18 +63,14 @@ func parseNonce(nonce []byte) (uint64, error) {
 	return nonceInt, nil
 }
 
-const epochLength uint64 = 3000
+const epochLength uint64 = 30000
 
 func GetSeedBlockNum(blockNum uint64) uint64 {
-	// Seed Blocks update every 30000 blocks,
-	// but really we look at the block 60000 back.
-	// That way, we can have a back buffer of the DAG ready to go
-	// (if we want).
-	blockEpoch := blockNum/epochLength - 1
-	if blockEpoch <= 0 {
-		return 0
+	var seedBlockNum uint64 = 0
+	if blockNum > epochLength {
+		seedBlockNum = ((blockNum - 1) / epochLength) * epochLength
 	}
-	return blockEpoch * epochLength
+	return seedBlockNum
 }
 
 func makeParamsAndCache(chainManager pow.ChainManager, blockNum uint64) *ParamsAndCache {
@@ -279,6 +276,7 @@ func (pow *Ethash) Verify(block pow.Block) bool {
 }
 
 func (pow *Ethash) verify(hash []byte, mixDigest []byte, difficulty *big.Int, blockNum uint64, nonce uint64) bool {
+	fmt.Printf("%x\n%d\n%x\n%x\n", hash, nonce, mixDigest, difficulty.Bytes())
 	// First check: make sure header, mixDigest, nonce are correct without hitting the DAG
 	// This is to prevent DOS attacks
 	chash := (*C.uint8_t)(unsafe.Pointer(&hash[0]))
