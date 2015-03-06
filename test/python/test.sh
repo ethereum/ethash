@@ -11,10 +11,9 @@ while [ -h "$SOURCE" ]; do
 done
 TEST_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
-rm -rf $TEST_DIR/python-virtual-env
-virtualenv --system-site-packages $TEST_DIR/python-virtual-env > /dev/null
+[ -d $TEST_DIR/python-virtual-env ] || virtualenv --system-site-packages $TEST_DIR/python-virtual-env
 source $TEST_DIR/python-virtual-env/bin/activate
 pip install -r $TEST_DIR/requirements.txt > /dev/null
-pip install -e $TEST_DIR/../..
+pip install -e $TEST_DIR/../.. > /dev/null
 cd $TEST_DIR
 nosetests --with-doctest -v

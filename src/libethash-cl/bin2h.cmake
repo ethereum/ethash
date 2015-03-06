@@ -68,7 +68,10 @@ function(BIN2H)
     string(REGEX REPLACE ", $" "" arrayValues ${arrayValues})
 
     # converts the variable name into proper C identifier
-    string(MAKE_C_IDENTIFIER "${BIN2H_VARIABLE_NAME}" BIN2H_VARIABLE_NAME)
+    # TODO: fix for legacy cmake
+    IF (${CMAKE_VERSION} GREATER 2.8.10)
+        string(MAKE_C_IDENTIFIER "${BIN2H_VARIABLE_NAME}" BIN2H_VARIABLE_NAME)
+    ENDIF()
     string(TOUPPER "${BIN2H_VARIABLE_NAME}" BIN2H_VARIABLE_NAME)
 
     # declares byte array and the length variables
