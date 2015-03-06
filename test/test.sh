@@ -16,11 +16,11 @@ echo -e "\n################# Testing JS ##################"
 cd $TEST_DIR/../js 
 node test.js
 
-echo -e "\n################# Testing Python ##################"
-$TEST_DIR/python/test.sh
-
 echo -e "\n################# Testing C ##################"
 $TEST_DIR/c/test.sh
+
+echo -e "\n################# Testing Python ##################"
+$TEST_DIR/python/test.sh
 
 #echo "################# Testing Go ##################"
 #$TEST_DIR/go/test.sh
