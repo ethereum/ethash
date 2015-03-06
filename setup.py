@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from distutils.core import setup, Extension
  
-pyethash_core = Extension('pyethash.core', 
+pyethash = Extension('pyethash', 
         sources = [
             'src/python/core.c', 
             'src/libethash/util.c', 
@@ -17,5 +17,5 @@ setup (
        license = 'GPL',
        version = '1.0',
        description = 'Python wrappers for ethash, the ethereum proof of work hashing function',
-       ext_modules = [pyethash_core],
+       ext_modules = [pyethash],
       )
