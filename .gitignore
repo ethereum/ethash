@@ -7,3 +7,4 @@ build/
 pyethash.egg-info/
 *.so
 *~
+*.swp
