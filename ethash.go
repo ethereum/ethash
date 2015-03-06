@@ -33,6 +33,7 @@ var powlogger = logger.NewLogger("POW")
 type DAG struct {
 	SeedBlockNum uint64
 	dag          unsafe.Pointer // full GB of memory for dag
+	file         bool
 }
 
 type ParamsAndCache struct {
@@ -62,7 +63,19 @@ func parseNonce(nonce []byte) (uint64, error) {
 	return nonceInt, nil
 }
 
-const epochLength uint64 = 3000
+const epochLength uint64 = 30000
+
+func GetSeedBlockNum(blockNum uint64) uint64 {
+	var seedBlockNum uint64 = 0
+	if blockNum > epochLength {
+		seedBlockNum = ((blockNum - 1) / epochLength) * epochLength
+	}
+	return seedBlockNum
+}
+
+/*
+XXX THIS DOESN'T WORK!! NEEDS FIXING
+blockEpoch will underflow and wrap around causing massive issues
 
 func GetSeedBlockNum(blockNum uint64) uint64 {
 	// Seed Blocks update every 30000 blocks,
@@ -75,6 +88,7 @@ func GetSeedBlockNum(blockNum uint64) uint64 {
 	}
 	return blockEpoch * epochLength
 }
+*/
 
 func makeParamsAndCache(chainManager pow.ChainManager, blockNum uint64) *ParamsAndCache {
 	seedBlockNum := GetSeedBlockNum(blockNum)
@@ -129,7 +143,7 @@ func (pow *Ethash) writeDagToDisk(dag *DAG, seedNum uint64) *os.File {
 	return file
 }
 
-func (pow *Ethash) updateDAG() {
+func (pow *Ethash) UpdateDAG() {
 	pow.cacheMutex.Lock()
 	pow.dagMutex.Lock()
 
@@ -137,16 +151,17 @@ func (pow *Ethash) updateDAG() {
 	if pow.dag == nil || pow.dag.SeedBlockNum != seedNum {
 		if pow.dag != nil && pow.dag.dag != nil {
 			C.free(pow.dag.dag)
+			pow.dag.dag = nil
 		}
 
 		path := path.Join("/", "tmp", "dag")
 		pow.dag = nil
-		log.Println("Generating dag Dag")
+		log.Println("Generating dag")
 		start := time.Now()
 
 		file, err := os.Open(path)
 		if err != nil {
-			log.Printf("No dag found in '%s'. Generating new dago(takes a while)...")
+			log.Printf("No dag found in '%s'. Generating new dago(takes a while)...", path)
 			pow.dag = makeDAG(pow.paramsAndCache)
 			file = pow.writeDagToDisk(pow.dag, seedNum)
 		} else {
@@ -164,9 +179,9 @@ func (pow *Ethash) updateDAG() {
 				data = data[8:]
 				pow.dag = &DAG{
 					dag:          unsafe.Pointer(&data[0]),
+					file:         true,
 					SeedBlockNum: pow.paramsAndCache.SeedBlockNum,
 				}
-				//fmt.Printf("SHA DAG: %x\n", crypto.Sha3(data))
 			}
 		}
 		log.Println("Took:", time.Since(start))
@@ -184,7 +199,6 @@ func New(chainManager pow.ChainManager) *Ethash {
 		paramsAndCache: makeParamsAndCache(chainManager, chainManager.CurrentBlock().NumberU64()),
 		chainManager:   chainManager,
 		dag:            nil,
-		ret:            new(C.ethash_return_value),
 		cacheMutex:     new(sync.Mutex),
 		dagMutex:       new(sync.Mutex),
 	}
@@ -206,37 +220,40 @@ func (pow *Ethash) GetSeedHash(blockNum uint64) []byte {
 func (pow *Ethash) Stop() {
 	pow.cacheMutex.Lock()
 	pow.dagMutex.Lock()
+	defer pow.dagMutex.Unlock()
+	defer pow.cacheMutex.Unlock()
+
 	if pow.paramsAndCache.cache != nil {
 		C.free(pow.paramsAndCache.cache.mem)
 	}
-	if pow.dag.dag != nil {
+	if pow.dag.dag != nil && !pow.dag.file {
 		C.free(pow.dag.dag)
 	}
-	pow.dagMutex.Unlock()
-	pow.cacheMutex.Unlock()
+	pow.dag.dag = nil
 }
 
 func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) (uint64, []byte, []byte) {
-	pow.updateDAG()
+	//pow.UpdateDAG()
 
 	// Not very elegant, multiple mining instances are not supported
-	pow.dagMutex.Lock()
-	pow.cacheMutex.Lock()
-	defer pow.cacheMutex.Unlock()
-	defer pow.dagMutex.Unlock()
+	//pow.dagMutex.Lock()
+	//pow.cacheMutex.Lock()
+	//defer pow.cacheMutex.Unlock()
+	//defer pow.dagMutex.Unlock()
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	miningHash := block.HashNoNonce()
 	diff := block.Difficulty()
 
 	i := int64(0)
+	starti := i
 	start := time.Now().UnixNano()
-	starti := start
 
 	nonce := uint64(r.Int63())
 	cMiningHash := (*C.uint8_t)(unsafe.Pointer(&miningHash[0]))
 	target := new(big.Int).Div(tt256, diff)
 
+	var ret C.ethash_return_value
 	for {
 		select {
 		case <-stop:
@@ -250,11 +267,11 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) (uint64, []byte
 			hashes := ((float64(1e9) / float64(elapsed)) * float64(i-starti)) / 1000
 			pow.HashRate = int64(hashes)
 
-			C.ethash_full(pow.ret, pow.dag.dag, pow.paramsAndCache.params, cMiningHash, C.uint64_t(nonce))
-			result := ethutil.Bytes2Big(C.GoBytes(unsafe.Pointer(&pow.ret.result[0]), C.int(32)))
+			C.ethash_full(&ret, pow.dag.dag, pow.paramsAndCache.params, cMiningHash, C.uint64_t(nonce))
+			result := ethutil.Bytes2Big(C.GoBytes(unsafe.Pointer(&ret.result[0]), C.int(32)))
 
 			if result.Cmp(target) <= 0 {
-				mixDigest := C.GoBytes(unsafe.Pointer(&pow.ret.mix_hash[0]), C.int(32))
+				mixDigest := C.GoBytes(unsafe.Pointer(&ret.mix_hash[0]), C.int(32))
 
 				return nonce, mixDigest, pow.GetSeedHash(block.NumberU64())
 
@@ -267,6 +284,7 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) (uint64, []byte
 			time.Sleep(20 * time.Microsecond)
 		}
 	}
+
 }
 
 func (pow *Ethash) Verify(block pow.Block) bool {
@@ -299,9 +317,11 @@ func (pow *Ethash) verify(hash []byte, mixDigest []byte, difficulty *big.Int, bl
 		pAc = pow.paramsAndCache
 	}
 
-	C.ethash_light(pow.ret, pAc.cache, pAc.params, chash, cnonce)
+	ret := new(C.ethash_return_value)
 
-	result := ethutil.Bytes2Big(C.GoBytes(unsafe.Pointer(&pow.ret.result[0]), C.int(32)))
+	C.ethash_light(ret, pAc.cache, pAc.params, chash, cnonce)
+
+	result := ethutil.Bytes2Big(C.GoBytes(unsafe.Pointer(&ret.result[0]), C.int(32)))
 	return result.Cmp(target) <= 0
 }
 
@@ -314,21 +334,23 @@ func (pow *Ethash) Turbo(on bool) {
 }
 
 func (pow *Ethash) FullHash(nonce uint64, miningHash []byte) []byte {
-	pow.updateDAG()
+	pow.UpdateDAG()
 	pow.dagMutex.Lock()
 	defer pow.dagMutex.Unlock()
 	cMiningHash := (*C.uint8_t)(unsafe.Pointer(&miningHash[0]))
 	cnonce := C.uint64_t(nonce)
+	ret := new(C.ethash_return_value)
 	// pow.hash is the output/return of ethash_full
-	C.ethash_full(pow.ret, pow.dag.dag, pow.paramsAndCache.params, cMiningHash, cnonce)
-	ghash_full := C.GoBytes(unsafe.Pointer(&pow.ret.result), 32)
+	C.ethash_full(ret, pow.dag.dag, pow.paramsAndCache.params, cMiningHash, cnonce)
+	ghash_full := C.GoBytes(unsafe.Pointer(&ret.result), 32)
 	return ghash_full
 }
 
 func (pow *Ethash) LightHash(nonce uint64, miningHash []byte) []byte {
 	cMiningHash := (*C.uint8_t)(unsafe.Pointer(&miningHash[0]))
 	cnonce := C.uint64_t(nonce)
-	C.ethash_light(pow.ret, pow.paramsAndCache.cache, pow.paramsAndCache.params, cMiningHash, cnonce)
-	ghash_light := C.GoBytes(unsafe.Pointer(&pow.ret.result), 32)
+	ret := new(C.ethash_return_value)
+	C.ethash_light(ret, pow.paramsAndCache.cache, pow.paramsAndCache.params, cMiningHash, cnonce)
+	ghash_light := C.GoBytes(unsafe.Pointer(&ret.result), 32)
 	return ghash_light
 }
