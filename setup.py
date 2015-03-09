@@ -18,6 +18,7 @@ pyethash = Extension('pyethash',
             'src/libethash/sha3.h',
             'src/libethash/util.h'
             ],
+        include_dirs = ['src/libethash/'],
         extra_compile_args = ["-Isrc/", "-std=gnu99", "-Wall"])
  
 setup (
@@ -25,9 +26,9 @@ setup (
        author = "Matthew Wampler-Doty",
        author_email = "matthew.wampler.doty@gmail.com",
        license = 'GPL',
-       version = '20.4',
+       version = '20.5',
        url = 'https://github.com/ethereum/ethash',
-       download_url = 'https://github.com/ethereum/ethash/tarball/v20.4',
+       download_url = 'https://github.com/ethereum/ethash/tarball/v20.5',
        description = 'Python wrappers for ethash, the ethereum proof of work hashing function',
        ext_modules = [pyethash],
       )
