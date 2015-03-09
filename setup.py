@@ -25,9 +25,9 @@ setup (
        author = "Matthew Wampler-Doty",
        author_email = "matthew.wampler.doty@gmail.com",
        license = 'GPL',
-       version = '20.6',
+       version = '20.7',
        url = 'https://github.com/ethereum/ethash',
-       download_url = 'https://github.com/ethereum/ethash/tarball/v20.6',
+       download_url = 'https://github.com/ethereum/ethash/tarball/v20.7',
        description = 'Python wrappers for ethash, the ethereum proof of work hashing function',
        ext_modules = [pyethash],
       )
