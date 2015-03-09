@@ -10,6 +10,12 @@ endif()
 
 add_subdirectory(src/libethash)
 # bin2h.cmake doesn't work
-#add_subdirectory(src/libethash-cl EXCLUDE_FROM_ALL)
+if (NOT OpenCL_FOUND)
+	find_package(OpenCL)
+endif()
+
+if (OpenCL_FOUND)
+	add_subdirectory(src/libethash-cl EXCLUDE_FROM_ALL)
+endif()
 add_subdirectory(src/benchmark EXCLUDE_FROM_ALL)
 add_subdirectory(test/c EXCLUDE_FROM_ALL)
