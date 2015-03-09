@@ -2,7 +2,7 @@
 from distutils.core import setup, Extension
  
 pyethash = Extension('pyethash', 
-        sources = (
+        sources = [
             'src/python/core.c', 
             'src/libethash/util.c', 
             'src/libethash/internal.c',
@@ -16,7 +16,7 @@ pyethash = Extension('pyethash',
             'src/libethash/internal.h',
             'src/libethash/sha3.h',
             'src/libethash/util.h'
-            ),
+            ],
         extra_compile_args = ["-Isrc/", "-std=gnu99", "-Wall"])
  
 setup (
