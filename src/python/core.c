@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
-#include <libethash/ethash.h>
+#include "../libethash/ethash.h"
 #define MIX_WORDS (MIX_BYTES/4)
 
 static PyObject*
@@ -66,7 +66,7 @@ calc_dataset_bytes(PyObject* self, PyObject* args)
   if (full_size % MIX_WORDS != 0)
   {
     char error_message[1024];
-    sprintf(error_message, "The size of data set must be a multiple of %lu bytes (was %i)", MIX_WORDS, full_size);
+    sprintf(error_message, "The size of data set must be a multiple of %i bytes (was %lu)", MIX_WORDS, full_size);
     PyErr_SetString(PyExc_ValueError, error_message);
     return 0;
   }
@@ -74,7 +74,7 @@ calc_dataset_bytes(PyObject* self, PyObject* args)
   if (cache_size % HASH_BYTES != 0)
   {
     char error_message[1024];
-    sprintf(error_message, "The size of the cache must be a multiple of %lu bytes (was %i)", HASH_BYTES, cache_size);
+    sprintf(error_message, "The size of the cache must be a multiple of %i bytes (was %i)", HASH_BYTES, cache_size);
     PyErr_SetString(PyExc_ValueError, error_message);
     return 0;
   }
@@ -104,7 +104,7 @@ hashimoto_light(PyObject* self, PyObject* args)
   if (full_size % MIX_WORDS != 0)
   {
     char error_message[1024];
-    sprintf(error_message, "The size of data set must be a multiple of %lu bytes (was %i)", MIX_WORDS, full_size);
+    sprintf(error_message, "The size of data set must be a multiple of %i bytes (was %lu)", MIX_WORDS, full_size);
     PyErr_SetString(PyExc_ValueError, error_message);
     return 0;
   }
@@ -112,7 +112,7 @@ hashimoto_light(PyObject* self, PyObject* args)
   if (cache_size % HASH_BYTES != 0)
   {
     char error_message[1024];
-    sprintf(error_message, "The size of the cache must be a multiple of %lu bytes (was %i)", HASH_BYTES);
+    sprintf(error_message, "The size of the cache must be a multiple of %i bytes (was %i)", HASH_BYTES, cache_size);
     PyErr_SetString(PyExc_ValueError, error_message);
     return 0;
   }
@@ -152,7 +152,7 @@ hashimoto_full(PyObject* self, PyObject* args)
   if (full_size % MIX_WORDS != 0)
   {
     char error_message[1024];
-    sprintf(error_message, "The size of data set must be a multiple of %lu bytes (was %i)", MIX_WORDS, full_size);
+    sprintf(error_message, "The size of data set must be a multiple of %i bytes (was %i)", MIX_WORDS, full_size);
     PyErr_SetString(PyExc_ValueError, error_message);
     return 0;
   }
@@ -190,7 +190,7 @@ mine(PyObject* self, PyObject* args)
   if (full_size % MIX_WORDS != 0)
   {
     char error_message[1024];
-    sprintf(error_message, "The size of data set must be a multiple of %lu bytes (was %i)", MIX_WORDS, full_size);
+    sprintf(error_message, "The size of data set must be a multiple of %i bytes (was %i)", MIX_WORDS, full_size);
     PyErr_SetString(PyExc_ValueError, error_message);
     return 0;
   }
@@ -217,7 +217,7 @@ mine(PyObject* self, PyObject* args)
 
   do {
     ethash_full(&out, (void *) full_bytes, &params, (uint8_t *) header, nonce);
-  } while (!ethash_check_difficulty(out.result, difficulty));
+  } while (!ethash_check_difficulty(out.result, (const uint8_t *) difficulty));
 
   return Py_BuildValue("K", nonce);
 }
