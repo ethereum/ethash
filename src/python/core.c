@@ -12,6 +12,15 @@ get_cache_size(PyObject* self, PyObject* args)
   unsigned long block_number;
   if (!PyArg_ParseTuple(args, "k", &block_number))
     return 0;
+  if (block_number >= EPOCH_LENGTH * 2048)
+  {
+    char error_message[1024];
+    sprintf(error_message, "Block number must be less than or equal to %i (was %lu)", EPOCH_LENGTH * 2048, block_number);
+
+    PyErr_SetString(PyExc_ValueError, error_message);
+    return 0;
+  }
+
   return Py_BuildValue("i", ethash_get_cachesize(block_number));
 }
 
@@ -21,6 +30,15 @@ get_full_size(PyObject* self, PyObject* args)
   unsigned long block_number;
   if (!PyArg_ParseTuple(args, "k", &block_number))
     return 0;
+  if (block_number >= EPOCH_LENGTH * 2048)
+  {
+    char error_message[1024];
+    sprintf(error_message, "Block number must be less than or equal to %i (was %lu)", EPOCH_LENGTH * 2048, block_number);
+
+    PyErr_SetString(PyExc_ValueError, error_message);
+    return 0;
+  }
+
   return Py_BuildValue("i", ethash_get_datasize(block_number));
 }
 
