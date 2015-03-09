@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
-#include "../libethash/ethash.h"
+#include <libethash/ethash.h>
 #define MIX_WORDS (MIX_BYTES/4)
 
 static PyObject*

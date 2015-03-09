@@ -8,7 +8,7 @@ pyethash = Extension('pyethash',
             'src/libethash/internal.c',
             'src/libethash/sha3.c'
             ],
-        extra_compile_args = ["-std=gnu99", "-Wall"])
+        extra_compile_args = ["-Isrc/", "-std=gnu99", "-Wall"])
  
 setup (
        name = 'pyethash',
