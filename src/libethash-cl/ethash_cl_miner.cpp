@@ -31,8 +31,6 @@
 #undef min
 #undef max
 
-#define HASH_BYTES 32
-
 static void add_definition(std::string& source, char const* id, unsigned value)
 {
 	char buf[256];
@@ -176,7 +174,6 @@ void ethash_cl_miner::hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, 
 			m_hash_kernel.setArg(0, m_hash_buf[buf]);
 
 			// execute it!
-			clock_t start_time = clock();
 			m_queue.enqueueNDRangeKernel(
 				m_hash_kernel,
 				cl::NullRange,
