@@ -11,6 +11,10 @@ while [ -h "$SOURCE" ]; do
 done
 TEST_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
-export GOPATH=$TEST_DIR/go-build 
+export GOPATH=${HOME}/.go
 export PATH=$PATH:$GOPATH/bin 
-go test
+echo "# getting go dependencies (can take some time)..."
+cd ${TEST_DIR}/../.. && go get 
+cd ${GOPATH}/src/github.com/ethereum/go-ethereum
+git checkout poc-9
+cd ${TEST_DIR} && go test
