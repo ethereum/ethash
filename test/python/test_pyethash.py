@@ -50,9 +50,9 @@ def test_light_and_full_agree():
     light_result = pyethash.hashimoto_light(full_size, cache, header, 0)
     dataset = pyethash.calc_dataset_bytes(full_size, cache)
     full_result = pyethash.hashimoto_full(dataset, header, 0)
-    assert light_result["mixhash"] != None
-    assert len(light_result["mixhash"]) == 32
-    assert light_result["mixhash"] == full_result["mixhash"]
+    assert light_result["mix digest"] != None
+    assert len(light_result["mix digest"]) == 32
+    assert light_result["mix digest"] == full_result["mix digest"]
     assert light_result["result"] != None
     assert len(light_result["result"]) == 32
     assert light_result["result"] == full_result["result"]
@@ -65,8 +65,8 @@ def int_to_bytes(i):
     b.reverse()
     return "".join(b)
 
-def test_mining():
-    easy_difficulty = int_to_bytes(2**256-1)
+def test_mining_basic():
+    easy_difficulty = int_to_bytes(2**256 - 1)
     assert easy_difficulty.encode('hex') == 'f' * 64
     cache = pyethash.mkcache_bytes(
               1024,
@@ -74,4 +74,32 @@ def test_mining():
     full_size = 1024 * 32
     header = "~~~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~"
     dataset = pyethash.calc_dataset_bytes(full_size, cache)
-    assert type(pyethash.mine(dataset,header,easy_difficulty)) == long
+    # Check type of outputs
+    assert type(pyethash.mine(dataset,header,easy_difficulty)) == dict
+    assert type(pyethash.mine(dataset,header,easy_difficulty)["nonce"]) == long
+    assert type(pyethash.mine(dataset,header,easy_difficulty)["mix digest"]) == str
+    assert type(pyethash.mine(dataset,header,easy_difficulty)["result"]) == str
+
+def test_mining_doesnt_always_return_the_same_value():
+    easy_difficulty1 = int_to_bytes(int(2**256 * 0.999))
+    # 1 in 1000 difficulty
+    easy_difficulty2 = int_to_bytes(int(2**256 * 0.001))
+    assert easy_difficulty1 != easy_difficulty2
+    cache = pyethash.mkcache_bytes(
+              1024,
+              "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    full_size = 1024 * 32
+    header = "~~~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    dataset = pyethash.calc_dataset_bytes(full_size, cache)
+    # Check type of outputs
+    assert pyethash.mine(dataset, header, easy_difficulty1)['nonce'] != pyethash.mine(dataset, header, easy_difficulty2)['nonce']
+
+def test_get_seedhash():
+    assert pyethash.get_seedhash(0).encode('hex') == '0' * 64
+    import hashlib, sha3
+    expected = pyethash.get_seedhash(0)
+    #print "checking seed hashes:",
+    for i in range(0, 30000*2048, 30000):
+        #print i // 30000,
+        assert pyethash.get_seedhash(i) == expected
+        expected = hashlib.sha3_256(expected).digest()
