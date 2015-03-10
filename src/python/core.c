@@ -214,7 +214,7 @@ mine(PyObject *self, PyObject *args) {
     ethash_params params;
     params.full_size = (size_t) full_size;
 
-    // TODO: Multi threading
+    // TODO: Multi threading?
     do {
         ethash_full(&out, (void *) full_bytes, &params, (const uint8_t *) header, nonce++);
         // TODO: disagrees with the spec https://github.com/ethereum/wiki/wiki/Ethash#mining
@@ -287,15 +287,14 @@ PyMODINIT_FUNC
 initpyethash(void) {
     PyObject *module = Py_InitModule("pyethash", PyethashMethods);
     // Following Spec: https://github.com/ethereum/wiki/wiki/Ethash#definitions
-    // (leaving C names as they are since they are used in many places)
     PyModule_AddIntConstant(module, "REVISION", (long) REVISION);
-    PyModule_AddIntConstant(module, "DATASET_BYTES_INIT", (long) DAGSIZE_BYTES_INIT);
-    PyModule_AddIntConstant(module, "DATASET_BYTES_GROWTH", (long) DAG_GROWTH);
+    PyModule_AddIntConstant(module, "DATASET_BYTES_INIT", (long) DATASET_BYTES_INIT);
+    PyModule_AddIntConstant(module, "DATASET_BYTES_GROWTH", (long) DATASET_BYTES_GROWTH);
     PyModule_AddIntConstant(module, "CACHE_MULTIPLIER", (long) CACHE_MULTIPLIER);
     PyModule_AddIntConstant(module, "EPOCH_LENGTH", (long) EPOCH_LENGTH);
     PyModule_AddIntConstant(module, "MIX_BYTES", (long) MIX_BYTES);
     PyModule_AddIntConstant(module, "HASH_BYTES", (long) HASH_BYTES);
-    PyModule_AddIntConstant(module, "DATASET_PARENTS", (long) DAG_PARENTS);
+    PyModule_AddIntConstant(module, "DATASET_PARENTS", (long) DATASET_PARENTS);
     PyModule_AddIntConstant(module, "CACHE_ROUNDS", (long) CACHE_ROUNDS);
     PyModule_AddIntConstant(module, "ACCESSES", (long) ACCESSES);
 }
