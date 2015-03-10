@@ -188,6 +188,7 @@ func (pow *Ethash) UpdateDAG() {
 				file = pow.writeDagToDisk(pow.dag, seedNum)
 				pow.dag.file = true
 			} else {
+				// XXX Check the DAG is not corrupted
 				data = data[8:]
 				pow.dag = &DAG{
 					dag:            unsafe.Pointer(&data[0]),
@@ -321,7 +322,7 @@ func (pow *Ethash) verify(hash []byte, mixDigest []byte, difficulty *big.Int, bl
 		return false
 	}
 
-	// First check: make sure header, mixDigest, nonce are correct without hitting the DAG
+	// First check: make sure header, mixDigest, nonce are correct without hitting the cache
 	// This is to prevent DOS attacks
 	chash := (*C.uint8_t)(unsafe.Pointer(&hash[0]))
 	cnonce := C.uint64_t(nonce)
