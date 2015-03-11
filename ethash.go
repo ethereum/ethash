@@ -119,7 +119,7 @@ func (pow *Ethash) writeDagToDisk(dag *DAG, epoch uint64) *os.File {
 	if epoch > 2048 {
 		panic(fmt.Errorf("Epoch must be less than 2048 (is %v)", epoch))
 	}
-	data := C.GoBytes(unsafe.Pointer(dag.dag), C.int(pow.paramsAndCache.params.full_size))
+	data := C.GoBytes(unsafe.Pointer(dag.dag), C.int(dag.paramsAndCache.params.full_size))
 	file, err := os.Create("/tmp/dag")
 	if err != nil {
 		panic(err)
@@ -130,7 +130,6 @@ func (pow *Ethash) writeDagToDisk(dag *DAG, epoch uint64) *os.File {
 
 	file.Write(dataEpoch)
 	file.Write(data)
-	// TODO: Check data is not corrupted
 
 	return file
 }
@@ -162,7 +161,7 @@ func (pow *Ethash) UpdateDAG() {
 			panic(err)
 		}
 
-		// TODO: On non SSD disks, loading the DAG from disk takes longer than generating it in memory
+		// TODO: On non-SSD disks, loading the DAG from disk takes longer than generating it in memory
 		pow.paramsAndCache = paramsAndCache
 		path := path.Join("/", "tmp", "dag")
 		pow.dag = nil
@@ -181,19 +180,32 @@ func (pow *Ethash) UpdateDAG() {
 				panic(err)
 			}
 
-			dataEpoch := binary.BigEndian.Uint64(data[0:8])
-			if dataEpoch < thisEpoch {
-				log.Printf("DAG in '%s' is stale. Generating new DAG (this takes a while)...", file.Name())
+			if len(data) < 8 {
+				log.Printf("DAG in '%s' is less than 8 bytes, it must be corrupted. Generating new DAG (this takes a while)...", file.Name())
 				pow.dag = makeDAG(paramsAndCache)
 				file = pow.writeDagToDisk(pow.dag, thisEpoch)
 				pow.dag.file = true
 			} else {
-				// TODO: Check the DAG is not corrupted
-				data = data[8:]
-				pow.dag = &DAG{
-					dag:            unsafe.Pointer(&data[0]),
-					file:           true,
-					paramsAndCache: paramsAndCache,
+				dataEpoch := binary.BigEndian.Uint64(data[0:8])
+				if dataEpoch < thisEpoch {
+					log.Printf("DAG in '%s' is stale. Generating new DAG (this takes a while)...", file.Name())
+					pow.dag = makeDAG(paramsAndCache)
+					file = pow.writeDagToDisk(pow.dag, thisEpoch)
+					pow.dag.file = true
+				} else if dataEpoch > thisEpoch {
+					panic(fmt.Errorf("Saved DAG in '%s' reports to be from future epoch %v (current epoch is %v)", file.Name(), dataEpoch, thisEpoch))
+				} else if len(data) != (int(paramsAndCache.params.full_size) + 8) {
+					log.Printf("DAG in '%s' is corrupted. Generating new DAG (this takes a while)...", file.Name())
+					pow.dag = makeDAG(paramsAndCache)
+					file = pow.writeDagToDisk(pow.dag, thisEpoch)
+					pow.dag.file = true
+				} else {
+					data = data[8:]
+					pow.dag = &DAG{
+						dag:            unsafe.Pointer(&data[0]),
+						file:           true,
+						paramsAndCache: paramsAndCache,
+					}
 				}
 			}
 		}
