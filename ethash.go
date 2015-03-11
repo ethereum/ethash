@@ -78,7 +78,7 @@ func makeParamsAndCache(chainManager pow.ChainManager, blockNum uint64) (*Params
 	C.ethash_params_init(paramsAndCache.params, C.uint32_t(uint32(blockNum)))
 	paramsAndCache.cache.mem = C.malloc(paramsAndCache.params.cache_size)
 
-	seedHash, err := getSeedHash(blockNum)
+	seedHash, err := GetSeedHash(blockNum)
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +227,7 @@ func (pow *Ethash) CacheSize() uint64 {
 	return uint64(pow.paramsAndCache.params.cache_size)
 }
 
-func getSeedHash(blockNum uint64) ([]byte, error) {
+func GetSeedHash(blockNum uint64) ([]byte, error) {
 	if blockNum >= epochLength*2048 {
 		return nil, fmt.Errorf("block number is out of bounds (value %v, limit is %v)", blockNum, epochLength*2048)
 	}
@@ -301,7 +301,7 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) (uint64, []byte
 			// TODO: disagrees with the spec https://github.com/ethereum/wiki/wiki/Ethash#mining
 			if result.Cmp(target) <= 0 {
 				mixDigest := C.GoBytes(unsafe.Pointer(&ret.mix_hash[0]), C.int(32))
-				seedHash, err := getSeedHash(block.NumberU64()) // This seedhash is useless
+				seedHash, err := GetSeedHash(block.NumberU64()) // This seedhash is useless
 				if err != nil {
 					panic(err)
 				}

@@ -3,6 +3,7 @@ package ethashTest
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/hex"
 	"log"
 	"math/big"
 	"testing"
@@ -51,4 +52,31 @@ func TestEthash(t *testing.T) {
 	if bytes.Compare(ghash_full, ghash_light) != 0 {
 		t.Errorf("full: %x, light: %x", ghash_full, ghash_light)
 	}
+}
+
+func TestGetSeedHash(t *testing.T) {
+	seed0, err := ethash.GetSeedHash(0)
+	if err != nil {
+		t.Errorf("Failed to get seedHash for block 0: %v", err)
+	}
+	if bytes.Compare(seed0, []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}) != 0 {
+		log.Printf("seedHash for block 0 should be 0s, was: %v\n", seed0)
+	}
+	seed1, err := ethash.GetSeedHash(30000)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// From python:
+	// > from pyethash import get_seedhash
+	// > get_seedhash(30000)
+	expectedSeed1, err := hex.DecodeString("290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563")
+	if err != nil {
+		t.Error(err)
+	}
+
+	if bytes.Compare(seed1, expectedSeed1) != 0 {
+		log.Printf("seedHash for block 1 should be: %v,\nactual value: %v\n", expectedSeed1, seed1)
+	}
+
 }
