@@ -24,6 +24,7 @@
 
 #include <assert.h>
 #include <queue>
+#include <vector>
 #include "ethash_cl_miner.h"
 #include "ethash_cl_miner_kernel.h"
 #include <libethash/util.h>
@@ -69,11 +70,13 @@ bool ethash_cl_miner::init(ethash_params const& params, const uint8_t seed[32], 
 	}
 
 	// use default device
-	cl::Device& device = devices[0];
+        int device_num = 1;
+	cl::Device& device = devices[device_num];
 	debugf("Using device: %s\n", device.getInfo<CL_DEVICE_NAME>().c_str());
 
 	// create context
-	m_context = cl::Context({device});
+	std::vector<cl::Device> contextDevices(devices.begin() + device_num, devices.begin() + device_num + 1);
+	m_context = cl::Context(contextDevices);
 	m_queue = cl::CommandQueue(m_context, device);
 
 	// use requested workgroup size, but we require multiple of 8
