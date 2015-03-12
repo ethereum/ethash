@@ -22,6 +22,8 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 
+#include <cstdio>
+#include <cstdlib>
 #include <assert.h>
 #include <queue>
 #include "ethash_cl_miner.h"
@@ -75,7 +77,7 @@ bool ethash_cl_miner::init(ethash_params const& params, const uint8_t seed[32], 
 	debugf("Using device: %s\n", device.getInfo<CL_DEVICE_NAME>().c_str());
 
 	// create context
-	m_context = cl::Context({device});
+	m_context = cl::Context(device);
 	m_queue = cl::CommandQueue(m_context, device);
 
 	// use requested workgroup size, but we require multiple of 8
@@ -177,6 +179,7 @@ void ethash_cl_miner::hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, 
 
 			// execute it!
 			clock_t start_time = clock();
+			(void)start_time;
 			m_queue.enqueueNDRangeKernel(
 				m_hash_kernel,
 				cl::NullRange,
