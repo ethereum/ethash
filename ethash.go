@@ -13,7 +13,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/big"
 	"math/rand"
 	"os"
@@ -83,10 +82,10 @@ func makeParamsAndCache(chainManager pow.ChainManager, blockNum uint64) (*Params
 		return nil, err
 	}
 
-	log.Println("Making Cache")
+	powlogger.Infoln("Making Cache")
 	start := time.Now()
 	C.ethash_mkcache(paramsAndCache.cache, paramsAndCache.params, (*C.uint8_t)(unsafe.Pointer(&seedHash[0])))
-	log.Println("Took:", time.Since(start))
+	powlogger.Infoln("Took:", time.Since(start))
 
 	return paramsAndCache, nil
 }
@@ -165,12 +164,12 @@ func (pow *Ethash) UpdateDAG() {
 		pow.paramsAndCache = paramsAndCache
 		path := path.Join("/", "tmp", "dag")
 		pow.dag = nil
-		log.Println("Retrieving DAG")
+		powlogger.Infoln("Retrieving DAG")
 		start := time.Now()
 
 		file, err := os.Open(path)
 		if err != nil {
-			log.Printf("No DAG found. Generating new DAG in '%s' (this takes a while)...", file.Name())
+			powlogger.Infof("No DAG found. Generating new DAG in '%s' (this takes a while)...", file.Name())
 			pow.dag = makeDAG(paramsAndCache)
 			file = pow.writeDagToDisk(pow.dag, thisEpoch)
 			pow.dag.file = true
@@ -181,21 +180,21 @@ func (pow *Ethash) UpdateDAG() {
 			}
 
 			if len(data) < 8 {
-				log.Printf("DAG in '%s' is less than 8 bytes, it must be corrupted. Generating new DAG (this takes a while)...", file.Name())
+				powlogger.Infof("DAG in '%s' is less than 8 bytes, it must be corrupted. Generating new DAG (this takes a while)...", file.Name())
 				pow.dag = makeDAG(paramsAndCache)
 				file = pow.writeDagToDisk(pow.dag, thisEpoch)
 				pow.dag.file = true
 			} else {
 				dataEpoch := binary.BigEndian.Uint64(data[0:8])
 				if dataEpoch < thisEpoch {
-					log.Printf("DAG in '%s' is stale. Generating new DAG (this takes a while)...", file.Name())
+					powlogger.Infof("DAG in '%s' is stale. Generating new DAG (this takes a while)...", file.Name())
 					pow.dag = makeDAG(paramsAndCache)
 					file = pow.writeDagToDisk(pow.dag, thisEpoch)
 					pow.dag.file = true
 				} else if dataEpoch > thisEpoch {
 					panic(fmt.Errorf("Saved DAG in '%s' reports to be from future epoch %v (current epoch is %v)", file.Name(), dataEpoch, thisEpoch))
 				} else if len(data) != (int(paramsAndCache.params.full_size) + 8) {
-					log.Printf("DAG in '%s' is corrupted. Generating new DAG (this takes a while)...", file.Name())
+					powlogger.Infof("DAG in '%s' is corrupted. Generating new DAG (this takes a while)...", file.Name())
 					pow.dag = makeDAG(paramsAndCache)
 					file = pow.writeDagToDisk(pow.dag, thisEpoch)
 					pow.dag.file = true
@@ -209,7 +208,7 @@ func (pow *Ethash) UpdateDAG() {
 				}
 			}
 		}
-		log.Println("Took:", time.Since(start))
+		powlogger.Infoln("Took:", time.Since(start))
 
 		file.Close()
 	}
@@ -338,7 +337,7 @@ func (pow *Ethash) Verify(block pow.Block) bool {
 func (pow *Ethash) verify(hash []byte, mixDigest []byte, difficulty *big.Int, blockNum uint64, nonce uint64) bool {
 	// Make sure the block num is valid
 	if blockNum >= epochLength*2048 {
-		log.Println(fmt.Sprintf("Block number exceeds limit, invalid (value is %v, limit is %v)",
+		powlogger.Infoln(fmt.Sprintf("Block number exceeds limit, invalid (value is %v, limit is %v)",
 			blockNum, epochLength*2048))
 		return false
 	}
@@ -359,7 +358,7 @@ func (pow *Ethash) verify(hash []byte, mixDigest []byte, difficulty *big.Int, bl
 		// If we can't make the params for some reason, this block is invalid
 		pAc, err = makeParamsAndCache(pow.chainManager, blockNum)
 		if err != nil {
-			log.Println(err)
+			powlogger.Infoln(err)
 			return false
 		}
 	} else {
