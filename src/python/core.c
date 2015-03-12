@@ -261,7 +261,7 @@ static PyMethodDef PyethashMethods[] =
                 },
                 {"get_seedhash", get_seedhash, METH_VARARGS,
                         "get_seedhash(block_number)\n\n"
-                                "Gets the seedhash for a block." },
+                                "Gets the seedhash for a block."},
                 {"mkcache_bytes", mkcache_bytes, METH_VARARGS,
                         "mkcache_bytes(size, header)\n\n"
                                 "Makes a byte array for the cache for given cache size and seed hash\n"
@@ -290,7 +290,8 @@ initpyethash(void) {
     PyModule_AddIntConstant(module, "REVISION", (long) REVISION);
     PyModule_AddIntConstant(module, "DATASET_BYTES_INIT", (long) DATASET_BYTES_INIT);
     PyModule_AddIntConstant(module, "DATASET_BYTES_GROWTH", (long) DATASET_BYTES_GROWTH);
-    PyModule_AddIntConstant(module, "CACHE_MULTIPLIER", (long) CACHE_MULTIPLIER);
+    PyModule_AddIntConstant(module, "CACHE_BYTES_INIT", (long) CACHE_BYTES_INIT);
+    PyModule_AddIntConstant(module, "CACHE_BYTES_GROWTH", (long) CACHE_BYTES_GROWTH);
     PyModule_AddIntConstant(module, "EPOCH_LENGTH", (long) EPOCH_LENGTH);
     PyModule_AddIntConstant(module, "MIX_BYTES", (long) MIX_BYTES);
     PyModule_AddIntConstant(module, "HASH_BYTES", (long) HASH_BYTES);

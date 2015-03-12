@@ -82,7 +82,7 @@ BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_calcifide_check) {
     ethash_params params;
     ethash_params_init(&params, 0);
     const uint32_t expected_full_size = 1073739904;
-    const uint32_t expected_cache_size = 1048384;
+    const uint32_t expected_cache_size = 16776896;
     BOOST_REQUIRE_MESSAGE(params.full_size == expected_full_size,
             "\nexpected: " << expected_cache_size << "\n"
                     << "actual: " << params.full_size << "\n");
