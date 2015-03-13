@@ -60,9 +60,11 @@ mkcache_bytes(PyObject *self, PyObject *args) {
     ethash_params params;
     params.cache_size = (size_t) cache_size;
     ethash_cache cache;
-    cache.mem = alloca(cache_size);
+    cache.mem = malloc(cache_size);
     ethash_mkcache(&cache, &params, (uint8_t *) seed);
-    return Py_BuildValue("s#", cache.mem, cache_size);
+    PyObject * val = Py_BuildValue("s#", cache.mem, cache_size);
+    free(cache.mem);
+    return val;
 }
 
 
@@ -94,9 +96,11 @@ calc_dataset_bytes(PyObject *self, PyObject *args) {
     params.full_size = (size_t) full_size;
     ethash_cache cache;
     cache.mem = (void *) cache_bytes;
-    void *mem = alloca(full_size);
+    void *mem = malloc(params.full_size);
     ethash_compute_full_data(mem, &params, &cache);
-    return Py_BuildValue("s#", (char *) mem, full_size);
+    PyObject * val = Py_BuildValue("s#", (char *) mem, full_size);
+    free(mem);
+    return val;
 }
 
 // hashimoto_light(full_size, cache, header, nonce)
