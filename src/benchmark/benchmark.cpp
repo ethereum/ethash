@@ -28,6 +28,7 @@
 #include <vector>
 #include <algorithm>
 #include "libethash/sha3.h"
+#include "optionparser.h"
 
 #undef min
 #undef max
