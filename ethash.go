@@ -91,10 +91,10 @@ func makeParamsAndCache(chainManager pow.ChainManager, blockNum uint64) (*Params
 	return paramsAndCache, nil
 }
 
-func (pow *Ethash) updateCache() error {
+func (pow *Ethash) UpdateCache(force bool) error {
 	pow.cacheMutex.Lock()
 	thisEpoch := pow.chainManager.CurrentBlock().NumberU64()
-	if pow.paramsAndCache.Epoch != thisEpoch {
+	if force || pow.paramsAndCache.Epoch != thisEpoch {
 		var err error
 		pow.paramsAndCache, err = makeParamsAndCache(pow.chainManager, pow.chainManager.CurrentBlock().NumberU64())
 		if err != nil {
@@ -363,7 +363,7 @@ func (pow *Ethash) verify(hash []byte, mixDigest []byte, difficulty *big.Int, bl
 			return false
 		}
 	} else {
-		pow.updateCache()
+		pow.UpdateCache(false)
 		pow.cacheMutex.RLock()
 		defer pow.cacheMutex.RUnlock()
 		pAc = pow.paramsAndCache
