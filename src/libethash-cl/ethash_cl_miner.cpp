@@ -1,12 +1,12 @@
 /*
-  This file is part of c-ethash.
+  This file is part of ethash.
 
-  c-ethash is free software: you can redistribute it and/or modify
+  ethash is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
 
-  c-ethash is distributed in the hope that it will be useful,
+  ethash is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
@@ -21,6 +21,8 @@
 
 
 #define _CRT_SECURE_NO_WARNINGS
+
+#define ETHASH_BYTES 32
 
 #include <assert.h>
 #include <queue>
@@ -43,98 +45,101 @@ ethash_cl_miner::ethash_cl_miner()
 {
 }
 
-bool ethash_cl_miner::init(ethash_params const& params, const uint8_t seed[32], unsigned workgroup_size)
+bool ethash_cl_miner::init(
+		ethash_params const& params, 
+		const uint8_t seed[32], 
+		int device_num, 
+		unsigned workgroup_size)
 {
-	// store params
-	m_params = params;
-
-	// get all platforms
+    // store params
+    m_params = params;
+    
+    // get all platforms
     std::vector<cl::Platform> platforms;
     cl::Platform::get(&platforms);
-	if (platforms.empty())
-	{
-		debugf("No OpenCL platforms found.\n");
-		return false;
-	}
-
-	// use default platform
-	debugf("Using platform: %s\n", platforms[0].getInfo<CL_PLATFORM_NAME>().c_str());
+    if (platforms.empty())
+    {
+    	debugf("No OpenCL platforms found.\n");
+    	return false;
+    }
+    
+    // use default platform
+    debugf("Using platform: %s\n", platforms[0].getInfo<CL_PLATFORM_NAME>().c_str());
 
     // get GPU device of the default platform
     std::vector<cl::Device> devices;
     platforms[0].getDevices(CL_DEVICE_TYPE_ALL, &devices);
     if (devices.empty())
-	{
-		debugf("No OpenCL devices found.\n");
-		return false;
-	}
-
-	// use default device
-        int device_num = 1;
-	cl::Device& device = devices[device_num];
-	debugf("Using device: %s\n", device.getInfo<CL_DEVICE_NAME>().c_str());
-
-	// create context
-	std::vector<cl::Device> contextDevices(devices.begin() + device_num, devices.begin() + device_num + 1);
-	m_context = cl::Context(contextDevices);
-	m_queue = cl::CommandQueue(m_context, device);
-
-	// use requested workgroup size, but we require multiple of 8
-	m_workgroup_size = ((workgroup_size + 7) / 8) * 8;
-
-	// patch source code
-	std::string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
-	add_definition(code, "GROUP_SIZE", m_workgroup_size);
-	add_definition(code, "DAG_SIZE", (unsigned)(params.full_size / MIX_BYTES));
-	add_definition(code, "ACCESSES", ACCESSES);
-	add_definition(code, "MAX_OUTPUTS", c_max_search_results);
-	//debugf("%s", code.c_str());
-
-	// create miner OpenCL program
-	cl::Program::Sources sources;
-	sources.push_back({code.c_str(), code.size()});
-
-	cl::Program program(m_context, sources);
-	try
-	{
-		program.build({device});
-	}
-	catch (cl::Error err)
-	{
-		debugf("%s\n", program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
-		return false;
-	}
-	m_hash_kernel = cl::Kernel(program, "ethash_hash");
-	m_search_kernel = cl::Kernel(program, "ethash_search");
-
-	// create buffer for dag
-	m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, params.full_size);
-	
-	// create buffer for header
-	m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
-
-	// compute dag on CPU
-	{
-		void* cache_mem = malloc(params.cache_size + 63);
-		ethash_cache cache;
-		cache.mem = (void*)(((uintptr_t)cache_mem + 63) & ~63);
-		ethash_mkcache(&cache, &params, seed);
-
-		// if this throws then it's because we probably need to subdivide the dag uploads for compatibility
-		void* dag_ptr = m_queue.enqueueMapBuffer(m_dag, true, CL_MAP_WRITE_INVALIDATE_REGION, 0, params.full_size);
-		ethash_compute_full_data(dag_ptr, &params, &cache);
-		m_queue.enqueueUnmapMemObject(m_dag, dag_ptr);
-
-		free(cache_mem);
-	}
-
-	// create mining buffers
-	for (unsigned i = 0; i != c_num_buffers; ++i)
-	{
-		m_hash_buf[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY, 32*c_hash_batch_size);
-		m_search_buf[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_max_search_results + 1) * sizeof(uint32_t));
-	}
-	return true;
+    {
+    	debugf("No OpenCL devices found.\n");
+    	return false;
+    }
+    
+    std::vector<cl::Device> contextDevices;
+    cl::Device& device = devices[device_num];
+    debugf("Using device: %s\n", device.getInfo<CL_DEVICE_NAME>().c_str());
+    contextDevices.push_back(device);
+    
+    // create context
+    m_context = cl::Context(contextDevices);
+    m_queue = cl::CommandQueue(m_context, device);
+    
+    // use requested workgroup size, but we require multiple of 8
+    m_workgroup_size = ((workgroup_size + 7) / 8) * 8;
+    
+    // patch source code
+    std::string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
+    add_definition(code, "GROUP_SIZE", m_workgroup_size);
+    add_definition(code, "DAG_SIZE", (unsigned)(params.full_size / MIX_BYTES));
+    add_definition(code, "ACCESSES", ACCESSES);
+    add_definition(code, "MAX_OUTPUTS", c_max_search_results);
+    //debugf("%s", code.c_str());
+    
+    // create miner OpenCL program
+    cl::Program::Sources sources;
+    sources.push_back({code.c_str(), code.size()});
+    
+    cl::Program program(m_context, sources);
+    try
+    {
+    	program.build({device});
+    }
+    catch (cl::Error err)
+    {
+    	debugf("%s\n", program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
+    	return false;
+    }
+    m_hash_kernel = cl::Kernel(program, "ethash_hash");
+    m_search_kernel = cl::Kernel(program, "ethash_search");
+    
+    // create buffer for dag
+    m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, params.full_size);
+    
+    // create buffer for header
+    m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
+    
+    // compute dag on CPU
+    {
+    	void* cache_mem = malloc(params.cache_size + 63);
+    	ethash_cache cache;
+    	cache.mem = (void*)(((uintptr_t)cache_mem + 63) & ~63);
+    	ethash_mkcache(&cache, &params, seed);
+    
+    	// if this throws then it's because we probably need to subdivide the dag uploads for compatibility
+    	void* dag_ptr = m_queue.enqueueMapBuffer(m_dag, true, CL_MAP_WRITE_INVALIDATE_REGION, 0, params.full_size);
+    	ethash_compute_full_data(dag_ptr, &params, &cache);
+    	m_queue.enqueueUnmapMemObject(m_dag, dag_ptr);
+    
+    	free(cache_mem);
+    }
+    
+    // create mining buffers
+    for (unsigned i = 0; i != c_num_buffers; ++i)
+    {
+    	m_hash_buf[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY, 32*c_hash_batch_size);
+    	m_search_buf[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_max_search_results + 1) * sizeof(uint32_t));
+    }
+    return true;
 }
 
 void ethash_cl_miner::hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, unsigned count)
@@ -196,8 +201,8 @@ void ethash_cl_miner::hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, 
 			pending_batch const& batch = pending.front();
 
 			// could use pinned host pointer instead, but this path isn't that important.
-			uint8_t* hashes = (uint8_t*)m_queue.enqueueMapBuffer(m_hash_buf[batch.buf], true, CL_MAP_READ, 0, batch.count * HASH_BYTES);
-			memcpy(ret + batch.base*HASH_BYTES, hashes, batch.count*HASH_BYTES);
+			uint8_t* hashes = (uint8_t*)m_queue.enqueueMapBuffer(m_hash_buf[batch.buf], true, CL_MAP_READ, 0, batch.count * ETHASH_BYTES);
+			memcpy(ret + batch.base*ETHASH_BYTES, hashes, batch.count*ETHASH_BYTES);
 			m_queue.enqueueUnmapMemObject(m_hash_buf[batch.buf], hashes);
 
 			pending.pop();

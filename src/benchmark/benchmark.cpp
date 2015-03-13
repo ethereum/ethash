@@ -24,30 +24,15 @@
 #include <time.h>
 #include <libethash/ethash.h>
 #include <libethash/util.h>
-#ifdef OPENCL
 #include <libethash-cl/ethash_cl_miner.h>
-#endif
 #include <vector>
 #include <algorithm>
-
-#ifdef WITH_CRYPTOPP
-#include <libethash/sha3_cryptopp.h>
-#include <string>
-
-#else
 #include "libethash/sha3.h"
-#endif // WITH_CRYPTOPP
 
 #undef min
 #undef max
 
-#if defined(OPENCL)
-const unsigned trials = 1024*1024*32;
-#elif defined(FULL)
-const unsigned trials = 1024*1024/8;
-#else
-const unsigned trials = 1024*1024/1024;
-#endif
+const unsigned trials = 1024*1024*500;
 uint8_t g_hashes[1024*32];
 
 static char nibbleToChar(unsigned nibble)
@@ -99,21 +84,13 @@ extern "C" int main(void)
 	// params for ethash
 	ethash_params params;
 	ethash_params_init(&params, 0);
-	//params.full_size = 262147 * 4096;	// 1GBish;
-	//params.full_size = 32771 * 4096;	// 128MBish;
-	//params.full_size = 8209 * 4096;	// 8MBish;
-	//params.cache_size = 8209*4096;
-	//params.cache_size = 2053*4096;
+	params.full_size = 32771 * 4096;	// 128MBish;
 	uint8_t seed[32], previous_hash[32];
 
 	memcpy(seed, hexStringToBytes("9410b944535a83d9adf6bbdcc80e051f30676173c16ca0d32d6f1263fc246466").data(), 32);
 	memcpy(previous_hash, hexStringToBytes("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470").data(), 32);
 	
 	// allocate page aligned buffer for dataset
-#ifdef FULL
-	void* full_mem_buf = malloc(params.full_size + 4095);
-	void* full_mem = (void*)((uintptr_t(full_mem_buf) + 4095) & ~4095);
-#endif
 	void* cache_mem_buf = malloc(params.cache_size + 63);
 	void* cache_mem = (void*)((uintptr_t(cache_mem_buf) + 63) & ~63);
 
@@ -139,15 +116,8 @@ extern "C" int main(void)
 			debugf("ethash_light test: %ums, %s\n", (unsigned)((time*1000)/CLOCKS_PER_SEC), bytesToHexString(hash.result, 32).data());
 		}
 
-		#ifdef FULL
-			startTime = clock();
-			ethash_compute_full_data(full_mem, &params, &cache);
-			time = clock() - startTime;
-			debugf("ethash_compute_full_data: %ums\n", (unsigned)((time*1000)/CLOCKS_PER_SEC));
-		#endif // FULL
 	}
 
-#ifdef OPENCL
 	ethash_cl_miner miner;
 	{
 		const clock_t startTime = clock();
@@ -156,20 +126,8 @@ extern "C" int main(void)
 		const clock_t time = clock() - startTime;
         debugf("ethash_cl_miner init: %ums\n", (unsigned)((time*1000)/CLOCKS_PER_SEC));
 	}
-#endif
 
 
-#ifdef FULL
-    {
-        const clock_t startTime = clock();
-		ethash_return_value hash;
-        ethash_full(&hash, full_mem, &params, previous_hash, 0);
-        const clock_t time = clock() - startTime;
-        debugf("ethash_full test: %uns, %s\n", (unsigned)((time*1000000)/CLOCKS_PER_SEC), bytesToHexString(hash.result, 32).data());
-    }
-#endif
-
-#ifdef OPENCL
 	// validate 1024 hashes against CPU
 	miner.hash(g_hashes, previous_hash, 0, 1024);
 	for (unsigned i = 0; i != 1024; ++i)
@@ -186,13 +144,10 @@ extern "C" int main(void)
 			}
 		}
 	}
-#endif
-
 
 	clock_t startTime = clock();
 	unsigned hash_count = trials;
 	
-	#ifdef OPENCL
 	{
 		struct search_hook : ethash_cl_miner::search_hook
 		{
@@ -227,20 +182,6 @@ extern "C" int main(void)
 
 		hash_count = hook.hash_count;
 	}
-	#else
-	{
-		//#pragma omp parallel for
-		for (int nonce = 0; nonce < trials; ++nonce)
-		{
-			ethash_return_value hash;
-			#ifdef FULL
-				ethash_full(&hash, full_mem, &params, previous_hash, nonce);
-			#else
-				ethash_light(&hash, &cache, &params, previous_hash, nonce);
-			#endif // FULL
-		}
-	}
-	#endif
 	
 	clock_t time = std::max((clock_t)1u, clock() - startTime);
 	
@@ -252,9 +193,5 @@ extern "C" int main(void)
 		);
 
 	free(cache_mem_buf);
-#ifdef FULL
-	free(full_mem_buf);
-#endif
-
 	return 0;
 }

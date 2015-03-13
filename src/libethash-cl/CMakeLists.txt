@@ -7,7 +7,7 @@ bin2h(SOURCE_FILE ethash_cl_miner_kernel.cl
       HEADER_FILE ${CMAKE_CURRENT_BINARY_DIR}/ethash_cl_miner_kernel.h)
 
 if (NOT MSVC)
-	# Initialize CXXFLAGS for c++11
+    # Initialize CXXFLAGS for c++11
     set(CMAKE_CXX_FLAGS                "-Wall -std=c++11")
     set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g")
     set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
@@ -28,13 +28,12 @@ if (NOT MSVC)
     endif ()
 endif()
 
-if (NOT OpenCL_FOUND)
-	find_package(OpenCL)
-endif()
+find_package(OpenCL REQUIRED)
+#find_package(OpenGL REQUIRED)
 
 if (OpenCL_FOUND)
 	include_directories(${OpenCL_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
 	include_directories(..)
-	add_library(${LIBRARY} ethash_cl_miner.cpp ethash_cl_miner.h cl.hpp)
+	add_library(${LIBRARY} ethash_cl_miner.cpp ethash_cl_miner.h)
 	TARGET_LINK_LIBRARIES(${LIBRARY} ${OpenCL_LIBRARIES} ethash)
 endif()

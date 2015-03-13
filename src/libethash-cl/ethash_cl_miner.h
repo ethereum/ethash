@@ -5,6 +5,7 @@
 #include "cl.hpp"
 #include <time.h>
 #include <libethash/ethash.h>
+#include <vector>
 
 class ethash_cl_miner
 {
@@ -19,7 +20,7 @@ public:
 public:
 	ethash_cl_miner();
 
-	bool init(ethash_params const& params, const uint8_t seed[32], unsigned workgroup_size = 64);
+	bool init(ethash_params const& params, const uint8_t seed[32], int device_num=0, unsigned workgroup_size = 64);
 
 	void hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, unsigned count);
 	void search(uint8_t const* header, uint64_t target, search_hook& hook);
