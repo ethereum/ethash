@@ -29,6 +29,14 @@
 #include "ethash_cl_miner_kernel.h"
 #include <libethash/util.h>
 
+#define ETHASH_BYTES 32
+
+// workaround lame platforms
+#if !CL_VERSION_1_2
+#define CL_MAP_WRITE_INVALIDATE_REGION CL_MAP_WRITE
+#define CL_MEM_HOST_READ_ONLY 0
+#endif
+
 #undef min
 #undef max
 
@@ -70,13 +78,12 @@ bool ethash_cl_miner::init(ethash_params const& params, const uint8_t seed[32], 
 	}
 
 	// use default device
-        int device_num = 1;
+	unsigned device_num = 0;
 	cl::Device& device = devices[device_num];
 	debugf("Using device: %s\n", device.getInfo<CL_DEVICE_NAME>().c_str());
 
 	// create context
-	std::vector<cl::Device> contextDevices(devices.begin() + device_num, devices.begin() + device_num + 1);
-	m_context = cl::Context(contextDevices);
+	m_context = cl::Context(std::vector<cl::Device>(&device, &device+1));
 	m_queue = cl::CommandQueue(m_context, device);
 
 	// use requested workgroup size, but we require multiple of 8
@@ -196,8 +203,8 @@ void ethash_cl_miner::hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, 
 			pending_batch const& batch = pending.front();
 
 			// could use pinned host pointer instead, but this path isn't that important.
-			uint8_t* hashes = (uint8_t*)m_queue.enqueueMapBuffer(m_hash_buf[batch.buf], true, CL_MAP_READ, 0, batch.count * HASH_BYTES);
-			memcpy(ret + batch.base*HASH_BYTES, hashes, batch.count*HASH_BYTES);
+			uint8_t* hashes = (uint8_t*)m_queue.enqueueMapBuffer(m_hash_buf[batch.buf], true, CL_MAP_READ, 0, batch.count * ETHASH_BYTES);
+			memcpy(ret + batch.base*ETHASH_BYTES, hashes, batch.count*ETHASH_BYTES);
 			m_queue.enqueueUnmapMemObject(m_hash_buf[batch.buf], hashes);
 
 			pending.pop();
@@ -223,8 +230,13 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 	{
 		m_queue.enqueueWriteBuffer(m_search_buf[i], false, 0, 4, &c_zero);
 	}
+
+#if CL_VERSION_1_2
 	cl::Event pre_return_event;
 	m_queue.enqueueBarrierWithWaitList(NULL, &pre_return_event);
+#else
+	m_queue.finish();
+#endif
 
 	/*
 	__kernel void ethash_combined_search(
@@ -284,6 +296,8 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 	}
 
 	// not safe to return until this is ready
+#if CL_VERSION_1_2
 	pre_return_event.wait();
+#endif
 }
 
