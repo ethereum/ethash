@@ -79,12 +79,15 @@ find_path(OpenCL_INCLUDE_DIR
     ENV ATISTREAMSDKROOT
   PATH_SUFFIXES
     include
+    include/CL
+    include/GL
+    lib/X86_64
     OpenCL/common/inc
     "AMD APP/include")
 
 _FIND_OPENCL_VERSION()
 
-if(WIN32)
+#if(WIN32)
   if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     find_library(OpenCL_LIBRARY
       NAMES OpenCL
@@ -98,6 +101,7 @@ if(WIN32)
       PATH_SUFFIXES
         "AMD APP/lib/x86"
         lib/x86
+	lib/x86_64
         lib/Win32
         OpenCL/common/lib/Win32)
   elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -116,10 +120,10 @@ if(WIN32)
         lib/x64
         OpenCL/common/lib/x64)
   endif()
-else()
+#else()
   find_library(OpenCL_LIBRARY
     NAMES OpenCL)
-endif()
+#endif()
 
 set(OpenCL_LIBRARIES ${OpenCL_LIBRARY})
 set(OpenCL_INCLUDE_DIRS ${OpenCL_INCLUDE_DIR})
