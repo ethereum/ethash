@@ -140,7 +140,7 @@ bool ethash_cl_miner::init(ethash_params const& params, const uint8_t seed[32], 
 		ethash_mkcache(&cache, &params, seed);
 
 		// if this throws then it's because we probably need to subdivide the dag uploads for compatibility
-		void* dag_ptr = m_queue.enqueueMapBuffer(m_dag, true, CL_MAP_WRITE_INVALIDATE_REGION, 0, params.full_size);
+		void* dag_ptr = m_queue.enqueueMapBuffer(m_dag, true, m_opencl_1_1 ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, params.full_size);
 		ethash_compute_full_data(dag_ptr, &params, &cache);
 		m_queue.enqueueUnmapMemObject(m_dag, dag_ptr);
 
@@ -150,7 +150,7 @@ bool ethash_cl_miner::init(ethash_params const& params, const uint8_t seed[32], 
 	// create mining buffers
 	for (unsigned i = 0; i != c_num_buffers; ++i)
 	{
-		m_hash_buf[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY, 32*c_hash_batch_size);
+		m_hash_buf[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY | (!m_opencl_1_1 ? CL_MEM_HOST_READ_ONLY : 0), 32*c_hash_batch_size);
 		m_search_buf[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_max_search_results + 1) * sizeof(uint32_t));
 	}
 	return true;
