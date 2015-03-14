@@ -48,6 +48,7 @@ static void add_definition(std::string& source, char const* id, unsigned value)
 }
 
 ethash_cl_miner::ethash_cl_miner()
+:	m_opencl_1_1()
 {
 }
 
@@ -80,7 +81,18 @@ bool ethash_cl_miner::init(ethash_params const& params, const uint8_t seed[32], 
 	// use default device
 	unsigned device_num = 0;
 	cl::Device& device = devices[device_num];
-	debugf("Using device: %s\n", device.getInfo<CL_DEVICE_NAME>().c_str());
+	std::string device_version = device.getInfo<CL_DEVICE_VERSION>();
+	debugf("Using device: %s (%s)\n", device.getInfo<CL_DEVICE_NAME>().c_str(),device_version.c_str());
+
+	if (strncmp("OpenCL 1.0", device_version.c_str(), 10) == 0)
+	{
+		debugf("OpenCL 1.0 is not supported.\n");
+		return false;
+	}
+	if (strncmp("OpenCL 1.1", device_version.c_str(), 10) == 0)
+	{
+		m_opencl_1_1 = true;
+	}
 
 	// create context
 	m_context = cl::Context(std::vector<cl::Device>(&device, &device+1));
@@ -233,9 +245,15 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 
 #if CL_VERSION_1_2
 	cl::Event pre_return_event;
-	m_queue.enqueueBarrierWithWaitList(NULL, &pre_return_event);
+	if (!m_opencl_1_1)
+	{
+		m_queue.enqueueBarrierWithWaitList(NULL, &pre_return_event);
+	}
+	else
 #else
-	m_queue.finish();
+	{
+		m_queue.finish();
+	}
 #endif
 
 	/*
@@ -297,7 +315,10 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 
 	// not safe to return until this is ready
 #if CL_VERSION_1_2
-	pre_return_event.wait();
+	if (!m_opencl_1_1)
+	{
+		pre_return_event.wait();
+	}
 #endif
 }
 
