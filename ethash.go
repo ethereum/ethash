@@ -1,3 +1,13 @@
+/*
+###################################################################################
+###################################################################################
+####################                                           ####################
+####################  EDIT AND YOU SHALL FEEL MY WRATH - jeff  ####################
+####################                                           ####################
+###################################################################################
+###################################################################################
+*/
+
 package ethash
 
 /*
@@ -110,7 +120,24 @@ func makeDAG(p *ParamsAndCache) *DAG {
 		file:           false,
 		paramsAndCache: p,
 	}
+
+	donech := make(chan string)
+	go func() {
+		t := time.NewTicker(5 * time.Second)
+		tstart := time.Now()
+	done:
+		for {
+			select {
+			case <-t.C:
+				powlogger.Infof("... still generating DAG (%v) ...\n", time.Since(tstart).Seconds())
+			case str := <-donech:
+				powlogger.Infof("... %s ...\n", str)
+				break done
+			}
+		}
+	}()
 	C.ethash_compute_full_data(d.dag, p.params, p.cache)
+	donech <- "DAG generation completed"
 	return d
 }
 
@@ -169,32 +196,33 @@ func (pow *Ethash) UpdateDAG() {
 
 		file, err := os.Open(path)
 		if err != nil {
-			powlogger.Infof("No DAG found. Generating new DAG in '%s' (this takes a while)...", file.Name())
+			powlogger.Infof("No DAG found. Generating new DAG in '%s' (this takes a while)...\n", path)
 			pow.dag = makeDAG(paramsAndCache)
 			file = pow.writeDagToDisk(pow.dag, thisEpoch)
 			pow.dag.file = true
 		} else {
 			data, err := ioutil.ReadAll(file)
 			if err != nil {
-				panic(err)
+				powlogger.Infof("DAG load err: %v\n", err)
 			}
 
 			if len(data) < 8 {
-				powlogger.Infof("DAG in '%s' is less than 8 bytes, it must be corrupted. Generating new DAG (this takes a while)...", file.Name())
+				powlogger.Infof("DAG in '%s' is less than 8 bytes, it must be corrupted. Generating new DAG (this takes a while)...\n", path)
 				pow.dag = makeDAG(paramsAndCache)
 				file = pow.writeDagToDisk(pow.dag, thisEpoch)
 				pow.dag.file = true
 			} else {
 				dataEpoch := binary.BigEndian.Uint64(data[0:8])
 				if dataEpoch < thisEpoch {
-					powlogger.Infof("DAG in '%s' is stale. Generating new DAG (this takes a while)...", file.Name())
+					powlogger.Infof("DAG in '%s' is stale. Generating new DAG (this takes a while)...\n", path)
 					pow.dag = makeDAG(paramsAndCache)
 					file = pow.writeDagToDisk(pow.dag, thisEpoch)
 					pow.dag.file = true
 				} else if dataEpoch > thisEpoch {
-					panic(fmt.Errorf("Saved DAG in '%s' reports to be from future epoch %v (current epoch is %v)", file.Name(), dataEpoch, thisEpoch))
+					// FIXME
+					panic(fmt.Errorf("Saved DAG in '%s' reports to be from future epoch %v (current epoch is %v)\n", path, dataEpoch, thisEpoch))
 				} else if len(data) != (int(paramsAndCache.params.full_size) + 8) {
-					powlogger.Infof("DAG in '%s' is corrupted. Generating new DAG (this takes a while)...", file.Name())
+					powlogger.Infof("DAG in '%s' is corrupted. Generating new DAG (this takes a while)...\n", path)
 					pow.dag = makeDAG(paramsAndCache)
 					file = pow.writeDagToDisk(pow.dag, thisEpoch)
 					pow.dag.file = true
