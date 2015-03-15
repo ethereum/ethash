@@ -30,7 +30,7 @@ typedef union node {
 
 } node;
 
-void ethash_calculate_dag_item(
+int ethash_calculate_dag_item(
         node *const ret,
         const unsigned node_index,
         ethash_params const *params,
