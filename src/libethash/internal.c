@@ -28,6 +28,9 @@
 #include "internal.h"
 #include "data_sizes.h"
 
+// Inline assembly doesn't work
+#define ENABLE_SSE 0
+
 #ifdef WITH_CRYPTOPP
 
 #include "sha3_cryptopp.h"
@@ -100,7 +103,7 @@ int ethash_mkcache(
 
 int ethash_calculate_dag_item(
         node *const ret,
-        const unsigned node_index,
+        const uint64_t node_index,
         const struct ethash_params *params,
         const struct ethash_cache *cache) {
 
@@ -171,7 +174,35 @@ int ethash_compute_full_data(
     node *full_nodes = mem;
 
     // now compute full nodes
-    for (unsigned n = 0; n != (params->full_size / sizeof(node)); ++n) {
+    for (uint64_t n = 0; n != (params->full_size / sizeof(node)); ++n) {
+        ethash_calculate_dag_item(&(full_nodes[n]), n, params, cache);
+    }
+    return 1;
+}
+
+int ethash_compute_full_data_section(
+        void *mem,
+        ethash_params const *params,
+        ethash_cache const *cache,
+        uint64_t const start,
+        uint64_t const end) {
+
+    if ((params->full_size % (sizeof(uint32_t) * MIX_WORDS)) != 0)
+        return 0;
+
+    if ((params->full_size % sizeof(node)) != 0)
+        return 0;
+
+    if (end >= params->full_size)
+        return 0;
+
+    if (start >= end)
+        return 0;
+
+    node *full_nodes = mem;
+
+    // now compute full nodes
+    for (uint64_t n = start; n != end; ++n) {
         ethash_calculate_dag_item(&(full_nodes[n]), n, params, cache);
     }
     return 1;
