@@ -17,7 +17,7 @@
 #include <boost/test/unit_test.hpp>
 #include <iostream>
 
-std::string bytesToHexString(const uint8_t *str, const size_t s) {
+std::string bytesToHexString(const uint8_t *str, const uint32_t s) {
     std::ostringstream ret;
 
     for (int i = 0; i < s; ++i)
