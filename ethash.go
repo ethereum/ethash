@@ -1,3 +1,13 @@
+/*
+###################################################################################
+###################################################################################
+####################                                           ####################
+####################  EDIT AND YOU SHALL FEEL MY WRATH - jeff  ####################
+####################                                           ####################
+###################################################################################
+###################################################################################
+*/
+
 package ethash
 
 /*
@@ -21,8 +31,8 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethutil"
 	"github.com/ethereum/go-ethereum/logger"
 	"github.com/ethereum/go-ethereum/pow"
 )
@@ -92,7 +102,9 @@ func makeParamsAndCache(chainManager pow.ChainManager, blockNum uint64) (*Params
 
 func (pow *Ethash) UpdateCache(force bool) error {
 	pow.cacheMutex.Lock()
-	thisEpoch := pow.chainManager.CurrentBlock().NumberU64()
+	defer pow.cacheMutex.Unlock()
+
+	thisEpoch := pow.chainManager.CurrentBlock().NumberU64() / epochLength
 	if force || pow.paramsAndCache.Epoch != thisEpoch {
 		var err error
 		pow.paramsAndCache, err = makeParamsAndCache(pow.chainManager, pow.chainManager.CurrentBlock().NumberU64())
@@ -100,7 +112,7 @@ func (pow *Ethash) UpdateCache(force bool) error {
 			panic(err)
 		}
 	}
-	pow.cacheMutex.Unlock()
+
 	return nil
 }
 
@@ -110,7 +122,24 @@ func makeDAG(p *ParamsAndCache) *DAG {
 		file:           false,
 		paramsAndCache: p,
 	}
+
+	donech := make(chan string)
+	go func() {
+		t := time.NewTicker(5 * time.Second)
+		tstart := time.Now()
+	done:
+		for {
+			select {
+			case <-t.C:
+				powlogger.Infof("... still generating DAG (%v) ...\n", time.Since(tstart).Seconds())
+			case str := <-donech:
+				powlogger.Infof("... %s ...\n", str)
+				break done
+			}
+		}
+	}()
 	C.ethash_compute_full_data(d.dag, p.params, p.cache)
+	donech <- "DAG generation completed"
 	return d
 }
 
@@ -169,32 +198,33 @@ func (pow *Ethash) UpdateDAG() {
 
 		file, err := os.Open(path)
 		if err != nil {
-			powlogger.Infof("No DAG found. Generating new DAG in '%s' (this takes a while)...", file.Name())
+			powlogger.Infof("No DAG found. Generating new DAG in '%s' (this takes a while)...\n", path)
 			pow.dag = makeDAG(paramsAndCache)
 			file = pow.writeDagToDisk(pow.dag, thisEpoch)
 			pow.dag.file = true
 		} else {
 			data, err := ioutil.ReadAll(file)
 			if err != nil {
-				panic(err)
+				powlogger.Infof("DAG load err: %v\n", err)
 			}
 
 			if len(data) < 8 {
-				powlogger.Infof("DAG in '%s' is less than 8 bytes, it must be corrupted. Generating new DAG (this takes a while)...", file.Name())
+				powlogger.Infof("DAG in '%s' is less than 8 bytes, it must be corrupted. Generating new DAG (this takes a while)...\n", path)
 				pow.dag = makeDAG(paramsAndCache)
 				file = pow.writeDagToDisk(pow.dag, thisEpoch)
 				pow.dag.file = true
 			} else {
 				dataEpoch := binary.BigEndian.Uint64(data[0:8])
 				if dataEpoch < thisEpoch {
-					powlogger.Infof("DAG in '%s' is stale. Generating new DAG (this takes a while)...", file.Name())
+					powlogger.Infof("DAG in '%s' is stale. Generating new DAG (this takes a while)...\n", path)
 					pow.dag = makeDAG(paramsAndCache)
 					file = pow.writeDagToDisk(pow.dag, thisEpoch)
 					pow.dag.file = true
 				} else if dataEpoch > thisEpoch {
-					panic(fmt.Errorf("Saved DAG in '%s' reports to be from future epoch %v (current epoch is %v)", file.Name(), dataEpoch, thisEpoch))
+					// FIXME
+					panic(fmt.Errorf("Saved DAG in '%s' reports to be from future epoch %v (current epoch is %v)\n", path, dataEpoch, thisEpoch))
 				} else if len(data) != (int(paramsAndCache.params.full_size) + 8) {
-					powlogger.Infof("DAG in '%s' is corrupted. Generating new DAG (this takes a while)...", file.Name())
+					powlogger.Infof("DAG in '%s' is corrupted. Generating new DAG (this takes a while)...\n", path)
 					pow.dag = makeDAG(paramsAndCache)
 					file = pow.writeDagToDisk(pow.dag, thisEpoch)
 					pow.dag.file = true
@@ -307,7 +337,7 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) (uint64, []byte
 			pow.HashRate = int64(hashes)
 
 			C.ethash_full(&ret, pow.dag.dag, pow.dag.paramsAndCache.params, cMiningHash, C.uint64_t(nonce))
-			result := ethutil.Bytes2Big(C.GoBytes(unsafe.Pointer(&ret.result[0]), C.int(32)))
+			result := common.Bytes2Big(C.GoBytes(unsafe.Pointer(&ret.result[0]), C.int(32)))
 
 			// TODO: disagrees with the spec https://github.com/ethereum/wiki/wiki/Ethash#mining
 			if result.Cmp(target) <= 0 {
@@ -372,7 +402,7 @@ func (pow *Ethash) verify(hash []byte, mixDigest []byte, difficulty *big.Int, bl
 
 	C.ethash_light(ret, pAc.cache, pAc.params, chash, cnonce)
 
-	result := ethutil.Bytes2Big(C.GoBytes(unsafe.Pointer(&ret.result[0]), C.int(32)))
+	result := common.Bytes2Big(C.GoBytes(unsafe.Pointer(&ret.result[0]), C.int(32)))
 	return result.Cmp(target) <= 0
 }
 
