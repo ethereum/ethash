@@ -4,7 +4,7 @@
   "description": "",
   "main": "ethash.js",
   "scripts": {
-    "test": "node test.js"
+    "test": "node ./test/test.js"
   },
   "repository": {
     "type": "git",
@@ -14,5 +14,8 @@
     "ethereum"
   ],
   "author": "",
-  "license": "mit"
+  "license": "mit",
+  "devDependencies": {
+    "ethereum-tests": "0.0.5"
+  }
 }
