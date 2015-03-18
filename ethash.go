@@ -360,8 +360,7 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) (uint64, []byte
 }
 
 func (pow *Ethash) Verify(block pow.Block) bool {
-
-	return pow.verify(block.HashNoNonce(), block.MixDigest(), block.Difficulty(), block.NumberU64(), block.Nonce())
+	return pow.verify(block.HashNoNonce().Bytes(), block.MixDigest().Bytes(), block.Difficulty(), block.NumberU64(), block.Nonce())
 }
 
 func (pow *Ethash) verify(hash []byte, mixDigest []byte, difficulty *big.Int, blockNum uint64, nonce uint64) bool {
