@@ -125,6 +125,40 @@ function convertSeed(seed)
 	return newSeed;
 }
 
+var params = exports.params = {
+	REVISION: 23,
+	DATASET_BYTES_INIT: 1073741824,
+	DATASET_BYTES_GROWTH: 8388608,
+	CACHE_BYTES_INIT: 1073741824,
+	CACHE_BYTES_GROWTH: 131072,
+	EPOCH_LENGTH: 30000,
+	MIX_BYTES: 128,
+	HASH_BYTES: 64,
+	DATASET_PARENTS: 256,
+	CACHE_ROUNDS: 3,
+	ACCESSES: 64
+};
+
+var cache_sizes = require('./cache_sizes');
+var dag_sizes = require('./dag_sizes');
+
+exports.calcSeed = function (blockNum) {
+  var epoch;
+ 
+  var seed = new Uint8Array(32);
+ 
+  if (blockNum > cache_sizes.length * params.EPOCH_LENGTH) {
+    return new Error('Time to upgrade to POS!!!');
+  } else {
+    epoch = Math.floor(blockNum / params.EPOCH_LENGTH);
+ 
+    for (var i = 0; i < epoch; i++) {
+      seed = ethUtil.sha3(seed);
+    }
+    return seed;
+  }
+};
+
 exports.defaultParams = function()
 {
 	return {
@@ -184,7 +218,3 @@ exports.Ethash = function(params, seed)
 		return keccak.digest(32, new Uint8Array(cache.buffer));
 	};
 };
-
-
-
-
