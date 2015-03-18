@@ -4,9 +4,9 @@
 /*jslint node: true, shadow:true */
 "use strict";
 
-var ethash = require('./ethash');
-var util = require('./util');
-var Keccak = require('./keccak');
+var ethash = require('../ethash');
+var util = require('../util');
+var Keccak = require('../keccak');
 
 // sanity check hash functions
 var src = util.stringToBytes("");

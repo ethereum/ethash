@@ -184,7 +184,3 @@ exports.Ethash = function(params, seed)
 		return keccak.digest(32, new Uint8Array(cache.buffer));
 	};
 };
-
-
-
-
