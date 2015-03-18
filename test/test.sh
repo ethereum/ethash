@@ -14,12 +14,11 @@ TEST_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 echo -e "\n################# Testing JS ##################"
 # TODO: Use mocha and real testing tools instead of rolling our own
 cd $TEST_DIR/../js 
-if [ -x "$(which nodejs)" ] ; then 
-	nodejs test.js
+if [ -x "$(which nodejs)" -o -x "$(which node)" ] ; then 
+	npm test
 fi
-if [ -x "$(which node)" ] ; then 
-	node test.js
-fi
+
+nodejs test.js
 
 echo -e "\n################# Testing C ##################"
 $TEST_DIR/c/test.sh
