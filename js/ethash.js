@@ -137,7 +137,7 @@ exports.calcSeed = function(blockNum) {
     epoch = Math.floor(blockNum / params.EPOCH_LENGTH);
 
     for (var i = 0; i < epoch; i++) {
-      seed = ethUtil.sha3(seed);
+      seed = ethUtil.sha3(new Buffer(seed));
     }
     return seed;
   }
@@ -156,7 +156,7 @@ exports.defaultParams = function() {
 
 exports.Ethash = function(params, seed) {
   // precompute cache and related values
-  seed = convertSeed(seed);
+  // seed = convertSeed(seed);
   var cache = computeCache(params, seed);
 
   // preallocate buffers/etc
