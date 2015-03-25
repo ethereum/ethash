@@ -364,7 +364,7 @@ func (pow *Ethash) Verify(block pow.Block) bool {
 	return pow.verify(block.HashNoNonce(), block.MixDigest(), block.Difficulty(), block.NumberU64(), block.Nonce())
 }
 
-func (pow *Ethash) verify(hash []byte, mixDigest []byte, difficulty *big.Int, blockNum uint64, nonce uint64) bool {
+func (pow *Ethash) verify(hash common.Hash, mixDigest common.Hash, difficulty *big.Int, blockNum uint64, nonce uint64) bool {
 	// Make sure the block num is valid
 	if blockNum >= epochLength*2048 {
 		powlogger.Infoln(fmt.Sprintf("Block number exceeds limit, invalid (value is %v, limit is %v)",
