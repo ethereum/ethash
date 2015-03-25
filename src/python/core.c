@@ -251,7 +251,7 @@ get_seedhash(PyObject *self, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, error_message);
         return 0;
     }
-    uint8_t seedhash[32];
+    ethash_blockhash_t seedhash;
     ethash_get_seedhash(seedhash, block_number);
     return Py_BuildValue(PY_STRING_FORMAT, (char *) seedhash, 32);
 }
