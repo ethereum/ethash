@@ -26,7 +26,9 @@ import (
 	"math/big"
 	"math/rand"
 	"os"
+	"os/user"
 	"path"
+	"runtime"
 	"sync"
 	"time"
 	"unsafe"
@@ -143,12 +145,24 @@ func makeDAG(p *ParamsAndCache) *DAG {
 	return d
 }
 
+func dagPath() string {
+	dagPath := "/tmp/dag"
+
+	if runtime.GOOS == "windows" {
+		usr, _ := user.Current()
+		dagPath = path.Join(usr.HomeDir, "AppData/Local/Temp/dag")
+	}
+
+	return dagPath
+}
+
 func (pow *Ethash) writeDagToDisk(dag *DAG, epoch uint64) *os.File {
 	if epoch > 2048 {
 		panic(fmt.Errorf("Epoch must be less than 2048 (is %v)", epoch))
 	}
 	data := C.GoBytes(unsafe.Pointer(dag.dag), C.int(dag.paramsAndCache.params.full_size))
-	file, err := os.Create("/tmp/dag")
+
+	file, err := os.Create(dagPath())
 	if err != nil {
 		panic(err)
 	}
@@ -191,7 +205,7 @@ func (pow *Ethash) UpdateDAG() {
 
 		// TODO: On non-SSD disks, loading the DAG from disk takes longer than generating it in memory
 		pow.paramsAndCache = paramsAndCache
-		path := path.Join("/", "tmp", "dag")
+		path := dagPath()
 		pow.dag = nil
 		powlogger.Infoln("Retrieving DAG")
 		start := time.Now()
