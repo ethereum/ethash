@@ -305,7 +305,20 @@ static struct PyModuleDef PyethashModule = {
 };
 
 PyMODINIT_FUNC PyInit_pyethash(void) {
-    return PyModule_Create(&PyethashModule);
+    PyObject *module =  PyModule_Create(&PyethashModule);
+    // Following Spec: https://github.com/ethereum/wiki/wiki/Ethash#definitions
+    PyModule_AddIntConstant(module, "REVISION", (long) REVISION);
+    PyModule_AddIntConstant(module, "DATASET_BYTES_INIT", (long) DATASET_BYTES_INIT);
+    PyModule_AddIntConstant(module, "DATASET_BYTES_GROWTH", (long) DATASET_BYTES_GROWTH);
+    PyModule_AddIntConstant(module, "CACHE_BYTES_INIT", (long) CACHE_BYTES_INIT);
+    PyModule_AddIntConstant(module, "CACHE_BYTES_GROWTH", (long) CACHE_BYTES_GROWTH);
+    PyModule_AddIntConstant(module, "EPOCH_LENGTH", (long) EPOCH_LENGTH);
+    PyModule_AddIntConstant(module, "MIX_BYTES", (long) MIX_BYTES);
+    PyModule_AddIntConstant(module, "HASH_BYTES", (long) HASH_BYTES);
+    PyModule_AddIntConstant(module, "DATASET_PARENTS", (long) DATASET_PARENTS);
+    PyModule_AddIntConstant(module, "CACHE_ROUNDS", (long) CACHE_ROUNDS);
+    PyModule_AddIntConstant(module, "ACCESSES", (long) ACCESSES);
+    return module;
 }
 #else
 PyMODINIT_FUNC
