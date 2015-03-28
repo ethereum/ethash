@@ -188,6 +188,8 @@ extern "C" int main(void)
 	}
 #endif
 
+	// ensure nothing else is going on
+	miner.finish();
 
 	clock_t startTime = clock();
 	unsigned hash_count = trials;
