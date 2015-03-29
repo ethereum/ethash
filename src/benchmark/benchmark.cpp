@@ -186,10 +186,10 @@ extern "C" int main(void)
 			}
 		}
 	}
-#endif
-
+	
 	// ensure nothing else is going on
 	miner.finish();
+#endif
 
 	clock_t startTime = clock();
 	unsigned hash_count = trials;
@@ -247,11 +247,19 @@ extern "C" int main(void)
 	clock_t time = std::max((clock_t)1u, clock() - startTime);
 	
 	unsigned read_size = ACCESSES * MIX_BYTES;
-	debugf(			
-		"hashrate: %8u, bw: %6u MB/s\n",
-		(unsigned)(((uint64_t)hash_count*CLOCKS_PER_SEC)/time),
-		(unsigned)((((uint64_t)hash_count*read_size*CLOCKS_PER_SEC)/time) / (1024*1024))
+#if defined(OPENCL) || defined(FULL)
+	debugf(
+		"hashrate: %8.2f Mh/s, bw: %8.2f GB/s\n",
+		(double)hash_count * CLOCKS_PER_SEC/time / (1000*1000),
+		(double)hash_count*read_size * CLOCKS_PER_SEC/time / (1024*1024*1024)
 		);
+#else
+	debugf(
+		"hashrate: %8.2f Kh/s, bw: %8.2f MB/s\n",
+		(double)hash_count * CLOCKS_PER_SEC/time / (1000),
+		(double)hash_count*read_size * CLOCKS_PER_SEC/time / (1024*1024)
+		);
+#endif
 
 	free(cache_mem_buf);
 #ifdef FULL
