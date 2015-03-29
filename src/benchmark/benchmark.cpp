@@ -245,7 +245,8 @@ extern "C" int main(void)
 	#endif
 	
 	clock_t time = std::max((clock_t)1u, clock() - startTime);
-	
+	debugf("Search took: %ums\n", time*1000/CLOCKS_PER_SEC);
+
 	unsigned read_size = ACCESSES * MIX_BYTES;
 #if defined(OPENCL) || defined(FULL)
 	debugf(
