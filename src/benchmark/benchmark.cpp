@@ -203,7 +203,7 @@ extern "C" int main(void)
 
 			virtual bool found(uint64_t const* nonces, uint32_t count)
 			{
-				nonce_vec.assign(nonces, nonces + count);
+				nonce_vec.insert(nonce_vec.end(), nonces, nonces + count);
 				return false;
 			}
 
