@@ -21,7 +21,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
+#include <chrono>
 #include <libethash/ethash.h>
 #include <libethash/util.h>
 #ifdef OPENCL
@@ -40,6 +40,8 @@
 
 #undef min
 #undef max
+
+using std::chrono::high_resolution_clock;
 
 #if defined(OPENCL)
 const unsigned trials = 1024*1024*32;
@@ -122,50 +124,50 @@ extern "C" int main(void)
 	
 	// compute cache or full data
 	{
-		clock_t startTime = clock();
+		auto startTime = high_resolution_clock::now();
 		ethash_mkcache(&cache, &params, seed);
-		clock_t time = clock() - startTime;
+		auto time = std::chrono::duration_cast<std::chrono::milliseconds>(high_resolution_clock::now() - startTime).count();
 
 		uint8_t cache_hash[32];
 		SHA3_256(cache_hash, (uint8_t const*)cache_mem, params.cache_size);
-		debugf("ethash_mkcache: %ums, sha3: %s\n", (unsigned)((time*1000)/CLOCKS_PER_SEC), bytesToHexString(cache_hash,sizeof(cache_hash)).data());
+		debugf("ethash_mkcache: %ums, sha3: %s\n", (unsigned)time, bytesToHexString(cache_hash,sizeof(cache_hash)).data());
 
 		// print a couple of test hashes
 		{
-			const clock_t startTime = clock();
+			auto startTime = high_resolution_clock::now();
 			ethash_return_value hash;
 			ethash_light(&hash, &cache, &params, previous_hash, 0);
-			const clock_t time = clock() - startTime;
-			debugf("ethash_light test: %ums, %s\n", (unsigned)((time*1000)/CLOCKS_PER_SEC), bytesToHexString(hash.result, 32).data());
+			auto time = std::chrono::duration_cast<std::chrono::milliseconds>(high_resolution_clock::now() - startTime).count();
+			debugf("ethash_light test: %ums, %s\n", (unsigned)time, bytesToHexString(hash.result, 32).data());
 		}
 
 		#ifdef FULL
-			startTime = clock();
+			startTime = high_resolution_clock::now();
 			ethash_compute_full_data(full_mem, &params, &cache);
-			time = clock() - startTime;
-			debugf("ethash_compute_full_data: %ums\n", (unsigned)((time*1000)/CLOCKS_PER_SEC));
+			time = std::chrono::duration_cast<std::chrono::milliseconds>(high_resolution_clock::now() - startTime).count();
+			debugf("ethash_compute_full_data: %ums\n", (unsigned)time);
 		#endif // FULL
 	}
 
 #ifdef OPENCL
 	ethash_cl_miner miner;
 	{
-		const clock_t startTime = clock();
+		auto startTime = high_resolution_clock::now();
 		if (!miner.init(params, seed))
 			exit(-1);
-		const clock_t time = clock() - startTime;
-        debugf("ethash_cl_miner init: %ums\n", (unsigned)((time*1000)/CLOCKS_PER_SEC));
+		auto time = std::chrono::duration_cast<std::chrono::milliseconds>(high_resolution_clock::now() - startTime).count();
+        debugf("ethash_cl_miner init: %ums\n", (unsigned)time);
 	}
 #endif
 
 
 #ifdef FULL
     {
-        const clock_t startTime = clock();
+        auto startTime = high_resolution_clock::now();
 		ethash_return_value hash;
         ethash_full(&hash, full_mem, &params, previous_hash, 0);
-        const clock_t time = clock() - startTime;
-        debugf("ethash_full test: %uns, %s\n", (unsigned)((time*1000000)/CLOCKS_PER_SEC), bytesToHexString(hash.result, 32).data());
+        auto time = std::chrono::duration_cast<std::chrono::milliseconds>(high_resolution_clock::now() - startTime).count();
+        debugf("ethash_full test: %uns, %s\n", (unsigned)time);
     }
 #endif
 
@@ -191,7 +193,7 @@ extern "C" int main(void)
 	miner.finish();
 #endif
 
-	clock_t startTime = clock();
+	auto startTime = high_resolution_clock::now();
 	unsigned hash_count = trials;
 	
 	#ifdef OPENCL
@@ -243,22 +245,21 @@ extern "C" int main(void)
 		}
 	}
 	#endif
-	
-	clock_t time = std::max((clock_t)1u, clock() - startTime);
-	debugf("Search took: %ums\n", time*1000/CLOCKS_PER_SEC);
+	auto time = std::chrono::duration_cast<std::chrono::microseconds>(high_resolution_clock::now() - startTime).count();
+	debugf("Search took: %ums\n", (unsigned)time/1000);
 
 	unsigned read_size = ACCESSES * MIX_BYTES;
 #if defined(OPENCL) || defined(FULL)
 	debugf(
 		"hashrate: %8.2f Mh/s, bw: %8.2f GB/s\n",
-		(double)hash_count * CLOCKS_PER_SEC/time / (1000*1000),
-		(double)hash_count*read_size * CLOCKS_PER_SEC/time / (1024*1024*1024)
+		(double)hash_count * (1000*1000)/time / (1000*1000),
+		(double)hash_count*read_size * (1000*1000)/time / (1024*1024*1024)
 		);
 #else
 	debugf(
 		"hashrate: %8.2f Kh/s, bw: %8.2f MB/s\n",
-		(double)hash_count * CLOCKS_PER_SEC/time / (1000),
-		(double)hash_count*read_size * CLOCKS_PER_SEC/time / (1024*1024)
+		(double)hash_count * (1000*1000)/time / (1000),
+		(double)hash_count*read_size * (1000*1000)/time / (1024*1024)
 		);
 #endif
 
