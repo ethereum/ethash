@@ -316,6 +316,10 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 			if (exit)
 				break;
 
+			// reset search buffer if we're still going
+			if (num_found)
+				m_queue.enqueueWriteBuffer(m_search_buf[batch.buf], true, 0, 4, &c_zero);
+
 			pending.pop();
 		}
 	}
