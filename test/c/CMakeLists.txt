@@ -1,5 +1,5 @@
 IF( NOT Boost_FOUND )
-    find_package(Boost 1.48.0 REQUIRED COMPONENTS unit_test_framework system filesystem)
+    find_package(Boost 1.48.0 COMPONENTS unit_test_framework system filesystem)
 ENDIF()
 
 IF( Boost_FOUND )
