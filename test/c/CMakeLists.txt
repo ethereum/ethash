@@ -1,5 +1,8 @@
-if (NOT MSVC)
-    set (CMAKE_PREFIX_PATH "$ENV{BOOST_ROOT}")
+if (MSVC)
+    if (NOT BOOST_ROOT)
+        set (BOOST_ROOT "$ENV{BOOST_ROOT}")
+    endif()
+    set (CMAKE_PREFIX_PATH BOOST_ROOT)
 endif()
 
 IF( NOT Boost_FOUND )
@@ -11,7 +14,6 @@ IF( NOT Boost_FOUND )
         set(Boost_COMPILER -vc120)
         # use static boost libraries *.lib
         set(Boost_USE_STATIC_LIBS ON)
-        message("WE ARE HERE")
     elseif (APPLE)
 
         # use static boost libraries *.a
@@ -42,7 +44,7 @@ IF( Boost_FOUND )
         add_definitions(-DWITH_CRYPTOPP)
     endif()
 
-   if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
+   if (NOT MSVC)
         set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++11 ")
    endif()
 
