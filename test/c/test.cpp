@@ -24,10 +24,14 @@
 using namespace std;
 namespace fs = boost::filesystem;
 
-std::string bytesToHexString(const uint8_t *str, const size_t s) {
+// Just an alloca "wrapper" to silence uint64_t to size_t conversion warnings in windows
+// consider replacing alloca calls with something better though!
+#define our_alloca(param__) alloca((size_t)(param__))
+
+std::string bytesToHexString(const uint8_t *str, const uint64_t s) {
     std::ostringstream ret;
 
-    for (int i = 0; i < s; ++i)
+    for (size_t i = 0; i < s; ++i)
         ret << std::hex << std::setfill('0') << std::setw(2) << std::nouppercase << (int) str[i];
 
     return ret.str();
@@ -115,9 +119,9 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
     params.cache_size = 1024;
     params.full_size = 1024 * 32;
     ethash_cache cache;
-    cache.mem = alloca(params.cache_size);
+    cache.mem = our_alloca(params.cache_size);
     ethash_mkcache(&cache, &params, seed);
-    node *full_mem = (node *) alloca(params.full_size);
+    node *full_mem = (node *) our_alloca(params.full_size);
     ethash_compute_full_data(full_mem, &params, &cache);
 
     {
@@ -236,6 +240,7 @@ BOOST_AUTO_TEST_CASE(ethash_check_difficulty_check) {
 
 BOOST_AUTO_TEST_CASE(test_ethash_dir_creation) {
     ethash_blockhash_t seedhash;
+	memset(&seedhash, 0, 32);
     BOOST_REQUIRE_EQUAL(
         ETHASH_IO_MEMO_MISMATCH,
         ethash_io_prepare("./test_ethash_directory/", seedhash)
@@ -263,11 +268,11 @@ BOOST_AUTO_TEST_CASE(test_ethash_io_write_files_are_created) {
     ethash_cache cache;
     ethash_params params;
     uint8_t *data;
-    size_t size;
+    uint64_t size;
     ethash_params_init(&params, blockn);
     params.cache_size = 1024;
     params.full_size = 1024 * 32;
-    cache.mem = alloca(params.cache_size);
+    cache.mem = our_alloca(params.cache_size);
     ethash_mkcache(&cache, &params, (uint8_t*)&seedhash);
 
     BOOST_REQUIRE(
@@ -297,11 +302,11 @@ BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_match) {
     ethash_cache cache;
     ethash_params params;
     uint8_t *data;
-    size_t size;
+    uint64_t size;
     ethash_params_init(&params, blockn);
     params.cache_size = 1024;
     params.full_size = 1024 * 32;
-    cache.mem = alloca(params.cache_size);
+    cache.mem = our_alloca(params.cache_size);
     ethash_mkcache(&cache, &params, (uint8_t*)&seedhash);
 
     BOOST_REQUIRE(
@@ -328,7 +333,7 @@ static std::vector<char> readFileIntoVector(char const* filename)
     ifstream ifs(filename, ios::binary|ios::ate);
     ifstream::pos_type pos = ifs.tellg();
 
-    std::vector<char> result(pos);
+    std::vector<char> result((unsigned int)pos);
 
     ifs.seekg(0, ios::beg);
     ifs.read(&result[0], pos);
@@ -351,11 +356,11 @@ BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_contents) {
     ethash_cache cache;
     ethash_params params;
     uint8_t *data;
-    size_t size;
+    uint64_t size;
     ethash_params_init(&params, blockn);
     params.cache_size = 1024;
     params.full_size = 1024 * 32;
-    cache.mem = alloca(params.cache_size);
+    cache.mem = our_alloca(params.cache_size);
     ethash_mkcache(&cache, &params, (uint8_t*)&seedhash);
 
     BOOST_REQUIRE(
