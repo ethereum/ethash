@@ -248,7 +248,7 @@ extern "C" int main(void)
 	auto time = std::chrono::duration_cast<std::chrono::microseconds>(high_resolution_clock::now() - startTime).count();
 	debugf("Search took: %ums\n", (unsigned)time/1000);
 
-	unsigned read_size = ACCESSES * MIX_BYTES;
+	unsigned read_size = ETHASH_ACCESSES * ETHASH_MIX_BYTES;
 #if defined(OPENCL) || defined(FULL)
 	debugf(
 		"hashrate: %8.2f Mh/s, bw: %8.2f GB/s\n",

@@ -114,8 +114,8 @@ bool ethash_cl_miner::init(ethash_params const& params, const uint8_t seed[32], 
 	// patch source code
 	std::string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
 	add_definition(code, "GROUP_SIZE", m_workgroup_size);
-	add_definition(code, "DAG_SIZE", (unsigned)(params.full_size / MIX_BYTES));
-	add_definition(code, "ACCESSES", ACCESSES);
+	add_definition(code, "DAG_SIZE", (unsigned)(params.full_size / ETHASH_MIX_BYTES));
+	add_definition(code, "ETHASH_ACCESSES", ETHASH_ACCESSES);
 	add_definition(code, "MAX_OUTPUTS", c_max_search_results);
 	//debugf("%s", code.c_str());
 
@@ -145,13 +145,13 @@ bool ethash_cl_miner::init(ethash_params const& params, const uint8_t seed[32], 
 	// compute dag on CPU
 	{
 		void* cache_mem = malloc(params.cache_size + 63);
-		ethash_cache cache;
-		cache.mem = (void*)(((uintptr_t)cache_mem + 63) & ~63);
-		ethash_mkcache(&cache, &params, seed);
+		void* cache;
+		cache = (void*)(((uintptr_t)cache_mem + 63) & ~63);
+		ethash_mkcache(cache, &params, seed);
 
 		// if this throws then it's because we probably need to subdivide the dag uploads for compatibility
 		void* dag_ptr = m_queue.enqueueMapBuffer(m_dag, true, m_opencl_1_1 ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, params.full_size);
-		ethash_compute_full_data(dag_ptr, &params, &cache);
+		ethash_compute_full_data(dag_ptr, &params, cache);
 		m_queue.enqueueUnmapMemObject(m_dag, dag_ptr);
 
 		free(cache_mem);

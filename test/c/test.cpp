@@ -74,15 +74,15 @@ BOOST_AUTO_TEST_CASE(SHA512_check) {
 BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_check) {
     ethash_params params;
     ethash_params_init(&params, 0);
-    BOOST_REQUIRE_MESSAGE(params.full_size < DATASET_BYTES_INIT,
+    BOOST_REQUIRE_MESSAGE(params.full_size < ETHASH_DATASET_BYTES_INIT,
             "\nfull size: " << params.full_size << "\n"
-                    << "should be less than or equal to: " << DATASET_BYTES_INIT << "\n");
-    BOOST_REQUIRE_MESSAGE(params.full_size + 20 * MIX_BYTES >= DATASET_BYTES_INIT,
-            "\nfull size + 20*MIX_BYTES: " << params.full_size + 20 * MIX_BYTES << "\n"
-                    << "should be greater than or equal to: " << DATASET_BYTES_INIT << "\n");
-    BOOST_REQUIRE_MESSAGE(params.cache_size < DATASET_BYTES_INIT / 32,
+                    << "should be less than or equal to: " << ETHASH_DATASET_BYTES_INIT << "\n");
+    BOOST_REQUIRE_MESSAGE(params.full_size + 20 * ETHASH_MIX_BYTES >= ETHASH_DATASET_BYTES_INIT,
+            "\nfull size + 20*ETHASH_MIX_BYTES: " << params.full_size + 20 * ETHASH_MIX_BYTES << "\n"
+                    << "should be greater than or equal to: " << ETHASH_DATASET_BYTES_INIT << "\n");
+    BOOST_REQUIRE_MESSAGE(params.cache_size < ETHASH_DATASET_BYTES_INIT / 32,
             "\ncache size: " << params.cache_size << "\n"
-                    << "should be less than or equal to: " << DATASET_BYTES_INIT / 32 << "\n");
+                    << "should be less than or equal to: " << ETHASH_DATASET_BYTES_INIT / 32 << "\n");
 }
 
 BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_calcifide_check) {
@@ -366,7 +366,7 @@ BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_contents) {
     BOOST_REQUIRE(fs::exists(fs::path("./test_ethash_directory/full.info")));
 
     char expect_buffer[DAG_MEMO_BYTESIZE];
-    ethash_io_serialize_info(REVISION, seedhash, expect_buffer);
+    ethash_io_serialize_info(ETHASH_REVISION, seedhash, expect_buffer);
     auto vec = readFileIntoVector("./test_ethash_directory/full.info");
     BOOST_REQUIRE_EQUAL(vec.size(), DAG_MEMO_BYTESIZE);
     BOOST_REQUIRE(memcmp(expect_buffer, &vec[0], DAG_MEMO_BYTESIZE) == 0);
