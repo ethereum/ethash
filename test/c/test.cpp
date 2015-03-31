@@ -240,7 +240,7 @@ BOOST_AUTO_TEST_CASE(ethash_check_difficulty_check) {
 
 BOOST_AUTO_TEST_CASE(test_ethash_dir_creation) {
     ethash_blockhash_t seedhash;
-	memset(&seedhash, 0, 32);
+    memset(&seedhash, 0, 32);
     BOOST_REQUIRE_EQUAL(
         ETHASH_IO_MEMO_MISMATCH,
         ethash_io_prepare("./test_ethash_directory/", seedhash)
