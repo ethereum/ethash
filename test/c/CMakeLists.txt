@@ -1,8 +1,8 @@
 if (MSVC)
-  if (NOT BOOST_ROOT)
-    set (BOOST_ROOT "$ENV{BOOST_ROOT}")
-  endif()
-  set (CMAKE_PREFIX_PATH BOOST_ROOT)
+    if (NOT BOOST_ROOT)
+        set (BOOST_ROOT "$ENV{BOOST_ROOT}")
+    endif()
+    set (CMAKE_PREFIX_PATH BOOST_ROOT)
 endif()
 
 IF( NOT Boost_FOUND )
