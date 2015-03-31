@@ -2,9 +2,12 @@
 #include <libethash/fnv.h>
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
+#include <libethash/io.h>
 
 #ifdef WITH_CRYPTOPP
+
 #include <libethash/sha3_cryptopp.h>
+
 #else
 #include <libethash/sha3.h>
 #endif // WITH_CRYPTOPP
@@ -12,8 +15,14 @@
 #define BOOST_TEST_MODULE Daggerhashimoto
 #define BOOST_TEST_MAIN
 
-#include <boost/test/unit_test.hpp>
 #include <iostream>
+#include <fstream>
+#include <vector>
+#include <boost/filesystem.hpp>
+#include <boost/test/unit_test.hpp>
+
+using namespace std;
+namespace fs = boost::filesystem;
 
 std::string bytesToHexString(const uint8_t *str, const size_t s) {
     std::ostringstream ret;
@@ -28,7 +37,7 @@ BOOST_AUTO_TEST_CASE(fnv_hash_check) {
     uint32_t x = 1235U;
     const uint32_t
             y = 9999999U,
-            expected = (FNV_PRIME * x) ^ y;
+            expected = (FNV_PRIME * x) ^y;
 
     x = fnv_hash(x, y);
 
@@ -65,43 +74,50 @@ BOOST_AUTO_TEST_CASE(SHA512_check) {
 BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_check) {
     ethash_params params;
     ethash_params_init(&params, 0);
-    BOOST_REQUIRE_MESSAGE(params.full_size  < DAGSIZE_BYTES_INIT,
+    BOOST_REQUIRE_MESSAGE(params.full_size < DATASET_BYTES_INIT,
             "\nfull size: " << params.full_size << "\n"
-                    << "should be less than or equal to: " << DAGSIZE_BYTES_INIT << "\n");
-    BOOST_REQUIRE_MESSAGE(params.full_size + 20*MIX_BYTES >= DAGSIZE_BYTES_INIT,
-            "\nfull size + 20*MIX_BYTES: " << params.full_size + 20*MIX_BYTES << "\n"
-                    << "should be greater than or equal to: " << DAGSIZE_BYTES_INIT << "\n");
-    BOOST_REQUIRE_MESSAGE(params.cache_size < DAGSIZE_BYTES_INIT / 32,
+                    << "should be less than or equal to: " << DATASET_BYTES_INIT << "\n");
+    BOOST_REQUIRE_MESSAGE(params.full_size + 20 * MIX_BYTES >= DATASET_BYTES_INIT,
+            "\nfull size + 20*MIX_BYTES: " << params.full_size + 20 * MIX_BYTES << "\n"
+                    << "should be greater than or equal to: " << DATASET_BYTES_INIT << "\n");
+    BOOST_REQUIRE_MESSAGE(params.cache_size < DATASET_BYTES_INIT / 32,
             "\ncache size: " << params.cache_size << "\n"
-                    << "should be less than or equal to: " << DAGSIZE_BYTES_INIT / 32 << "\n");
+                    << "should be less than or equal to: " << DATASET_BYTES_INIT / 32 << "\n");
 }
 
 BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_calcifide_check) {
     ethash_params params;
     ethash_params_init(&params, 0);
     const uint32_t expected_full_size = 1073739904;
-    const uint32_t expected_cache_size = 1048384;
-    BOOST_REQUIRE_MESSAGE(params.full_size  == expected_full_size,
+    const uint32_t expected_cache_size = 16776896;
+    BOOST_REQUIRE_MESSAGE(params.full_size == expected_full_size,
             "\nexpected: " << expected_cache_size << "\n"
                     << "actual: " << params.full_size << "\n");
-    BOOST_REQUIRE_MESSAGE(params.cache_size  == expected_cache_size,
+    BOOST_REQUIRE_MESSAGE(params.cache_size == expected_cache_size,
             "\nexpected: " << expected_cache_size << "\n"
                     << "actual: " << params.cache_size << "\n");
 }
 
 BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
     ethash_params params;
-    uint8_t seed[32], hash[32];
+    uint8_t seed[32], hash[32], difficulty[32];
     ethash_return_value light_out, full_out;
     memcpy(seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
     memcpy(hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+
+    // Set the difficulty
+    difficulty[0] = 197;
+    difficulty[1] = 90;
+    for (int i = 2; i < 32; i++)
+        difficulty[i] = (uint8_t) 255;
+
     ethash_params_init(&params, 0);
     params.cache_size = 1024;
     params.full_size = 1024 * 32;
     ethash_cache cache;
     cache.mem = alloca(params.cache_size);
     ethash_mkcache(&cache, &params, seed);
-    node * full_mem = (node *) alloca(params.full_size);
+    node *full_mem = (node *) alloca(params.full_size);
     ethash_compute_full_data(full_mem, &params, &cache);
 
     {
@@ -113,7 +129,6 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
                 "\nexpected: " << expected.c_str() << "\n"
                         << "actual: " << actual.c_str() << "\n");
     }
-
 
 
     {
@@ -128,7 +143,7 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
     }
 
     {
-        for (int i = 0 ; i < params.full_size / sizeof(node) ; ++i ) {
+        for (int i = 0; i < params.full_size / sizeof(node); ++i) {
             for (uint32_t j = 0; j < 32; ++j) {
                 node expected_node;
                 ethash_calculate_dag_item(&expected_node, j, &params, &cache);
@@ -187,6 +202,12 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
         BOOST_REQUIRE_MESSAGE(full_mix_hash_string == light_mix_hash_string,
                 "\nlight mix hash: " << light_mix_hash_string.c_str() << "\n"
                         << "full mix hash: " << full_mix_hash_string.c_str() << "\n");
+        BOOST_REQUIRE_MESSAGE(ethash_check_difficulty(full_out.result, difficulty),
+                "ethash_check_difficulty failed"
+        );
+        BOOST_REQUIRE_MESSAGE(ethash_quick_check_difficulty(hash, 5U, full_out.mix_hash, difficulty),
+                "ethash_quick_check_difficulty failed"
+        );
     }
 }
 
@@ -199,16 +220,158 @@ BOOST_AUTO_TEST_CASE(ethash_check_difficulty_check) {
     memcpy(target, "22222222222222222222222222222222", 32);
     BOOST_REQUIRE_MESSAGE(
             ethash_check_difficulty(hash, target),
-            "\nexpected \"" << hash << "\" to have less difficulty than \"" << target << "\"\n");
+            "\nexpected \"" << std::string((char *) hash, 32).c_str() << "\" to have the same or less difficulty than \"" << std::string((char *) target, 32).c_str() << "\"\n");
     BOOST_REQUIRE_MESSAGE(
-            !ethash_check_difficulty(hash, hash),
-            "\nexpected \"" << hash << "\" to have the same difficulty as \"" << hash << "\"\n");
+            ethash_check_difficulty(hash, hash),
+            "\nexpected \"" << hash << "\" to have the same or less difficulty than \"" << hash << "\"\n");
     memcpy(target, "11111111111111111111111111111112", 32);
     BOOST_REQUIRE_MESSAGE(
             ethash_check_difficulty(hash, target),
-            "\nexpected \"" << hash << "\" to have less difficulty than \"" << target << "\"\n");
+            "\nexpected \"" << hash << "\" to have the same or less difficulty than \"" << target << "\"\n");
     memcpy(target, "11111111111111111111111111111110", 32);
     BOOST_REQUIRE_MESSAGE(
             !ethash_check_difficulty(hash, target),
             "\nexpected \"" << hash << "\" to have more difficulty than \"" << target << "\"\n");
+}
+
+BOOST_AUTO_TEST_CASE(test_ethash_dir_creation) {
+    ethash_blockhash_t seedhash;
+    BOOST_REQUIRE_EQUAL(
+        ETHASH_IO_MEMO_MISMATCH,
+        ethash_io_prepare("./test_ethash_directory/", seedhash)
+    );
+
+    // let's make sure that the directory was created
+    BOOST_REQUIRE(fs::is_directory(fs::path("./test_ethash_directory/")));
+
+    // cleanup
+    fs::remove_all("./test_ethash_directory/");
+}
+
+BOOST_AUTO_TEST_CASE(test_ethash_io_write_files_are_created) {
+    ethash_blockhash_t seedhash;
+    static const int blockn = 0;
+    ethash_get_seedhash((uint8_t*)&seedhash, blockn);
+    BOOST_REQUIRE_EQUAL(
+        ETHASH_IO_MEMO_MISMATCH,
+        ethash_io_prepare("./test_ethash_directory/", seedhash)
+    );
+
+ // let's make sure that the directory was created
+    BOOST_REQUIRE(fs::is_directory(fs::path("./test_ethash_directory/")));
+
+    ethash_cache cache;
+    ethash_params params;
+    uint8_t *data;
+    size_t size;
+    ethash_params_init(&params, blockn);
+    params.cache_size = 1024;
+    params.full_size = 1024 * 32;
+    cache.mem = alloca(params.cache_size);
+    ethash_mkcache(&cache, &params, (uint8_t*)&seedhash);
+
+    BOOST_REQUIRE(
+        ethash_io_write("./test_ethash_directory/", &params, seedhash, &cache, &data, &size)
+    );
+
+    BOOST_REQUIRE(fs::exists(fs::path("./test_ethash_directory/full")));
+    BOOST_REQUIRE(fs::exists(fs::path("./test_ethash_directory/full.info")));
+
+    // cleanup
+    fs::remove_all("./test_ethash_directory/");
+    free(data);
+}
+
+BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_match) {
+    ethash_blockhash_t seedhash;
+    static const int blockn = 0;
+    ethash_get_seedhash((uint8_t*)&seedhash, blockn);
+    BOOST_REQUIRE_EQUAL(
+        ETHASH_IO_MEMO_MISMATCH,
+        ethash_io_prepare("./test_ethash_directory/", seedhash)
+    );
+
+    // let's make sure that the directory was created
+    BOOST_REQUIRE(fs::is_directory(fs::path("./test_ethash_directory/")));
+
+    ethash_cache cache;
+    ethash_params params;
+    uint8_t *data;
+    size_t size;
+    ethash_params_init(&params, blockn);
+    params.cache_size = 1024;
+    params.full_size = 1024 * 32;
+    cache.mem = alloca(params.cache_size);
+    ethash_mkcache(&cache, &params, (uint8_t*)&seedhash);
+
+    BOOST_REQUIRE(
+        ethash_io_write("./test_ethash_directory/", &params, seedhash, &cache, &data, &size)
+    );
+
+    BOOST_REQUIRE(fs::exists(fs::path("./test_ethash_directory/full")));
+    BOOST_REQUIRE(fs::exists(fs::path("./test_ethash_directory/full.info")));
+
+    BOOST_REQUIRE_EQUAL(
+        ETHASH_IO_MEMO_MATCH,
+        ethash_io_prepare("./test_ethash_directory/", seedhash)
+    );
+
+    // cleanup
+    fs::remove_all("./test_ethash_directory/");
+    free(data);
+}
+
+// could have used dev::contentsNew but don't wanna try to import
+// libdevcore just for one function
+static std::vector<char> readFileIntoVector(char const* filename)
+{
+    ifstream ifs(filename, ios::binary|ios::ate);
+    ifstream::pos_type pos = ifs.tellg();
+
+    std::vector<char> result(pos);
+
+    ifs.seekg(0, ios::beg);
+    ifs.read(&result[0], pos);
+
+    return result;
+}
+
+BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_contents) {
+    ethash_blockhash_t seedhash;
+    static const int blockn = 0;
+    ethash_get_seedhash((uint8_t*)&seedhash, blockn);
+    BOOST_REQUIRE_EQUAL(
+        ETHASH_IO_MEMO_MISMATCH,
+        ethash_io_prepare("./test_ethash_directory/", seedhash)
+    );
+
+    // let's make sure that the directory was created
+    BOOST_REQUIRE(fs::is_directory(fs::path("./test_ethash_directory/")));
+
+    ethash_cache cache;
+    ethash_params params;
+    uint8_t *data;
+    size_t size;
+    ethash_params_init(&params, blockn);
+    params.cache_size = 1024;
+    params.full_size = 1024 * 32;
+    cache.mem = alloca(params.cache_size);
+    ethash_mkcache(&cache, &params, (uint8_t*)&seedhash);
+
+    BOOST_REQUIRE(
+        ethash_io_write("./test_ethash_directory/", &params, seedhash, &cache, &data, &size)
+    );
+
+    BOOST_REQUIRE(fs::exists(fs::path("./test_ethash_directory/full")));
+    BOOST_REQUIRE(fs::exists(fs::path("./test_ethash_directory/full.info")));
+
+    char expect_buffer[DAG_MEMO_BYTESIZE];
+    ethash_io_serialize_info(REVISION, seedhash, expect_buffer);
+    auto vec = readFileIntoVector("./test_ethash_directory/full.info");
+    BOOST_REQUIRE_EQUAL(vec.size(), DAG_MEMO_BYTESIZE);
+    BOOST_REQUIRE(memcmp(expect_buffer, &vec[0], DAG_MEMO_BYTESIZE) == 0);
+
+    // cleanup
+    fs::remove_all("./test_ethash_directory/");
+    free(data);
 }
