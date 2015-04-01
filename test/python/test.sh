@@ -3,11 +3,13 @@
 # Strict mode
 set -e
 
-# just a specific case for archlinux where python3 is the default
-if [ -f "/etc/arch-release" ]; then
-    VIRTUALENV_EXEC=virtualenv2
+if [ -x "$(which virtualenv2)" ] ; then
+   VIRTUALENV_EXEC=virtualenv2
+elif [ -x "$(which virtualenv)" ] ; then
+   VIRTUALENV_EXEC=virtualenv
 else
-    VIRTUALENV_EXEC=virtualenv
+   echo "Could not find a suitable version of virtualenv"
+   false
 fi
 
 SOURCE="${BASH_SOURCE[0]}"

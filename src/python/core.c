@@ -110,7 +110,7 @@ calc_dataset_bytes(PyObject *self, PyObject *args) {
     free(mem);
     return val;
 }
-#define DEB(...) printf(__VA_ARGS__); fflush(stdout);
+
 // hashimoto_light(full_size, cache, header, nonce)
 static PyObject *
 hashimoto_light(PyObject *self, PyObject *args) {
