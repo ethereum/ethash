@@ -106,8 +106,8 @@ extern "C" int main(void)
 	//params.full_size = 8209 * 4096;	// 8MBish;
 	//params.cache_size = 8209*4096;
 	//params.cache_size = 2053*4096;
-	ethash_blockhash_t seed;
-	ethash_blockhash_t previous_hash;
+	ethash_h256_t seed;
+	ethash_h256_t previous_hash;
 
 	memcpy(&seed, hexStringToBytes("9410b944535a83d9adf6bbdcc80e051f30676173c16ca0d32d6f1263fc246466").data(), 32);
 	memcpy(&previous_hash, hexStringToBytes("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470").data(), 32);
@@ -129,7 +129,7 @@ extern "C" int main(void)
 		ethash_mkcache(&cache, &params, seed);
 		auto time = std::chrono::duration_cast<std::chrono::milliseconds>(high_resolution_clock::now() - startTime).count();
 
-		ethash_blockhash_t cache_hash;
+		ethash_h256_t cache_hash;
 		SHA3_256(&cache_hash, (uint8_t const*)cache_mem, params.cache_size);
 		debugf("ethash_mkcache: %ums, sha3: %s\n", (unsigned)((time*1000)/CLOCKS_PER_SEC), bytesToHexString(cache_hash,sizeof(cache_hash)).data());
 

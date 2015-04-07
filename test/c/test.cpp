@@ -37,7 +37,7 @@ std::string bytesToHexString(const uint8_t *str, const uint64_t s) {
     return ret.str();
 }
 
-std::string blockhashToHexString(ethash_blockhash_t *hash) {
+std::string blockhashToHexString(ethash_h256_t *hash) {
     return bytesToHexString((uint8_t*)hash, 32);
 }
 
@@ -56,8 +56,8 @@ BOOST_AUTO_TEST_CASE(fnv_hash_check) {
 }
 
 BOOST_AUTO_TEST_CASE(SHA256_check) {
-    ethash_blockhash_t input;
-    ethash_blockhash_t out;
+    ethash_h256_t input;
+    ethash_h256_t out;
     memcpy(&input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
     SHA3_256(&out, (uint8_t*)&input, 32);
     const std::string
@@ -109,19 +109,19 @@ BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_calcifide_check) {
 
 BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
     ethash_params params;
-    ethash_blockhash_t seed;
-    ethash_blockhash_t hash;
-    ethash_blockhash_t difficulty;
+    ethash_h256_t seed;
+    ethash_h256_t hash;
+    ethash_h256_t difficulty;
     ethash_return_value light_out;
     ethash_return_value full_out;
     memcpy(&seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
     memcpy(&hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
 
     // Set the difficulty
-    ethash_blockhash_set(&difficulty, 0, 197);
-    ethash_blockhash_set(&difficulty, 1, 90);
+    ethash_h256_set(&difficulty, 0, 197);
+    ethash_h256_set(&difficulty, 1, 90);
     for (int i = 2; i < 32; i++)
-        ethash_blockhash_set(&difficulty, i, 255);
+        ethash_h256_set(&difficulty, i, 255);
 
     ethash_params_init(&params, 0);
     params.cache_size = 1024;
@@ -186,7 +186,7 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
         BOOST_REQUIRE_MESSAGE(full_mix_hash_string == light_mix_hash_string,
                 "\nlight mix hash: " << light_mix_hash_string.c_str() << "\n"
                         << "full mix hash: " << full_mix_hash_string.c_str() << "\n");
-        ethash_blockhash_t check_hash;
+        ethash_h256_t check_hash;
         ethash_quick_hash(&check_hash, &hash, nonce, &full_out.mix_hash);
         const std::string check_hash_string = blockhashToHexString(&check_hash);
         BOOST_REQUIRE_MESSAGE(check_hash_string == full_result_string,
@@ -224,8 +224,8 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
 }
 
 BOOST_AUTO_TEST_CASE(ethash_check_difficulty_check) {
-    ethash_blockhash_t hash;
-    ethash_blockhash_t target;
+    ethash_h256_t hash;
+    ethash_h256_t target;
     memcpy(&hash, "11111111111111111111111111111111", 32);
     memcpy(&target, "22222222222222222222222222222222", 32);
     BOOST_REQUIRE_MESSAGE(
@@ -245,7 +245,7 @@ BOOST_AUTO_TEST_CASE(ethash_check_difficulty_check) {
 }
 
 BOOST_AUTO_TEST_CASE(test_ethash_dir_creation) {
-    ethash_blockhash_t seedhash;
+    ethash_h256_t seedhash;
     memset(&seedhash, 0, 32);
     BOOST_REQUIRE_EQUAL(
         ETHASH_IO_MEMO_MISMATCH,
@@ -260,7 +260,7 @@ BOOST_AUTO_TEST_CASE(test_ethash_dir_creation) {
 }
 
 BOOST_AUTO_TEST_CASE(test_ethash_io_write_files_are_created) {
-    ethash_blockhash_t seedhash;
+    ethash_h256_t seedhash;
     static const int blockn = 0;
     ethash_get_seedhash(&seedhash, blockn);
     BOOST_REQUIRE_EQUAL(
@@ -294,7 +294,7 @@ BOOST_AUTO_TEST_CASE(test_ethash_io_write_files_are_created) {
 }
 
 BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_match) {
-    ethash_blockhash_t seedhash;
+    ethash_h256_t seedhash;
     static const int blockn = 0;
     ethash_get_seedhash(&seedhash, blockn);
     BOOST_REQUIRE_EQUAL(
@@ -348,7 +348,7 @@ static std::vector<char> readFileIntoVector(char const* filename)
 }
 
 BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_contents) {
-    ethash_blockhash_t seedhash;
+    ethash_h256_t seedhash;
     static const int blockn = 0;
     ethash_get_seedhash(&seedhash, blockn);
     BOOST_REQUIRE_EQUAL(
