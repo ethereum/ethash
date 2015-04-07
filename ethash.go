@@ -34,12 +34,11 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/logger"
+	"github.com/ethereum/go-ethereum/logger/glog"
 	"github.com/ethereum/go-ethereum/pow"
 )
 
 var minDifficulty = new(big.Int).Exp(big.NewInt(2), big.NewInt(256), big.NewInt(0))
-
-var powlogger = logger.NewLogger("POW")
 
 type ParamsAndCache struct {
 	params *C.ethash_params
@@ -92,10 +91,13 @@ func makeParamsAndCache(chainManager pow.ChainManager, blockNum uint64) (*Params
 		return nil, err
 	}
 
-	powlogger.Infoln("Making Cache")
+	glog.V(logger.Info).Infoln("Making cache")
 	start := time.Now()
 	C.ethash_mkcache(paramsAndCache.cache, paramsAndCache.params, (*C.ethash_blockhash_t)(unsafe.Pointer(&seedHash[0])))
-	powlogger.Infoln("Took:", time.Since(start))
+
+	if glog.V(logger.Info) {
+		glog.Infoln("Took:", time.Since(start))
+	}
 
 	return paramsAndCache, nil
 }
@@ -131,9 +133,9 @@ func makeDAG(p *ParamsAndCache) *DAG {
 		for {
 			select {
 			case <-t.C:
-				powlogger.Infof("... still generating DAG (%v) ...\n", time.Since(tstart).Seconds())
+				glog.V(logger.Info).Infof("... still generating DAG (%v) ...\n", time.Since(tstart).Seconds())
 			case str := <-donech:
-				powlogger.Infof("... %s ...\n", str)
+				glog.V(logger.Info).Infof("... %s ...\n", str)
 				break done
 			}
 		}
@@ -193,30 +195,30 @@ func (pow *Ethash) UpdateDAG() {
 		pow.paramsAndCache = paramsAndCache
 		path := path.Join("/", "tmp", "dag")
 		pow.dag = nil
-		powlogger.Infoln("Retrieving DAG")
+		glog.V(logger.Info).Infoln("Retrieving DAG")
 		start := time.Now()
 
 		file, err := os.Open(path)
 		if err != nil {
-			powlogger.Infof("No DAG found. Generating new DAG in '%s' (this takes a while)...\n", path)
+			glog.V(logger.Info).Infof("No DAG found. Generating new DAG in '%s' (this takes a while)...\n", path)
 			pow.dag = makeDAG(paramsAndCache)
 			file = pow.writeDagToDisk(pow.dag, thisEpoch)
 			pow.dag.file = true
 		} else {
 			data, err := ioutil.ReadAll(file)
 			if err != nil {
-				powlogger.Infof("DAG load err: %v\n", err)
+				glog.V(logger.Info).Infof("DAG load err: %v\n", err)
 			}
 
 			if len(data) < 8 {
-				powlogger.Infof("DAG in '%s' is less than 8 bytes, it must be corrupted. Generating new DAG (this takes a while)...\n", path)
+				glog.V(logger.Info).Infof("DAG in '%s' is less than 8 bytes, it must be corrupted. Generating new DAG (this takes a while)...\n", path)
 				pow.dag = makeDAG(paramsAndCache)
 				file = pow.writeDagToDisk(pow.dag, thisEpoch)
 				pow.dag.file = true
 			} else {
 				dataEpoch := binary.BigEndian.Uint64(data[0:8])
 				if dataEpoch < thisEpoch {
-					powlogger.Infof("DAG in '%s' is stale. Generating new DAG (this takes a while)...\n", path)
+					glog.V(logger.Info).Infof("DAG in '%s' is stale. Generating new DAG (this takes a while)...\n", path)
 					pow.dag = makeDAG(paramsAndCache)
 					file = pow.writeDagToDisk(pow.dag, thisEpoch)
 					pow.dag.file = true
@@ -224,7 +226,7 @@ func (pow *Ethash) UpdateDAG() {
 					// FIXME
 					panic(fmt.Errorf("Saved DAG in '%s' reports to be from future epoch %v (current epoch is %v)\n", path, dataEpoch, thisEpoch))
 				} else if len(data) != (int(paramsAndCache.params.full_size) + 8) {
-					powlogger.Infof("DAG in '%s' is corrupted. Generating new DAG (this takes a while)...\n", path)
+					glog.V(logger.Info).Infof("DAG in '%s' is corrupted. Generating new DAG (this takes a while)...\n", path)
 					pow.dag = makeDAG(paramsAndCache)
 					file = pow.writeDagToDisk(pow.dag, thisEpoch)
 					pow.dag.file = true
@@ -238,7 +240,7 @@ func (pow *Ethash) UpdateDAG() {
 				}
 			}
 		}
-		powlogger.Infoln("Took:", time.Since(start))
+		glog.V(logger.Info).Infoln("Took:", time.Since(start))
 
 		file.Close()
 	}
@@ -366,7 +368,7 @@ func (pow *Ethash) Verify(block pow.Block) bool {
 func (pow *Ethash) verify(hash common.Hash, mixDigest common.Hash, difficulty *big.Int, blockNum uint64, nonce uint64) bool {
 	// Make sure the block num is valid
 	if blockNum >= epochLength*2048 {
-		powlogger.Infoln(fmt.Sprintf("Block number exceeds limit, invalid (value is %v, limit is %v)",
+		glog.V(logger.Info).Infoln(fmt.Sprintf("Block number exceeds limit, invalid (value is %v, limit is %v)",
 			blockNum, epochLength*2048))
 		return false
 	}
@@ -387,7 +389,7 @@ func (pow *Ethash) verify(hash common.Hash, mixDigest common.Hash, difficulty *b
 		// If we can't make the params for some reason, this block is invalid
 		pAc, err = makeParamsAndCache(pow.chainManager, blockNum+1)
 		if err != nil {
-			powlogger.Infoln("big fucking eror", err)
+			glog.V(logger.Info).Infoln("big fucking eror", err)
 			return false
 		}
 	} else {
