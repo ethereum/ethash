@@ -28,4 +28,4 @@ echo -e "\n################# Testing Python ##################"
 $TEST_DIR/python/test.sh
 
 echo "################# Testing Go ##################"
-cd $TEST_DIR/go/ && go test
+cd $TEST_DIR/go/ && go test -timeout 9999s
