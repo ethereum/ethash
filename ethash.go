@@ -94,7 +94,7 @@ func makeParamsAndCache(chainManager pow.ChainManager, blockNum uint64) (*Params
 
 	powlogger.Infoln("Making Cache")
 	start := time.Now()
-	C.ethash_mkcache(paramsAndCache.cache, paramsAndCache.params, (*C.ethash_blockhash_t)(unsafe.Pointer(&seedHash[0])))
+	C.ethash_mkcache(paramsAndCache.cache, paramsAndCache.params, (*C.ethash_h256_t)(unsafe.Pointer(&seedHash[0])))
 	powlogger.Infoln("Took:", time.Since(start))
 
 	return paramsAndCache, nil
@@ -319,7 +319,7 @@ func (pow *Ethash) Search(block pow.Block, stop <-chan struct{}) (uint64, []byte
 	start := time.Now().UnixNano()
 
 	nonce := uint64(r.Int63())
-	cMiningHash := (*C.ethash_blockhash_t)(unsafe.Pointer(&miningHash[0]))
+	cMiningHash := (*C.ethash_h256_t)(unsafe.Pointer(&miningHash[0]))
 	target := new(big.Int).Div(minDifficulty, diff)
 
 	var ret C.ethash_return_value
@@ -373,7 +373,7 @@ func (pow *Ethash) verify(hash common.Hash, mixDigest common.Hash, difficulty *b
 
 	// First check: make sure header, mixDigest, nonce are correct without hitting the cache
 	// This is to prevent DOS attacks
-	chash := (*C.ethash_blockhash_t)(unsafe.Pointer(&hash[0]))
+	chash := (*C.ethash_h256_t)(unsafe.Pointer(&hash[0]))
 	cnonce := C.uint64_t(nonce)
 	target := new(big.Int).Div(minDifficulty, difficulty)
 
@@ -417,7 +417,7 @@ func (pow *Ethash) FullHash(nonce uint64, miningHash []byte) []byte {
 	pow.UpdateDAG()
 	pow.dagMutex.Lock()
 	defer pow.dagMutex.Unlock()
-	cMiningHash := (*C.ethash_blockhash_t)(unsafe.Pointer(&miningHash[0]))
+	cMiningHash := (*C.ethash_h256_t)(unsafe.Pointer(&miningHash[0]))
 	cnonce := C.uint64_t(nonce)
 	ret := new(C.ethash_return_value)
 	// pow.hash is the output/return of ethash_full
@@ -427,7 +427,7 @@ func (pow *Ethash) FullHash(nonce uint64, miningHash []byte) []byte {
 }
 
 func (pow *Ethash) LightHash(nonce uint64, miningHash []byte) []byte {
-	cMiningHash := (*C.ethash_blockhash_t)(unsafe.Pointer(&miningHash[0]))
+	cMiningHash := (*C.ethash_h256_t)(unsafe.Pointer(&miningHash[0]))
 	cnonce := C.uint64_t(nonce)
 	ret := new(C.ethash_return_value)
 	C.ethash_light(ret, pow.paramsAndCache.cache, pow.paramsAndCache.params, cMiningHash, cnonce)

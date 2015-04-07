@@ -54,7 +54,7 @@ ethash_cl_miner::ethash_cl_miner()
 {
 }
 
-bool ethash_cl_miner::init(ethash_params const& params, ethash_blockhash_t const *seed, unsigned workgroup_size)
+bool ethash_cl_miner::init(ethash_params const& params, ethash_h256_t const *seed, unsigned workgroup_size)
 {
 	// store params
 	m_params = params;
