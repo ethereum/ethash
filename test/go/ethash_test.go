@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"testing"
 	"time"
+	"runtime"
 
 	"github.com/ethereum/ethash"
 	"github.com/ethereum/go-ethereum/core"
@@ -47,10 +48,19 @@ func TestEthash(t *testing.T) {
 	// The tickers here are for having some log output during DAG calculation
 	// to stop travis from killing our testing process
 	fTicker := time.NewTicker(time.Second * 10)
+	memStats := new(runtime.MemStats)
 	go func() {
 		secs := 1
 		for _ = range fTicker.C {
+			runtime.ReadMemStats(memStats)
 			log.Printf("Calculating fullhash for %d seconds", secs)
+			log.Printf("Alloc: %v\nTotalAlloc: %v\nSys: %v\nHeapAlloc: %v\nHeapSys: %v\nStackInUse: %v\n\n",
+				memStats.Alloc,
+				memStats.TotalAlloc,
+				memStats.Sys,
+				memStats.HeapAlloc,
+				memStats.HeapSys,
+				memStats.StackInuse);
 			secs += 10
 		}
 	}()
