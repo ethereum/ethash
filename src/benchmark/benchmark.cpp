@@ -96,6 +96,11 @@ static std::string bytesToHexString(uint8_t const* bytes, unsigned size)
 	return str;
 }
 
+static std::string bytesToHexString(ethash_h256_t const *hash, unsigned size)
+{
+    return bytesToHexString((uint8_t*)hash, size);
+}
+
 extern "C" int main(void)
 {
 	// params for ethash
@@ -126,20 +131,20 @@ extern "C" int main(void)
 	// compute cache or full data
 	{
 		auto startTime = high_resolution_clock::now();
-		ethash_mkcache(&cache, &params, seed);
+		ethash_mkcache(&cache, &params, &seed);
 		auto time = std::chrono::duration_cast<std::chrono::milliseconds>(high_resolution_clock::now() - startTime).count();
 
 		ethash_h256_t cache_hash;
 		SHA3_256(&cache_hash, (uint8_t const*)cache_mem, params.cache_size);
-		debugf("ethash_mkcache: %ums, sha3: %s\n", (unsigned)((time*1000)/CLOCKS_PER_SEC), bytesToHexString(cache_hash,sizeof(cache_hash)).data());
+		debugf("ethash_mkcache: %ums, sha3: %s\n", (unsigned)((time*1000)/CLOCKS_PER_SEC), bytesToHexString(&cache_hash, sizeof(cache_hash)).data());
 
 		// print a couple of test hashes
 		{
 			auto startTime = high_resolution_clock::now();
 			ethash_return_value hash;
-			ethash_light(&hash, &cache, &params, previous_hash, 0);
+			ethash_light(&hash, &cache, &params, &previous_hash, 0);
 			auto time = std::chrono::duration_cast<std::chrono::milliseconds>(high_resolution_clock::now() - startTime).count();
-			debugf("ethash_light test: %ums, %s\n", (unsigned)time, bytesToHexString(hash.result, 32).data());
+			debugf("ethash_light test: %ums, %s\n", (unsigned)time, bytesToHexString(&hash.result, 32).data());
 		}
 
 		#ifdef FULL
@@ -154,7 +159,7 @@ extern "C" int main(void)
 	ethash_cl_miner miner;
 	{
 		auto startTime = high_resolution_clock::now();
-		if (!miner.init(params, seed))
+		if (!miner.init(params, &seed))
 			exit(-1);
 		auto time = std::chrono::duration_cast<std::chrono::milliseconds>(high_resolution_clock::now() - startTime).count();
         debugf("ethash_cl_miner init: %ums\n", (unsigned)time);
@@ -166,7 +171,7 @@ extern "C" int main(void)
     {
         auto startTime = high_resolution_clock::now();
 		ethash_return_value hash;
-        ethash_full(&hash, full_mem, &params, previous_hash, 0);
+        ethash_full(&hash, full_mem, &params, &previous_hash, 0);
         auto time = std::chrono::duration_cast<std::chrono::milliseconds>(high_resolution_clock::now() - startTime).count();
         debugf("ethash_full test: %uns, %s\n", (unsigned)time);
     }
@@ -174,14 +179,14 @@ extern "C" int main(void)
 
 #ifdef OPENCL
 	// validate 1024 hashes against CPU
-	miner.hash(g_hashes, previous_hash, 0, 1024);
+	miner.hash(g_hashes, (uint8_t*)&previous_hash, 0, 1024);
 	for (unsigned i = 0; i != 1024; ++i)
 	{
 		ethash_return_value hash;
-		ethash_light(&hash, &cache, &params, previous_hash, i);
-		if (memcmp(hash.result, g_hashes + 32*i, 32) != 0)
+		ethash_light(&hash, &cache, &params, &previous_hash, i);
+		if (memcmp(&hash.result, g_hashes + 32*i, 32) != 0)
 		{
-			debugf("nonce %u failed: %s %s\n", i, bytesToHexString(g_hashes + 32*i, 32).c_str(), bytesToHexString(hash.result, 32).c_str());
+			debugf("nonce %u failed: %s %s\n", i, bytesToHexString(g_hashes + 32*i, 32).c_str(), bytesToHexString(&hash.result, 32).c_str());
 			static unsigned c = 0;
 			if (++c == 16)
 			{
@@ -220,14 +225,14 @@ extern "C" int main(void)
 		search_hook hook;
 		hook.hash_count = 0;
 
-		miner.search(previous_hash, 0x000000ffffffffff, hook);
+		miner.search((uint8_t*)&previous_hash, 0x000000ffffffffff, hook);
 
 		for (unsigned i = 0; i != hook.nonce_vec.size(); ++i)
 		{
 			uint64_t nonce = hook.nonce_vec[i];
 			ethash_return_value hash;
-			ethash_light(&hash, &cache, &params, previous_hash, nonce);
-			debugf("found: %.8x%.8x -> %s\n", unsigned(nonce>>32), unsigned(nonce), bytesToHexString(hash.result, 32).c_str());
+			ethash_light(&hash, &cache, &params, &previous_hash, nonce);
+			debugf("found: %.8x%.8x -> %s\n", unsigned(nonce>>32), unsigned(nonce), bytesToHexString(&hash.result, 32).c_str());
 		}
 
 		hash_count = hook.hash_count;
@@ -239,9 +244,9 @@ extern "C" int main(void)
 		{
 			ethash_return_value hash;
 			#ifdef FULL
-				ethash_full(&hash, full_mem, &params, previous_hash, nonce);
+				ethash_full(&hash, full_mem, &params, &previous_hash, nonce);
 			#else
-				ethash_light(&hash, &cache, &params, previous_hash, nonce);
+				ethash_light(&hash, &cache, &params, &previous_hash, nonce);
 			#endif // FULL
 		}
 	}
