@@ -294,7 +294,7 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
     ethash_light_t light = ethash_light_new(&params, &seed);
     ethash_cache *cache = ethash_light_get_cache(light);
     BOOST_ASSERT(light);
-    ethash_full_t full = ethash_full_new(&params, ethash_light_get_cache(light), &seed, NULL);
+    ethash_full_t full = ethash_full_new(&params, ethash_light_get_cache(light), NULL);
     BOOST_ASSERT(full);
     {
         const std::string
