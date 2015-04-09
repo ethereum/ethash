@@ -175,7 +175,7 @@ func (pow *Ethash) UpdateDAG() {
 	defer pow.dagMutex.Unlock()
 	thisEpoch := blockNum / epochLength
 	if pow.dag == nil || pow.dag.paramsAndCache.Epoch != thisEpoch {
-		if pow.dag != nil && pow.dag.dag != nil {
+		if pow.dag != nil && pow.dag.dag != nil && !pow.dag.file {
 			C.free(pow.dag.dag)
 			pow.dag.dag = nil
 		}
