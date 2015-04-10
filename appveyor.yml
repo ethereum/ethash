@@ -1,5 +1,8 @@
 version: 1.0.0.{build}
-    
+
+environment:
+    BOOST_ROOT: "c:/projects/ethash/deps/boost"
+
 branches:
     only:
         - master
@@ -17,6 +20,13 @@ install:
 
 # scripts to run before build
 before_build:
+    - echo "Downloading boost..."
+    - mkdir c:\projects\ethash\deps
+    - cd c:\projects\ethash\deps
+    - curl -O https://build.ethdev.com/builds/windows-precompiled/boost.tar.gz
+    - 7z x boost.tar.gz
+    - 7z x boost.tar
+    - ls
     - echo "Running cmake..."
     - cd c:\projects\ethash
     - cmake .
