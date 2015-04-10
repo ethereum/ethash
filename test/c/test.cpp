@@ -80,6 +80,18 @@ BOOST_AUTO_TEST_CASE(SHA512_check) {
                     << "actual: " << actual.c_str() << "\n");
 }
 
+BOOST_AUTO_TEST_CASE(test_swap_endian32) {
+    uint32_t v32 = (uint32_t)0xBAADF00D;
+    v32 = ethash_swap_u32(v32);
+    BOOST_REQUIRE_EQUAL(v32, (uint32_t)0x0DF0ADBA);
+}
+
+BOOST_AUTO_TEST_CASE(test_swap_endian64) {
+    uint64_t v64 = (uint64_t)0xFEE1DEADDEADBEEF;
+    v64 = ethash_swap_u64(v64);
+    BOOST_REQUIRE_EQUAL(v64, (uint64_t)0xEFBEADDEADDEE1FE);
+}
+
 BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_check) {
     ethash_params params;
     ethash_params_init(&params, 0);
