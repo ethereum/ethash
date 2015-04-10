@@ -6,7 +6,11 @@
 For details on this project, please see the Ethereum wiki:
 https://github.com/ethereum/wiki/wiki/Ethash
 
-### Coding Style
+### Coding Style for C++ code:
+
+Follow the same exact style as in [cpp-ethereum](https://github.com/ethereum/cpp-ethereum/blob/develop/CodingStandards.txt)
+
+### Coding Style for C code:
 
 The main thing above all is code consistency.
 
