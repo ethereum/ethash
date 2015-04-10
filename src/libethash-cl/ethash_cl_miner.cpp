@@ -27,9 +27,10 @@
 #include <assert.h>
 #include <queue>
 #include <vector>
+#include <libethash/util.h>
+#include <libethash/ethash.h>
 #include "ethash_cl_miner.h"
 #include "ethash_cl_miner_kernel.h"
-#include <libethash/util.h>
 
 #define ETHASH_BYTES 32
 
@@ -62,7 +63,7 @@ void ethash_cl_miner::finish()
 	}
 }
 
-bool ethash_cl_miner::init(ethash_params const& params, const uint8_t seed[32], unsigned workgroup_size)
+bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*)> _fillDAG, unsigned workgroup_size)
 {
 	// store params
 	m_params = params;
@@ -77,7 +78,7 @@ bool ethash_cl_miner::init(ethash_params const& params, const uint8_t seed[32], 
 	}
 
 	// use default platform
-	debugf("Using platform: %s\n", platforms[0].getInfo<CL_PLATFORM_NAME>().c_str());
+	fprintf(stderr, "Using platform: %s\n", platforms[0].getInfo<CL_PLATFORM_NAME>().c_str());
 
     // get GPU device of the default platform
     std::vector<cl::Device> devices;
@@ -92,7 +93,7 @@ bool ethash_cl_miner::init(ethash_params const& params, const uint8_t seed[32], 
 	unsigned device_num = 0;
 	cl::Device& device = devices[device_num];
 	std::string device_version = device.getInfo<CL_DEVICE_VERSION>();
-	debugf("Using device: %s (%s)\n", device.getInfo<CL_DEVICE_NAME>().c_str(),device_version.c_str());
+	fprintf(stderr, "Using device: %s (%s)\n", device.getInfo<CL_DEVICE_NAME>().c_str(),device_version.c_str());
 
 	if (strncmp("OpenCL 1.0", device_version.c_str(), 10) == 0)
 	{
@@ -115,7 +116,7 @@ bool ethash_cl_miner::init(ethash_params const& params, const uint8_t seed[32], 
 	std::string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
 	add_definition(code, "GROUP_SIZE", m_workgroup_size);
 	add_definition(code, "DAG_SIZE", (unsigned)(params.full_size / ETHASH_MIX_BYTES));
-	add_definition(code, "ETHASH_ACCESSES", ETHASH_ACCESSES);
+	add_definition(code, "ACCESSES", ETHASH_ACCESSES);
 	add_definition(code, "MAX_OUTPUTS", c_max_search_results);
 	//debugf("%s", code.c_str());
 
@@ -144,17 +145,11 @@ bool ethash_cl_miner::init(ethash_params const& params, const uint8_t seed[32], 
 
 	// compute dag on CPU
 	{
-		void* cache_mem = malloc(params.cache_size + 63);
-		void* cache;
-		cache = (void*)(((uintptr_t)cache_mem + 63) & ~63);
-		ethash_mkcache(cache, &params, seed);
-
 		// if this throws then it's because we probably need to subdivide the dag uploads for compatibility
 		void* dag_ptr = m_queue.enqueueMapBuffer(m_dag, true, m_opencl_1_1 ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, params.full_size);
-		ethash_compute_full_data(dag_ptr, &params, cache);
+		// memcpying 1GB: horrible... really. horrible. but necessary since we can't mmap *and* gpumap.
+		_fillDAG(dag_ptr);
 		m_queue.enqueueUnmapMemObject(m_dag, dag_ptr);
-
-		free(cache_mem);
 	}
 
 	// create mining buffers
@@ -199,8 +194,8 @@ void ethash_cl_miner::hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, 
 		// how many this batch
 		if (i < count)
 		{
-			unsigned const this_count = std::min(count - i, c_hash_batch_size);
-			unsigned const batch_count = std::max(this_count, m_workgroup_size);
+			unsigned const this_count = std::min<unsigned>(count - i, c_hash_batch_size);
+			unsigned const batch_count = std::max<unsigned>(this_count, m_workgroup_size);
 
 			// supply output hash buffer to kernel
 			m_hash_kernel.setArg(0, m_hash_buf[buf]);
@@ -253,7 +248,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 		m_queue.enqueueWriteBuffer(m_search_buf[i], false, 0, 4, &c_zero);
 	}
 
-#if CL_VERSION_1_2
+#if CL_VERSION_1_2 && 0
 	cl::Event pre_return_event;
 	if (!m_opencl_1_1)
 	{
@@ -303,7 +298,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 
 			// could use pinned host pointer instead
 			uint32_t* results = (uint32_t*)m_queue.enqueueMapBuffer(m_search_buf[batch.buf], true, CL_MAP_READ, 0, (1+c_max_search_results) * sizeof(uint32_t));
-			unsigned num_found = std::min(results[0], c_max_search_results);
+			unsigned num_found = std::min<unsigned>(results[0], c_max_search_results);
 
 			uint64_t nonces[c_max_search_results];
 			for (unsigned i = 0; i != num_found; ++i)
@@ -327,7 +322,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 	}
 
 	// not safe to return until this is ready
-#if CL_VERSION_1_2
+#if CL_VERSION_1_2 && 0
 	if (!m_opencl_1_1)
 	{
 		pre_return_event.wait();

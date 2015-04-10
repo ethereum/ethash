@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 
 set(LIBRARY ethash-cl)
-set(CMAKE_BUILD_TYPE Release)
+#set(CMAKE_BUILD_TYPE Release)
 
 include(bin2h.cmake)
 bin2h(SOURCE_FILE ethash_cl_miner_kernel.cl
@@ -10,11 +10,11 @@ bin2h(SOURCE_FILE ethash_cl_miner_kernel.cl
 
 if (NOT MSVC)
 	# Initialize CXXFLAGS for c++11
-    set(CMAKE_CXX_FLAGS                "-Wall -std=c++11")
-    set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g")
-    set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
-    set(CMAKE_CXX_FLAGS_RELEASE        "-O4 -DNDEBUG")
-    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g")
+	set(CMAKE_CXX_FLAGS                "-Wall -std=c++11")
+	set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g")
+	set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
+	set(CMAKE_CXX_FLAGS_RELEASE        "-O4 -DNDEBUG")
+	set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g")
 
     # Compiler-specific C++11 activation.
     if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")

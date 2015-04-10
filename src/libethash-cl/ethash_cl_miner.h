@@ -4,6 +4,7 @@
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
 #include "cl.hpp"
 #include <time.h>
+#include <functional>
 #include <libethash/ethash.h>
 
 class ethash_cl_miner
@@ -19,17 +20,14 @@ public:
 public:
 	ethash_cl_miner();
 
-	bool init(ethash_params const& params, const uint8_t seed[32], unsigned workgroup_size = 64);
+	bool init(ethash_params const& params, std::function<void(void*)> _fillDAG, unsigned workgroup_size = 64);
 
 	void finish();
 	void hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, unsigned count);
 	void search(uint8_t const* header, uint64_t target, search_hook& hook);
 
 private:
-	static unsigned const c_max_search_results = 63;
-	static unsigned const c_num_buffers = 2;
-	static unsigned const c_hash_batch_size = 1024;
-	static unsigned const c_search_batch_size = 1024*256;
+	enum { c_max_search_results = 63, c_num_buffers = 2, c_hash_batch_size = 1024, c_search_batch_size = 1024*256 };
 
 	ethash_params m_params;
 	cl::Context m_context;

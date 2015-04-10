@@ -80,6 +80,7 @@ void ethash_full(ethash_return_value *ret, void const *full_mem, ethash_params c
 
 // TODO: compute params and seed in ethash_new_light; it should take only block_number
 // TODO: store params in ethash_light_t/ethash_full_t to avoid having to repass into compute/new_full
+// TODO: refactor ethash_cl to be as similar as possible to this API.
 
 typedef uint8_t const ethash_seedhash_t[32];
 
