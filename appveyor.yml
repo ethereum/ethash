@@ -1,0 +1,26 @@
+version: 1.0.0.{build}
+    
+branches:
+    only:
+        - master
+        - develop
+
+os: Windows Server 2012 R2
+
+clone_folder: c:\projects\ethash
+
+#platform: Any CPU
+#configuration: Debug
+
+install:
+    # by default, all script lines are interpreted as batch
+
+# scripts to run before build
+before_build:
+    - echo "Running cmake..."
+    - cd c:\projects\ethash
+    - cmake .
+
+build:
+    project: ALL_BUILD.vcxproj      # path to Visual Studio solution or project
+
