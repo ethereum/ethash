@@ -24,8 +24,9 @@ before_build:
     - mkdir c:\projects\ethash\deps
     - cd c:\projects\ethash\deps
     - curl -O https://build.ethdev.com/builds/windows-precompiled/boost.tar.gz
-    - 7z x boost.tar.gz
-    - 7z x boost.tar
+    - echo "Unzipping boost..."
+    - 7z x boost.tar.gz > nul
+    - 7z x boost.tar > nul
     - ls
     - echo "Running cmake..."
     - cd c:\projects\ethash
@@ -33,4 +34,10 @@ before_build:
 
 build:
     project: ALL_BUILD.vcxproj      # path to Visual Studio solution or project
+
+after_build:
+    - echo "Running tests..."
+    - cd c:\projects\ethash\test\c\Debug
+    - Test.exe
+    - echo "Finished!"
 
