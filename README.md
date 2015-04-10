@@ -5,3 +5,14 @@
 
 For details on this project, please see the Ethereum wiki:
 https://github.com/ethereum/wiki/wiki/Ethash
+
+### Coding Style
+
+The main thing above all is code consistency.
+
+- Tabs for indentation. A tab is 4 spaces
+- Try to stick to the [K&R](http://en.wikipedia.org/wiki/Indent_style#K.26R_style),
+  especially for the C code.
+- Keep the line lengths reasonable. No hard limit on 80 characters but don't go further
+  than 110. Some people work with multiple buffers next to each other.
+  Make them like you :)
