@@ -173,7 +173,7 @@ extern "C" int main(void)
 		ethash_return_value hash;
         ethash_full(&hash, full_mem, &params, &previous_hash, 0);
         auto time = std::chrono::duration_cast<std::chrono::milliseconds>(high_resolution_clock::now() - startTime).count();
-        debugf("ethash_full test: %uns, %s\n", (unsigned)time);
+        debugf("ethash_full test: %uns\n", (unsigned)time);
     }
 #endif
 
