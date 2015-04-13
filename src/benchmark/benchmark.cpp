@@ -98,7 +98,7 @@ static std::string bytesToHexString(uint8_t const* bytes, unsigned size)
 
 static std::string bytesToHexString(ethash_h256_t const *hash, unsigned size)
 {
-    return bytesToHexString((uint8_t*)hash, size);
+	return bytesToHexString((uint8_t*)hash, size);
 }
 
 extern "C" int main(void)
@@ -116,7 +116,7 @@ extern "C" int main(void)
 
 	memcpy(&seed, hexStringToBytes("9410b944535a83d9adf6bbdcc80e051f30676173c16ca0d32d6f1263fc246466").data(), 32);
 	memcpy(&previous_hash, hexStringToBytes("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470").data(), 32);
-	
+
 	// allocate page aligned buffer for dataset
 #ifdef FULL
 	void* full_mem_buf = malloc(params.full_size + 4095);
@@ -127,7 +127,7 @@ extern "C" int main(void)
 
 	ethash_cache cache;
 	cache.mem = cache_mem;
-	
+
 	// compute cache or full data
 	{
 		auto startTime = high_resolution_clock::now();
@@ -162,19 +162,19 @@ extern "C" int main(void)
 		if (!miner.init(params, &seed))
 			exit(-1);
 		auto time = std::chrono::duration_cast<std::chrono::milliseconds>(high_resolution_clock::now() - startTime).count();
-        debugf("ethash_cl_miner init: %ums\n", (unsigned)time);
+		debugf("ethash_cl_miner init: %ums\n", (unsigned)time);
 	}
 #endif
 
 
 #ifdef FULL
-    {
-        auto startTime = high_resolution_clock::now();
+	{
+		auto startTime = high_resolution_clock::now();
 		ethash_return_value hash;
-        ethash_full(&hash, full_mem, &params, &previous_hash, 0);
-        auto time = std::chrono::duration_cast<std::chrono::milliseconds>(high_resolution_clock::now() - startTime).count();
-        debugf("ethash_full test: %uns\n", (unsigned)time);
-    }
+		ethash_full(&hash, full_mem, &params, &previous_hash, 0);
+		auto time = std::chrono::duration_cast<std::chrono::milliseconds>(high_resolution_clock::now() - startTime).count();
+		debugf("ethash_full test: %uns\n", (unsigned)time);
+	}
 #endif
 
 #ifdef OPENCL
@@ -194,14 +194,14 @@ extern "C" int main(void)
 			}
 		}
 	}
-	
+
 	// ensure nothing else is going on
 	miner.finish();
 #endif
 
 	auto startTime = high_resolution_clock::now();
 	unsigned hash_count = trials;
-	
+
 	#ifdef OPENCL
 	{
 		struct search_hook : ethash_cl_miner::search_hook
