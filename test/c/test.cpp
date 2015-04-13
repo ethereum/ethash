@@ -140,92 +140,68 @@ BOOST_AUTO_TEST_CASE(ethash_check_difficulty_check) {
 			// "\nexpected \"" << hash << "\" to have more difficulty than \"" << target << "\"\n");
 }
 
+BOOST_AUTO_TEST_CASE(test_ethash_io_mutable_name) {
+	char mutable_name[DAG_MUTABLE_NAME_MAX_SIZE];
+	// should have at least 8 bytes provided since this is what we test :)
+	ethash_h256_t seed1 = ethash_h256_static_init(0, 10, 65, 255, 34, 55, 22, 8);
+	ethash_io_mutable_name(1, &seed1, mutable_name);
+	BOOST_REQUIRE_EQUAL(0, strcmp(mutable_name, "1_000a41ff22371608"));
+	ethash_h256_t seed2 = ethash_h256_static_init(0, 0, 0, 0, 0, 0, 0, 0);
+	ethash_io_mutable_name(44, &seed2, mutable_name);
+	BOOST_REQUIRE_EQUAL(0, strcmp(mutable_name, "44_0000000000000000"));
+}
+
 BOOST_AUTO_TEST_CASE(test_ethash_dir_creation) {
 	ethash_h256_t seedhash;
+	FILE *f = NULL;
 	memset(&seedhash, 0, 32);
 	BOOST_REQUIRE_EQUAL(
 		ETHASH_IO_MEMO_MISMATCH,
-		ethash_io_prepare("./test_ethash_directory/", seedhash)
+		ethash_io_prepare("./test_ethash_directory/", seedhash, &f)
 	);
+	BOOST_REQUIRE(!f);
 
 	// let's make sure that the directory was created
 	BOOST_REQUIRE(fs::is_directory(fs::path("./test_ethash_directory/")));
 
 	// cleanup
 	fs::remove_all("./test_ethash_directory/");
-}
-
-BOOST_AUTO_TEST_CASE(test_ethash_io_write_files_are_created) {
-	ethash_h256_t seedhash;
-	static const int blockn = 0;
-	ethash_get_seedhash(&seedhash, blockn);
-	BOOST_REQUIRE_EQUAL(
-		ETHASH_IO_MEMO_MISMATCH,
-		ethash_io_prepare("./test_ethash_directory/", seedhash)
-	);
-
- // let's make sure that the directory was created
-	BOOST_REQUIRE(fs::is_directory(fs::path("./test_ethash_directory/")));
-
-	ethash_cache cache;
-	ethash_params params;
-	uint8_t *data;
-	uint64_t size;
-	ethash_params_init(&params, blockn);
-	params.cache_size = 1024;
-	params.full_size = 1024 * 32;
-	cache.mem = our_alloca(params.cache_size);
-	ethash_mkcache(&cache, &params, &seedhash);
-
-	BOOST_REQUIRE(
-		ethash_io_write("./test_ethash_directory/", &params, seedhash, &cache, &data, &size)
-	);
-
-	BOOST_REQUIRE(fs::exists(fs::path("./test_ethash_directory/full")));
-	BOOST_REQUIRE(fs::exists(fs::path("./test_ethash_directory/full.info")));
-
-	// cleanup
-	fs::remove_all("./test_ethash_directory/");
-	free(data);
 }
 
 BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_match) {
 	ethash_h256_t seedhash;
 	static const int blockn = 0;
+	FILE *f = NULL;
+	char mutable_name[DAG_MUTABLE_NAME_MAX_SIZE];
 	ethash_get_seedhash(&seedhash, blockn);
 	BOOST_REQUIRE_EQUAL(
 		ETHASH_IO_MEMO_MISMATCH,
-		ethash_io_prepare("./test_ethash_directory/", seedhash)
+		ethash_io_prepare("./test_ethash_directory/", seedhash, &f)
 	);
 
 	// let's make sure that the directory was created
 	BOOST_REQUIRE(fs::is_directory(fs::path("./test_ethash_directory/")));
 
-	ethash_cache cache;
-	ethash_params params;
-	uint8_t *data;
-	uint64_t size;
-	ethash_params_init(&params, blockn);
-	params.cache_size = 1024;
-	params.full_size = 1024 * 32;
-	cache.mem = our_alloca(params.cache_size);
-	ethash_mkcache(&cache, &params, &seedhash);
+	// now create the file
+	ethash_io_mutable_name(REVISION, &seedhash, mutable_name);
+	char *tmpfile = ethash_io_create_filename("./test_ethash_directory/",
+		mutable_name,
+		strlen(mutable_name));
+	FILE *created_f = fopen(tmpfile, "wb");
+	BOOST_REQUIRE(fs::exists(fs::path(tmpfile)));
+	fclose(created_f);
 
-	BOOST_REQUIRE(
-		ethash_io_write("./test_ethash_directory/", &params, seedhash, &cache, &data, &size)
-	);
-
-	BOOST_REQUIRE(fs::exists(fs::path("./test_ethash_directory/full")));
-	BOOST_REQUIRE(fs::exists(fs::path("./test_ethash_directory/full.info")));
-
+	// and check that we have a match when checking again
 	BOOST_REQUIRE_EQUAL(
 		ETHASH_IO_MEMO_MATCH,
-		ethash_io_prepare("./test_ethash_directory/", seedhash)
+		ethash_io_prepare("./test_ethash_directory/", seedhash, &f)
 	);
+	BOOST_REQUIRE(f);
 
 	// cleanup
+	fclose(f);
+	free(tmpfile);
 	fs::remove_all("./test_ethash_directory/");
-	free(data);
 }
 
 // could have used dev::contentsNew but don't wanna try to import
@@ -241,46 +217,6 @@ static std::vector<char> readFileIntoVector(char const* filename)
 	ifs.read(&result[0], pos);
 
 	return result;
-}
-
-BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_contents) {
-	ethash_h256_t seedhash;
-	static const int blockn = 0;
-	ethash_get_seedhash(&seedhash, blockn);
-	BOOST_REQUIRE_EQUAL(
-		ETHASH_IO_MEMO_MISMATCH,
-		ethash_io_prepare("./test_ethash_directory/", seedhash)
-	);
-
-	// let's make sure that the directory was created
-	BOOST_REQUIRE(fs::is_directory(fs::path("./test_ethash_directory/")));
-
-	ethash_cache cache;
-	ethash_params params;
-	uint8_t *data;
-	uint64_t size;
-	ethash_params_init(&params, blockn);
-	params.cache_size = 1024;
-	params.full_size = 1024 * 32;
-	cache.mem = our_alloca(params.cache_size);
-	ethash_mkcache(&cache, &params, &seedhash);
-	
-	BOOST_REQUIRE(
-		ethash_io_write("./test_ethash_directory/", &params, seedhash, &cache, &data, &size)
-	);
-
-	BOOST_REQUIRE(fs::exists(fs::path("./test_ethash_directory/full")));
-	BOOST_REQUIRE(fs::exists(fs::path("./test_ethash_directory/full.info")));
-
-	char expect_buffer[DAG_MEMO_BYTESIZE];
-	ethash_io_serialize_info(REVISION, seedhash, expect_buffer);
-	auto vec = readFileIntoVector("./test_ethash_directory/full.info");
-	BOOST_REQUIRE_EQUAL(vec.size(), DAG_MEMO_BYTESIZE);
-	BOOST_REQUIRE(memcmp(expect_buffer, &vec[0], DAG_MEMO_BYTESIZE) == 0);
-
-	// cleanup
-	fs::remove_all("./test_ethash_directory/");
-	free(data);
 }
 
 BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
