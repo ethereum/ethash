@@ -195,6 +195,30 @@ BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_match) {
 	fs::remove_all("./test_ethash_directory/");
 }
 
+BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_size_mismatch) {
+	ethash_h256_t seedhash;
+	static const int blockn = 0;
+	FILE *f = NULL;
+	ethash_get_seedhash(&seedhash, blockn);
+	BOOST_REQUIRE_EQUAL(
+		ETHASH_IO_MEMO_MISMATCH,
+		ethash_io_prepare("./test_ethash_directory/", seedhash, &f, 64)
+	);
+	BOOST_REQUIRE(f);
+	fclose(f);
+
+	// let's make sure that the directory was created
+	BOOST_REQUIRE(fs::is_directory(fs::path("./test_ethash_directory/")));
+	// and check that we get the size mismatch detected if we request diffferent size
+	BOOST_REQUIRE_EQUAL(
+		ETHASH_IO_MEMO_SIZE_MISMATCH,
+		ethash_io_prepare("./test_ethash_directory/", seedhash, &f, 65)
+	);
+
+	// cleanup
+	fs::remove_all("./test_ethash_directory/");
+}
+
 // could have used dev::contentsNew but don't wanna try to import
 // libdevcore just for one function
 static std::vector<char> readFileIntoVector(char const* filename)
