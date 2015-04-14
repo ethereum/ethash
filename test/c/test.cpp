@@ -157,14 +157,15 @@ BOOST_AUTO_TEST_CASE(test_ethash_dir_creation) {
 	memset(&seedhash, 0, 32);
 	BOOST_REQUIRE_EQUAL(
 		ETHASH_IO_MEMO_MISMATCH,
-		ethash_io_prepare("./test_ethash_directory/", seedhash, &f)
+		ethash_io_prepare("./test_ethash_directory/", seedhash, &f, 64)
 	);
-	BOOST_REQUIRE(!f);
+	BOOST_REQUIRE(f);
 
 	// let's make sure that the directory was created
 	BOOST_REQUIRE(fs::is_directory(fs::path("./test_ethash_directory/")));
 
 	// cleanup
+	fclose(f);
 	fs::remove_all("./test_ethash_directory/");
 }
 
@@ -172,35 +173,25 @@ BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_match) {
 	ethash_h256_t seedhash;
 	static const int blockn = 0;
 	FILE *f = NULL;
-	char mutable_name[DAG_MUTABLE_NAME_MAX_SIZE];
 	ethash_get_seedhash(&seedhash, blockn);
 	BOOST_REQUIRE_EQUAL(
 		ETHASH_IO_MEMO_MISMATCH,
-		ethash_io_prepare("./test_ethash_directory/", seedhash, &f)
+		ethash_io_prepare("./test_ethash_directory/", seedhash, &f, 64)
 	);
+	BOOST_REQUIRE(f);
+	fclose(f);
 
 	// let's make sure that the directory was created
 	BOOST_REQUIRE(fs::is_directory(fs::path("./test_ethash_directory/")));
-
-	// now create the file
-	ethash_io_mutable_name(REVISION, &seedhash, mutable_name);
-	char *tmpfile = ethash_io_create_filename("./test_ethash_directory/",
-		mutable_name,
-		strlen(mutable_name));
-	FILE *created_f = fopen(tmpfile, "wb");
-	BOOST_REQUIRE(fs::exists(fs::path(tmpfile)));
-	fclose(created_f);
-
 	// and check that we have a match when checking again
 	BOOST_REQUIRE_EQUAL(
 		ETHASH_IO_MEMO_MATCH,
-		ethash_io_prepare("./test_ethash_directory/", seedhash, &f)
+		ethash_io_prepare("./test_ethash_directory/", seedhash, &f, 64)
 	);
 	BOOST_REQUIRE(f);
 
 	// cleanup
 	fclose(f);
-	free(tmpfile);
 	fs::remove_all("./test_ethash_directory/");
 }
 
@@ -242,7 +233,13 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
 	ethash_light_t light = ethash_light_new(&params, &seed);
 	ethash_cache *cache = ethash_light_get_cache(light);
 	BOOST_ASSERT(light);
-	ethash_full_t full = ethash_full_new(&params, ethash_light_get_cache(light), NULL);
+	ethash_full_t full = ethash_full_new(
+		"./test_ethash_directory/",
+		&seed,
+		&params,
+		ethash_light_get_cache(light),
+		NULL
+	);
 	BOOST_ASSERT(full);
 	{
 		const std::string
@@ -253,8 +250,6 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
 				"\nexpected: " << expected.c_str() << "\n"
 						<< "actual: " << actual.c_str() << "\n");
 	}
-
-
 	{
 		node node;
 		ethash_calculate_dag_item(&node, 0, &params, cache);
@@ -265,7 +260,6 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
 				"\n" << "expected: " << expected.c_str() << "\n"
 						<< "actual: " << actual.c_str() << "\n");
 	}
-
 	{
 		for (int i = 0; i < params.full_size / sizeof(node); ++i) {
 			for (uint32_t j = 0; j < 32; ++j) {
@@ -281,7 +275,6 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
 			}
 		}
 	}
-
 	{
 		uint64_t nonce = 0x7c7c597c;
 		BOOST_REQUIRE(ethash_full_compute(&full_out, full, &params, &hash, nonce));
@@ -310,7 +303,6 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
 		std::string
 				light_result_string = blockhashToHexString(&light_out.result),
 				full_result_string = blockhashToHexString(&full_out.result);
-
 		BOOST_REQUIRE_MESSAGE(light_result_string != full_result_string,
 				"\nlight result and full result should differ: " << light_result_string.c_str() << "\n");
 
@@ -333,12 +325,12 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
 				"ethash_quick_check_difficulty failed"
 		);
 	}
-
 	// and at the end free the memory. Note that both light and full clients own
 	// the cache at this point so it's necessary to move ownership out of either
 	BOOST_REQUIRE(ethash_light_acquire_cache(light));
 	ethash_light_delete(light);
 	ethash_full_delete(full);
+	fs::remove_all("./test_ethash_directory/");
 }
 
 
