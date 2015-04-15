@@ -3,20 +3,17 @@ version: 1.0.0.{build}
 environment:
     BOOST_ROOT: "c:/projects/ethash/deps/boost"
 
-branches:
-    only:
-        - master
-        - develop
-
 os: Windows Server 2012 R2
 
 clone_folder: c:\projects\ethash
 
-#platform: Any CPU
-#configuration: Debug
+platform:
+    - Win32
+    - x64
 
-install:
-    # by default, all script lines are interpreted as batch
+configuration:
+    - Debug
+    - Release
 
 # scripts to run before build
 before_build:
@@ -30,13 +27,16 @@ before_build:
     - ls
     - echo "Running cmake..."
     - cd c:\projects\ethash
-    - cmake .
+    - if %PLATFORM% == Win32 cmake .
+    - if %PLATFORM% == x64 cmake -G "Visual Studio 12 2013 Win64" . 
 
 build:
     project: ALL_BUILD.vcxproj      # path to Visual Studio solution or project
 
 after_build:
     - echo "Running tests..."
+    - cd c:\projects\ethash\test\c
+    - ls
     - cd c:\projects\ethash\test\c\Debug
     - Test.exe
     - echo "Finished!"
