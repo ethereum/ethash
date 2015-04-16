@@ -357,6 +357,76 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
 	fs::remove_all("./test_ethash_directory/");
 }
 
+static bool g_executed = false;
+static unsigned g_prev_progress = 0;
+static int test_full_callback(unsigned _progress)
+{
+	g_executed = true;
+	BOOST_CHECK(_progress >= g_prev_progress);
+	g_prev_progress = _progress;
+	return 0;
+}
+
+static int test_full_callback_that_fails(unsigned _progress)
+{
+	return 1;
+}
+
+BOOST_AUTO_TEST_CASE(full_client_callback) {
+	ethash_params params;
+	ethash_h256_t seed;
+	ethash_h256_t hash;
+	ethash_return_value full_out;
+	memcpy(&seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+	memcpy(&hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+
+	ethash_params_init(&params, 0);
+	params.cache_size = 1024;
+	params.full_size = 1024 * 32;
+
+	ethash_cache *cache = ethash_cache_new(&params, &seed);
+	ethash_full_t full = ethash_full_new(
+		"./test_ethash_directory/",
+		&seed,
+		&params,
+		cache,
+		test_full_callback
+	);
+	BOOST_ASSERT(full);
+	BOOST_REQUIRE(ethash_full_compute(&full_out, full, &params, &hash, 5));
+	BOOST_CHECK(g_executed);
+	BOOST_REQUIRE_EQUAL(g_prev_progress, 100);
+
+	ethash_full_delete(full);
+	fs::remove_all("./test_ethash_directory/");
+}
+
+BOOST_AUTO_TEST_CASE(failing_full_client_callback) {
+	ethash_params params;
+	ethash_h256_t seed;
+	ethash_h256_t hash;
+	ethash_return_value full_out;
+	memcpy(&seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+	memcpy(&hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+
+	ethash_params_init(&params, 0);
+	params.cache_size = 1024;
+	params.full_size = 1024 * 32;
+
+	ethash_cache *cache = ethash_cache_new(&params, &seed);
+	ethash_full_t full = ethash_full_new(
+		"./test_ethash_directory/",
+		&seed,
+		&params,
+		cache,
+		test_full_callback_that_fails
+	);
+	BOOST_ASSERT(full);
+	BOOST_REQUIRE(!ethash_full_compute(&full_out, full, &params, &hash, 5));
+	ethash_full_delete(full);
+	fs::remove_all("./test_ethash_directory/");
+}
+
 
 /**
  * =========================
