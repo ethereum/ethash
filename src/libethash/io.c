@@ -22,37 +22,12 @@
 #include <string.h>
 #include <stdio.h>
 
-static bool ethash_io_write_file(char const *dirname,
-								 char const* filename,
-								 size_t filename_length,
-								 void const* data,
-								 size_t data_size)
-{
-	bool ret = false;
-	char *fullname = ethash_io_create_filename(dirname, filename, filename_length);
-	if (!fullname) {
-		return false;
-	}
-	FILE *f = ethash_fopen(fullname, "wb");
-	if (!f) {
-		goto free_name;
-	}
-	if (data_size != fwrite(data, 1, data_size, f)) {
-		goto close;
-	}
-
-	ret = true;
-close:
-	fclose(f);
-free_name:
-	free(fullname);
-	return ret;
-}
-
-enum ethash_io_rc ethash_io_prepare(char const *dirname,
+enum ethash_io_rc ethash_io_prepare(
+	char const* dirname,
 	ethash_h256_t const seedhash,
-	FILE **output_file,
-	size_t file_size)
+	FILE** output_file,
+	size_t file_size
+)
 {
 	char mutable_name[DAG_MUTABLE_NAME_MAX_SIZE];
 	enum ethash_io_rc ret = ETHASH_IO_FAIL;
@@ -63,13 +38,13 @@ enum ethash_io_rc ethash_io_prepare(char const *dirname,
 	}
 
 	ethash_io_mutable_name(REVISION, &seedhash, mutable_name);
-	char *tmpfile = ethash_io_create_filename(dirname, mutable_name, strlen(mutable_name));
+	char* tmpfile = ethash_io_create_filename(dirname, mutable_name, strlen(mutable_name));
 	if (!tmpfile) {
 		goto end;
 	}
 
 	// try to open the file
-	FILE *f = ethash_fopen(tmpfile, "rb+");
+	FILE* f = ethash_fopen(tmpfile, "rb+");
 	if (f) {
 		size_t found_size;
 		if (!ethash_file_size(f, &found_size)) {
