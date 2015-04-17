@@ -57,12 +57,12 @@ static inline uint8_t ethash_h256_get(ethash_h256_t const* hash, unsigned int i)
 	return hash->b[i];
 }
 
-static inline void ethash_h256_set(ethash_h256_t *hash, unsigned int i, uint8_t v)
+static inline void ethash_h256_set(ethash_h256_t* hash, unsigned int i, uint8_t v)
 {
 	hash->b[i] = v;
 }
 
-static inline void ethash_h256_reset(ethash_h256_t *hash)
+static inline void ethash_h256_reset(ethash_h256_t* hash)
 {
 	memset(hash, 0, 32);
 }
@@ -73,7 +73,7 @@ static inline void ethash_h256_reset(ethash_h256_t *hash)
 // have to provide all 32 values. If you don't provide all the rest
 // will simply be unitialized (not guranteed to be 0)
 #define ethash_h256_static_init(...)			\
-	{.b = {__VA_ARGS__} }
+	{ {__VA_ARGS__} }
 
 struct ethash_light;
 typedef struct ethash_light* ethash_light_t;
@@ -91,7 +91,7 @@ uint64_t ethash_get_datasize(const uint32_t block_number);
 uint64_t ethash_get_cachesize(const uint32_t block_number);
 
 // initialize the parameters
-static inline void ethash_params_init(ethash_params *params, const uint32_t block_number) {
+static inline void ethash_params_init(ethash_params* params, const uint32_t block_number) {
 	params->full_size = ethash_get_datasize(block_number);
 	params->cache_size = ethash_get_cachesize(block_number);
 }
@@ -111,12 +111,12 @@ typedef struct ethash_cache {
  * @return          Newly allocated ethash_cache on success or NULL in case of
  *                  ERRNOMEM or invalid parameters used for @ref ethash_compute_cache_nodes()
  */
-ethash_cache *ethash_cache_new(ethash_params const *params, ethash_h256_t const *seed);
+ethash_cache *ethash_cache_new(ethash_params const* params, ethash_h256_t const* seed);
 /**
  * Frees a previously allocated ethash_cache
  * @param c            The object to free
  */
-void ethash_cache_delete(ethash_cache *c);
+void ethash_cache_delete(ethash_cache* c);
 
 /**
  * Allocate and initialize a new ethash_light handler
@@ -128,7 +128,7 @@ void ethash_cache_delete(ethash_cache *c);
  * @return          Newly allocated ethash_light handler or NULL in case of
  *                  ERRNOMEM or invalid parameters used for @ref ethash_compute_cache_nodes()
  */
-ethash_light_t ethash_light_new(ethash_params const *params, ethash_h256_t const *seed);
+ethash_light_t ethash_light_new(ethash_params const* params, ethash_h256_t const* seed);
 /**
  * Frees a previously allocated ethash_light handler
  * @param light        The light handler to free
@@ -145,11 +145,11 @@ void ethash_light_delete(ethash_light_t light);
  * @return               true if all went well and false if there were invalid
  *                       parameters given.
  */
-bool ethash_light_compute(ethash_return_value *ret,
-						  ethash_light_t light,
-						  ethash_params const *params,
-						  const ethash_h256_t *header_hash,
-						  const uint64_t nonce);
+bool ethash_light_compute(ethash_return_value* ret,
+	ethash_light_t light,
+	ethash_params const* params,
+	const ethash_h256_t* header_hash,
+	const uint64_t nonce);
 /**
  * Get a pointer to the cache object held by the light client
  *
@@ -170,6 +170,8 @@ ethash_cache *ethash_light_acquire_cache(ethash_light_t light);
 /**
  * Allocate and initialize a new ethash_full handler
  *
+ * @param dirname   The directory in which to put the DAG file.
+ * @param seedhash  The seed hash of the block. Used in the DAG file naming.
  * @param params    The parameters to initialize it with. We are interested in
  *                  the full_size from here
  * @param cache     A cache object to use that was allocated with @ref ethash_cache_new().
@@ -183,9 +185,11 @@ ethash_cache *ethash_light_acquire_cache(ethash_light_t light);
  * @return          Newly allocated ethash_full handler or NULL in case of
  *                  ERRNOMEM or invalid parameters used for @ref ethash_compute_full_data()
  */
-ethash_full_t ethash_full_new(ethash_params const* params,
-							  ethash_cache const* cache,
-							  ethash_callback_t callback);
+ethash_full_t ethash_full_new(char const* dirname,
+	ethash_h256_t const* seed_hash,
+	ethash_params const* params,
+	ethash_cache const* cache,
+	ethash_callback_t callback);
 /**
  * Frees a previously allocated ethash_full handler
  * @param full    The light handler to free
@@ -198,16 +202,16 @@ void ethash_full_delete(ethash_full_t full);
  * @param full           The full client handler
  * @param params         The parameters to use
  * @param header_hash    The header hash to pack into the mix
- * @param nonce              The nonce to pack into the mix
+ * @param nonce          The nonce to pack into the mix
  * @return               true if all went well and false if there were invalid
  *                       parameters given or if there was a callback given and
  *                       at some point return a non-zero value
  */
-bool ethash_full_compute(ethash_return_value *ret,
-						 ethash_full_t full,
-						 ethash_params const *params,
-						 const ethash_h256_t *header_hash,
-						 const uint64_t nonce);
+bool ethash_full_compute(ethash_return_value* ret,
+	ethash_full_t full,
+	ethash_params const* params,
+	const ethash_h256_t* header_hash,
+	const uint64_t nonce);
 /**
  * Get a pointer to the cache object held by the full client
  *
@@ -228,8 +232,8 @@ ethash_cache *ethash_full_acquire_cache(ethash_full_t full);
 void ethash_get_seedhash(ethash_h256_t *seedhash, const uint32_t block_number);
 
 // Returns if hash is less than or equal to difficulty
-static inline int ethash_check_difficulty(ethash_h256_t const *hash,
-										  ethash_h256_t const *difficulty)
+static inline int ethash_check_difficulty(ethash_h256_t const* hash,
+	ethash_h256_t const* difficulty)
 {
 	// Difficulty is big endian
 	for (int i = 0; i < 32; i++) {
@@ -241,10 +245,10 @@ static inline int ethash_check_difficulty(ethash_h256_t const *hash,
 	return 1;
 }
 
-int ethash_quick_check_difficulty(ethash_h256_t const *header_hash,
-								  const uint64_t nonce,
-								  ethash_h256_t const *mix_hash,
-								  ethash_h256_t const *difficulty);
+int ethash_quick_check_difficulty(ethash_h256_t const* header_hash,
+	const uint64_t nonce,
+	ethash_h256_t const* mix_hash,
+	ethash_h256_t const* difficulty);
 
 
 /**
@@ -255,17 +259,17 @@ int ethash_quick_check_difficulty(ethash_h256_t const *header_hash,
  * Kept for backwards compatibility with whoever still uses it. Please consider
  * switching to the new API (look above)
  */
-void ethash_mkcache(ethash_cache *cache, ethash_params const *params, ethash_h256_t const *seed);
-void ethash_full(ethash_return_value *ret,
-				 void const *full_mem,
-				 ethash_params const *params,
-				 ethash_h256_t const *header_hash,
-				 const uint64_t nonce);
-void ethash_light(ethash_return_value *ret,
-				  ethash_cache const *cache,
-				  ethash_params const *params,
-				  ethash_h256_t const *header_hash,
-				  const uint64_t nonce);
+void ethash_mkcache(ethash_cache* cache, ethash_params const* params, ethash_h256_t const* seed);
+void ethash_full(ethash_return_value* ret,
+	void const* full_mem,
+	ethash_params const* params,
+	ethash_h256_t const* header_hash,
+	const uint64_t nonce);
+void ethash_light(ethash_return_value* ret,
+	ethash_cache const* cache,
+	ethash_params const* params,
+	ethash_h256_t const* header_hash,
+	const uint64_t nonce);
 /**
  * Compute the memory data for a full node's memory
  *
@@ -274,7 +278,7 @@ void ethash_light(ethash_return_value *ret,
  * @param cache       A cache object to use in the calculation
  * @return            true if all went fine and false for invalid parameters
  */
-bool ethash_compute_full_data(void *mem, ethash_params const *params, ethash_cache const *cache);
+bool ethash_compute_full_data(void* mem, ethash_params const* params, ethash_cache const* cache);
 
 #ifdef __cplusplus
 }
