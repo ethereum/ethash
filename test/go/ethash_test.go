@@ -7,6 +7,8 @@ import (
 	"log"
 	"math/big"
 	"testing"
+	"time"
+	"runtime"
 
 	"github.com/ethereum/ethash"
 	"github.com/ethereum/go-ethereum/core"
@@ -43,10 +45,39 @@ func TestEthash(t *testing.T) {
 
 	nonce := uint64(0)
 
+	// The tickers here are for having some log output during DAG calculation
+	// to stop travis from killing our testing process
+	fTicker := time.NewTicker(time.Second * 10)
+	memStats := new(runtime.MemStats)
+	go func() {
+		secs := 1
+		for _ = range fTicker.C {
+			runtime.ReadMemStats(memStats)
+			log.Printf("Calculating fullhash for %d seconds", secs)
+			log.Printf("Alloc: %v\nTotalAlloc: %v\nSys: %v\nHeapAlloc: %v\nHeapSys: %v\nStackInUse: %v\n\n",
+				memStats.Alloc,
+				memStats.TotalAlloc,
+				memStats.Sys,
+				memStats.HeapAlloc,
+				memStats.HeapSys,
+				memStats.StackInuse);
+			secs += 10
+		}
+	}()
 	ghash_full := e.FullHash(nonce, miningHash)
+	fTicker.Stop()
 	log.Printf("ethash full (on nonce): %x %x\n", ghash_full, nonce)
 
+	lTicker := time.NewTicker(time.Second * 10)
+	go func() {
+		secs := 1
+		for _ = range lTicker.C {
+			log.Printf("Calculating lighthash for %d seconds", secs)
+			secs += 10
+		}
+	}()
 	ghash_light := e.LightHash(nonce, miningHash)
+	lTicker.Stop()
 	log.Printf("ethash light (on nonce): %x %x\n", ghash_light, nonce)
 
 	if bytes.Compare(ghash_full, ghash_light) != 0 {
