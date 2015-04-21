@@ -28,7 +28,8 @@
 #include <queue>
 #include <vector>
 #include "ethash_cl_miner.h"
-#include "ethash_cl_miner_kernel.h"
+#include <fstream>
+//#include "ethash_cl_miner_kernel.h"
 #include <libethash/util.h>
 
 #define ETHASH_BYTES 32
@@ -112,7 +113,10 @@ bool ethash_cl_miner::init(ethash_params const& params, ethash_h256_t const *see
 	m_workgroup_size = ((workgroup_size + 7) / 8) * 8;
 
 	// patch source code
-	std::string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
+	//std::string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
+	std::ifstream t("ethash_cl_miner_kernel.cl");
+    	std::string code((std::istreambuf_iterator<char>(t)),
+                 std::istreambuf_iterator<char>());
 	add_definition(code, "GROUP_SIZE", m_workgroup_size);
 	add_definition(code, "DAG_SIZE", (unsigned)(params.full_size / MIX_BYTES));
 	add_definition(code, "ACCESSES", ACCESSES);
