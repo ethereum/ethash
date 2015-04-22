@@ -145,7 +145,7 @@ func (l *Light) verify(hash common.Hash, mixDigest common.Hash, difficulty *big.
 	if l.test {
 		size = dagSizeForTesting
 	}
-	var ret C.ethash_return_value
+	var ret C.ethash_return_value_t
 	C.ethash_light_compute(&ret, cache.light, size, chash, cnonce)
 	result := common.Bytes2Big(C.GoBytes(unsafe.Pointer(&ret.result), C.int(32)))
 	return result.Cmp(target) <= 0
@@ -229,7 +229,7 @@ func (pow *Full) Search(block pow.Block, stop <-chan struct{}) (nonce uint64, mi
 	cMiningHash := (*C.ethash_h256_t)(unsafe.Pointer(&miningHash[0]))
 	target := new(big.Int).Div(minDifficulty, diff)
 
-	var ret C.ethash_return_value
+	var ret C.ethash_return_value_t
 	for {
 		select {
 		case <-stop:

@@ -219,29 +219,14 @@ BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_size_mismatch) {
 	fs::remove_all("./test_ethash_directory/");
 }
 
-// could have used dev::contentsNew but don't wanna try to import
-// libdevcore just for one function
-static std::vector<char> readFileIntoVector(char const* filename)
-{
-	ifstream ifs(filename, ios::binary|ios::ate);
-	ifstream::pos_type pos = ifs.tellg();
-
-	std::vector<char> result((unsigned int)pos);
-
-	ifs.seekg(0, ios::beg);
-	ifs.read(&result[0], pos);
-
-	return result;
-}
-
 BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
 	uint64_t full_size;
 	uint64_t cache_size;
 	ethash_h256_t seed;
 	ethash_h256_t hash;
 	ethash_h256_t difficulty;
-	ethash_return_value light_out;
-	ethash_return_value full_out;
+	ethash_return_value_t light_out;
+	ethash_return_value_t full_out;
 	memcpy(&seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
 	memcpy(&hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
 
@@ -374,7 +359,7 @@ BOOST_AUTO_TEST_CASE(full_client_callback) {
 	uint64_t cache_size;
 	ethash_h256_t seed;
 	ethash_h256_t hash;
-	ethash_return_value full_out;
+	ethash_return_value_t full_out;
 	memcpy(&seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
 	memcpy(&hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
 
@@ -404,7 +389,7 @@ BOOST_AUTO_TEST_CASE(failing_full_client_callback) {
 	uint64_t cache_size;
 	ethash_h256_t seed;
 	ethash_h256_t hash;
-	ethash_return_value full_out;
+	ethash_return_value_t full_out;
 	memcpy(&seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
 	memcpy(&hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
 
@@ -420,7 +405,7 @@ BOOST_AUTO_TEST_CASE(failing_full_client_callback) {
 		test_full_callback_that_fails
 	);
 	BOOST_ASSERT(full);
-	BOOST_REQUIRE(!ethash_full_compute(&full_out, full, &hash, 5));    
+	BOOST_REQUIRE(!ethash_full_compute(&full_out, full, &hash, 5));
 	ethash_cache_delete(cache);
 	ethash_full_delete(full);
 	fs::remove_all("./test_ethash_directory/");
@@ -440,8 +425,8 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks_old) {
 	ethash_h256_t seed;
 	ethash_h256_t hash;
 	ethash_h256_t difficulty;
-	ethash_return_value light_out;
-	ethash_return_value full_out;
+	ethash_return_value_t light_out;
+	ethash_return_value_t full_out;
 	memcpy(&seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
 	memcpy(&hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
 
