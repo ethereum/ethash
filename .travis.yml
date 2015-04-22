@@ -22,6 +22,6 @@ install:
   # need to explicitly request version 1.48 since by default we get 1.46 which does not work with C++11
   - sudo apt-get install -qq --yes --force-yes g++-4.8
   - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 50
-  - sudo apt-get install -qq wget cmake bash libboost-test1.48-dev libboost-system1.48-dev libboost-filesystem1.48-dev nodejs python-pip python-dev
+  - sudo apt-get install -qq wget cmake bash libboost-test1.48-dev libboost-system1.48-dev libboost-filesystem1.48-dev nodejs python-pip python-dev valgrind
   - sudo pip install virtualenv -q
 script: "./test/test.sh"
