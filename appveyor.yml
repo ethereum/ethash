@@ -1,8 +1,5 @@
 version: 1.0.0.{build}
 
-#environment:
-    #BOOST_ROOT: "c:/projects/ethash/deps/boost"
-
 os: Windows Server 2012 R2
 
 clone_folder: c:\projects\ethash
@@ -36,8 +33,6 @@ build:
 
 after_build:
     - echo "Running tests..."
-    - cd c:\projects\ethash\test\c
-    - ls
     - cd c:\projects\ethash\test\c\%CONFIGURATION%
     - Test.exe
     - echo "Finished!"
