@@ -28,5 +28,5 @@ $TEST_DIR/c/test.sh
 #echo -e "\n################# Testing Python ##################"
 #$TEST_DIR/python/test.sh
 
-#echo "################# Testing Go ##################"
-#$TEST_DIR/go/test.sh
+echo "################# Testing Go ##################"
+cd $TEST_DIR/.. && go test -timeout 9999s
