@@ -349,9 +349,6 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
 				"ethash_quick_check_difficulty failed"
 		);
 	}
-	// and at the end free the memory. Note that both light and full clients own
-	// the cache at this point so it's necessary to move ownership out of either
-	BOOST_REQUIRE(ethash_light_acquire_cache(light));
 	ethash_light_delete(light);
 	ethash_full_delete(full);
 	fs::remove_all("./test_ethash_directory/");
@@ -398,6 +395,7 @@ BOOST_AUTO_TEST_CASE(full_client_callback) {
 	BOOST_REQUIRE_EQUAL(g_prev_progress, 100);
 
 	ethash_full_delete(full);
+	ethash_cache_delete(cache);
 	fs::remove_all("./test_ethash_directory/");
 }
 
@@ -422,7 +420,8 @@ BOOST_AUTO_TEST_CASE(failing_full_client_callback) {
 		test_full_callback_that_fails
 	);
 	BOOST_ASSERT(full);
-	BOOST_REQUIRE(!ethash_full_compute(&full_out, full, &hash, 5));
+	BOOST_REQUIRE(!ethash_full_compute(&full_out, full, &hash, 5));    
+	ethash_cache_delete(cache);
 	ethash_full_delete(full);
 	fs::remove_all("./test_ethash_directory/");
 }
