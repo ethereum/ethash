@@ -1,7 +1,7 @@
 version: 1.0.0.{build}
 
-environment:
-    BOOST_ROOT: "c:/projects/ethash/deps/boost"
+#environment:
+    #BOOST_ROOT: "c:/projects/ethash/deps/boost"
 
 os: Windows Server 2012 R2
 
@@ -20,10 +20,11 @@ before_build:
     - echo "Downloading boost..."
     - mkdir c:\projects\ethash\deps
     - cd c:\projects\ethash\deps
-    - curl -O https://build.ethdev.com/builds/windows-precompiled/boost.tar.gz
+    - curl -O https://build.ethdev.com/builds/windows-precompiled/boost-1.55.0.tar.gz
     - echo "Unzipping boost..."
-    - 7z x boost.tar.gz > nul
-    - 7z x boost.tar > nul
+    - 7z x boost-1.55.0.tar.gz > nul
+    - 7z x boost-1.55.0.tar > nul
+    - set BOOST_ROOT=c:/projects/ethash/deps/boost-1.55.0/%PLATFORM%
     - ls
     - echo "Running cmake..."
     - cd c:\projects\ethash
@@ -37,7 +38,7 @@ after_build:
     - echo "Running tests..."
     - cd c:\projects\ethash\test\c
     - ls
-    - cd c:\projects\ethash\test\c\Debug
+    - cd c:\projects\ethash\test\c\%CONFIGURATION%
     - Test.exe
     - echo "Finished!"
 
