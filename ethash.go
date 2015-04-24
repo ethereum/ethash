@@ -1,13 +1,3 @@
-/*
-###################################################################################
-###################################################################################
-####################                                           ####################
-####################  EDIT AND YOU SHALL FEEL MY WRATH - jeff  ####################
-####################                                           ####################
-###################################################################################
-###################################################################################
-*/
-
 package ethash
 
 /*
@@ -214,7 +204,7 @@ func (pow *Full) getDAG(blockNum uint64) *dag {
 	return pow.dag
 }
 
-func (pow *Full) Search(block pow.Block, stop <-chan struct{}) (nonce uint64, mixDigest, seedHash []byte) {
+func (pow *Full) Search(block pow.Block, stop <-chan struct{}) (nonce uint64, mixDigest []byte) {
 	dag := pow.getDAG(block.NumberU64())
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -234,7 +224,7 @@ func (pow *Full) Search(block pow.Block, stop <-chan struct{}) (nonce uint64, mi
 		select {
 		case <-stop:
 			pow.hashRate = 0
-			return 0, nil, nil
+			return 0, nil
 		default:
 			i++
 
@@ -248,8 +238,7 @@ func (pow *Full) Search(block pow.Block, stop <-chan struct{}) (nonce uint64, mi
 			// TODO: disagrees with the spec https://github.com/ethereum/wiki/wiki/Ethash#mining
 			if result.Cmp(target) <= 0 {
 				mixDigest = C.GoBytes(unsafe.Pointer(&ret.mix_hash), C.int(32))
-				seedHash, _ = GetSeedHash(block.NumberU64()) // This seedhash is useless
-				return nonce, mixDigest, seedHash
+				return nonce, mixDigest
 			}
 			nonce += 1
 		}
@@ -301,8 +290,8 @@ func GetSeedHash(blockNum uint64) ([]byte, error) {
 func (pow *Ethash) Stop() {
 	pow.Light.mu.Lock()
 	pow.Full.mu.Lock()
-	defer pow.Full.mu.Unlock()
 	defer pow.Light.mu.Unlock()
+	defer pow.Full.mu.Unlock()
 	pow.Full.dag = nil
 	pow.Light.cache = nil
 }

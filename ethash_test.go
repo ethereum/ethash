@@ -5,8 +5,8 @@ import (
 	"encoding/hex"
 	"log"
 	"math/big"
-	"testing"
 	"sync"
+	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -28,7 +28,7 @@ func (b *testBlock) NumberU64() uint64        { return b.number }
 func TestEthash(t *testing.T) {
 	block := &testBlock{difficulty: big.NewInt(10)}
 	eth := NewForTesting()
-	nonce, _, _ := eth.Search(block, nil)
+	nonce, _ := eth.Search(block, nil)
 	block.nonce = nonce
 
 	// Verify the block concurrently to check for data races.
