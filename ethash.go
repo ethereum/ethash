@@ -155,7 +155,8 @@ func freeDAG(h *dag) {
 	}
 }
 
-func makeDAG(blockNum uint64, test bool, dir string) *dag {
+// used by the GO client to create the DAG file for system testing
+func MakeDAG(blockNum uint64, test bool, dir string) *dag {
 	if dir == "" {
 		dir = DefaultDir
 	}
