@@ -95,15 +95,15 @@ BOOST_AUTO_TEST_CASE(test_swap_endian64) {
 BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_check) {
 	ethash_params params;
 	ethash_params_init(&params, 0);
-	BOOST_REQUIRE_MESSAGE(params.full_size < DATASET_BYTES_INIT,
+	BOOST_REQUIRE_MESSAGE(params.full_size < ETHASH_DATASET_BYTES_INIT,
 			"\nfull size: " << params.full_size << "\n"
-					<< "should be less than or equal to: " << DATASET_BYTES_INIT << "\n");
-	BOOST_REQUIRE_MESSAGE(params.full_size + 20 * MIX_BYTES >= DATASET_BYTES_INIT,
-			"\nfull size + 20*MIX_BYTES: " << params.full_size + 20 * MIX_BYTES << "\n"
-					<< "should be greater than or equal to: " << DATASET_BYTES_INIT << "\n");
-	BOOST_REQUIRE_MESSAGE(params.cache_size < DATASET_BYTES_INIT / 32,
+					<< "should be less than or equal to: " << ETHASH_DATASET_BYTES_INIT << "\n");
+	BOOST_REQUIRE_MESSAGE(params.full_size + 20 * ETHASH_MIX_BYTES >= ETHASH_DATASET_BYTES_INIT,
+			"\nfull size + 20*MIX_BYTES: " << params.full_size + 20 * ETHASH_MIX_BYTES << "\n"
+					<< "should be greater than or equal to: " << ETHASH_DATASET_BYTES_INIT << "\n");
+	BOOST_REQUIRE_MESSAGE(params.cache_size < ETHASH_DATASET_BYTES_INIT / 32,
 			"\ncache size: " << params.cache_size << "\n"
-					<< "should be less than or equal to: " << DATASET_BYTES_INIT / 32 << "\n");
+					<< "should be less than or equal to: " << ETHASH_DATASET_BYTES_INIT / 32 << "\n");
 }
 
 BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_calcifide_check) {

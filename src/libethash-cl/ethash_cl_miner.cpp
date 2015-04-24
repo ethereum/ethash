@@ -169,8 +169,8 @@ bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*
 	// patch source code
 	std::string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
 	add_definition(code, "GROUP_SIZE", m_workgroup_size);
-	add_definition(code, "DAG_SIZE", (unsigned)(params.full_size / MIX_BYTES));
-	add_definition(code, "ACCESSES", ACCESSES);
+	add_definition(code, "DAG_SIZE", (unsigned)(params.full_size / ETHASH_MIX_BYTES));
+	add_definition(code, "ACCESSES", ETHASH_ACCESSES);
 	add_definition(code, "MAX_OUTPUTS", c_max_search_results);
 	//debugf("%s", code.c_str());
 
