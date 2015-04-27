@@ -4,11 +4,11 @@ from distutils.core import setup, Extension
 sources = [
     'src/python/core.c',
     'src/libethash/io.c',
-    'src/libethash/util.c',
     'src/libethash/internal.c',
     'src/libethash/sha3.c']
 if os.name == 'nt':
     sources += [
+        'src/libethash/util.c',
         'src/libethash/io_win32.c',
         'src/libethash/mmap_win32.c',
     ]
