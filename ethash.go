@@ -173,6 +173,9 @@ func MakeDAG(blockNum uint64, test bool, dir string) *dag {
 		C.ethash_light_get_cache(cache.light),
 		nil,
 	)
+	if full == nil {
+		panic("ethash_full_new IO or memory error")
+	}
 	dag := &dag{full: full}
 	runtime.SetFinalizer(dag, freeDAG)
 	return dag
