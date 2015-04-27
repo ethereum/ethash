@@ -339,6 +339,67 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
 	fs::remove_all("./test_ethash_directory/");
 }
 
+BOOST_AUTO_TEST_CASE(ethash_full_new_when_dag_exists_with_wrong_size) {
+	uint64_t full_size;
+	uint64_t cache_size;
+	ethash_h256_t seed;
+	ethash_h256_t hash;
+	ethash_return_value_t full_out;
+	ethash_return_value_t light_out;
+	memcpy(&seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+	memcpy(&hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+
+	cache_size = 1024;
+	full_size = 1024 * 32;
+
+	// first make a DAG file of "wrong size"
+	FILE *f;
+	BOOST_REQUIRE_EQUAL(
+		ETHASH_IO_MEMO_MISMATCH,
+		ethash_io_prepare("./test_ethash_directory/", seed, &f, 64, false)
+	);
+	fclose(f);
+
+	// then create new DAG, which should detect the wrong size and force create a new file
+	ethash_light_t light = ethash_light_new(cache_size, &seed);
+	BOOST_ASSERT(light);
+	ethash_full_t full = ethash_full_new(
+		"./test_ethash_directory/",
+		&seed,
+		full_size,
+		ethash_light_get_cache(light),
+		NULL
+	);
+	BOOST_ASSERT(full);
+	{
+		uint64_t nonce = 0x7c7c597c;
+		BOOST_REQUIRE(ethash_full_compute(&full_out, full, &hash, nonce));
+		BOOST_REQUIRE(ethash_light_compute(&light_out, light, full_size, &hash, nonce));
+		const std::string
+				light_result_string = blockhashToHexString(&light_out.result),
+				full_result_string = blockhashToHexString(&full_out.result);
+		BOOST_REQUIRE_MESSAGE(light_result_string == full_result_string,
+				"\nlight result: " << light_result_string.c_str() << "\n"
+						<< "full result: " << full_result_string.c_str() << "\n");
+		const std::string
+				light_mix_hash_string = blockhashToHexString(&light_out.mix_hash),
+				full_mix_hash_string = blockhashToHexString(&full_out.mix_hash);
+		BOOST_REQUIRE_MESSAGE(full_mix_hash_string == light_mix_hash_string,
+				"\nlight mix hash: " << light_mix_hash_string.c_str() << "\n"
+						<< "full mix hash: " << full_mix_hash_string.c_str() << "\n");
+		ethash_h256_t check_hash;
+		ethash_quick_hash(&check_hash, &hash, nonce, &full_out.mix_hash);
+		const std::string check_hash_string = blockhashToHexString(&check_hash);
+		BOOST_REQUIRE_MESSAGE(check_hash_string == full_result_string,
+				"\ncheck hash string: " << check_hash_string.c_str() << "\n"
+						<< "full result: " << full_result_string.c_str() << "\n");
+	}
+
+	ethash_light_delete(light);
+	ethash_full_delete(full);
+	fs::remove_all("./test_ethash_directory/");
+}
+
 static bool g_executed = false;
 static unsigned g_prev_progress = 0;
 static int test_full_callback(unsigned _progress)
