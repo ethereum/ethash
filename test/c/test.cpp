@@ -157,7 +157,7 @@ BOOST_AUTO_TEST_CASE(test_ethash_dir_creation) {
 	memset(&seedhash, 0, 32);
 	BOOST_REQUIRE_EQUAL(
 		ETHASH_IO_MEMO_MISMATCH,
-		ethash_io_prepare("./test_ethash_directory/", seedhash, &f, 64)
+		ethash_io_prepare("./test_ethash_directory/", seedhash, &f, 64, false)
 	);
 	BOOST_REQUIRE(f);
 
@@ -176,7 +176,7 @@ BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_match) {
 	ethash_get_seedhash(&seedhash, blockn);
 	BOOST_REQUIRE_EQUAL(
 		ETHASH_IO_MEMO_MISMATCH,
-		ethash_io_prepare("./test_ethash_directory/", seedhash, &f, 64)
+		ethash_io_prepare("./test_ethash_directory/", seedhash, &f, 64, false)
 	);
 	BOOST_REQUIRE(f);
 	fclose(f);
@@ -186,7 +186,7 @@ BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_match) {
 	// and check that we have a match when checking again
 	BOOST_REQUIRE_EQUAL(
 		ETHASH_IO_MEMO_MATCH,
-		ethash_io_prepare("./test_ethash_directory/", seedhash, &f, 64)
+		ethash_io_prepare("./test_ethash_directory/", seedhash, &f, 64, false)
 	);
 	BOOST_REQUIRE(f);
 
@@ -202,7 +202,7 @@ BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_size_mismatch) {
 	ethash_get_seedhash(&seedhash, blockn);
 	BOOST_REQUIRE_EQUAL(
 		ETHASH_IO_MEMO_MISMATCH,
-		ethash_io_prepare("./test_ethash_directory/", seedhash, &f, 64)
+		ethash_io_prepare("./test_ethash_directory/", seedhash, &f, 64, false)
 	);
 	BOOST_REQUIRE(f);
 	fclose(f);
@@ -212,7 +212,7 @@ BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_size_mismatch) {
 	// and check that we get the size mismatch detected if we request diffferent size
 	BOOST_REQUIRE_EQUAL(
 		ETHASH_IO_MEMO_SIZE_MISMATCH,
-		ethash_io_prepare("./test_ethash_directory/", seedhash, &f, 65)
+		ethash_io_prepare("./test_ethash_directory/", seedhash, &f, 65, false)
 	);
 
 	// cleanup
