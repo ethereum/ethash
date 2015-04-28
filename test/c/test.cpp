@@ -170,10 +170,9 @@ BOOST_AUTO_TEST_CASE(test_ethash_dir_creation) {
 }
 
 BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_match) {
-	ethash_h256_t seedhash;
 	static const int blockn = 0;
+	ethash_h256_t seedhash = ethash_get_seedhash(blockn);
 	FILE *f = NULL;
-	ethash_get_seedhash(&seedhash, blockn);
 	BOOST_REQUIRE_EQUAL(
 		ETHASH_IO_MEMO_MISMATCH,
 		ethash_io_prepare("./test_ethash_directory/", seedhash, &f, 64, false)
@@ -196,10 +195,9 @@ BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_match) {
 }
 
 BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_size_mismatch) {
-	ethash_h256_t seedhash;
 	static const int blockn = 0;
+	ethash_h256_t seedhash = ethash_get_seedhash(blockn);
 	FILE *f = NULL;
-	ethash_get_seedhash(&seedhash, blockn);
 	BOOST_REQUIRE_EQUAL(
 		ETHASH_IO_MEMO_MISMATCH,
 		ethash_io_prepare("./test_ethash_directory/", seedhash, &f, 64, false)
