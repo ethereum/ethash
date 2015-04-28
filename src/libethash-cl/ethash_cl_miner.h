@@ -1,6 +1,6 @@
 #pragma once
 
-#define __CL_ENABLE_EXCEPTIONS 
+#define __CL_ENABLE_EXCEPTIONS
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
 
 #if defined(__clang__)
@@ -31,7 +31,7 @@ public:
 public:
 	ethash_cl_miner();
 
-	bool init(ethash_params const& params, std::function<void(void*)> _fillDAG, unsigned workgroup_size = 64, unsigned _platformId = 0, unsigned _deviceId = 0);
+	bool init(uint64_t block_number, std::function<void(void*)> _fillDAG, unsigned workgroup_size = 64, unsigned _platformId = 0, unsigned _deviceId = 0);
 	static std::string platform_info(unsigned _platformId = 0, unsigned _deviceId = 0);
 	static unsigned get_num_devices(unsigned _platformId = 0);
 
@@ -43,7 +43,7 @@ public:
 private:
 	enum { c_max_search_results = 63, c_num_buffers = 2, c_hash_batch_size = 1024, c_search_batch_size = 1024*256 };
 
-	ethash_params m_params;
+	uint64_t m_fullSize;
 	cl::Context m_context;
 	cl::CommandQueue m_queue;
 	cl::Kernel m_hash_kernel;

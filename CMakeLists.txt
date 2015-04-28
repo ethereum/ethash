@@ -14,9 +14,8 @@ if (NOT OpenCL_FOUND)
 	find_package(OpenCL)
 endif()
 
-# TODO: Re-enable in next commit when libethash-cl will actually use the new API and be properly compileable
-# if (OpenCL_FOUND)
-# 	add_subdirectory(src/libethash-cl)
-# endif()
+if (OpenCL_FOUND)
+	add_subdirectory(src/libethash-cl)
+endif()
 add_subdirectory(src/benchmark EXCLUDE_FROM_ALL)
 add_subdirectory(test/c)
