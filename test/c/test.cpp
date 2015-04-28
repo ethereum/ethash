@@ -81,29 +81,29 @@ BOOST_AUTO_TEST_CASE(SHA512_check) {
 }
 
 BOOST_AUTO_TEST_CASE(test_swap_endian32) {
-    uint32_t v32 = (uint32_t)0xBAADF00D;
-    v32 = ethash_swap_u32(v32);
-    BOOST_REQUIRE_EQUAL(v32, (uint32_t)0x0DF0ADBA);
+	uint32_t v32 = (uint32_t)0xBAADF00D;
+	v32 = ethash_swap_u32(v32);
+	BOOST_REQUIRE_EQUAL(v32, (uint32_t)0x0DF0ADBA);
 }
 
 BOOST_AUTO_TEST_CASE(test_swap_endian64) {
-    uint64_t v64 = (uint64_t)0xFEE1DEADDEADBEEF;
-    v64 = ethash_swap_u64(v64);
-    BOOST_REQUIRE_EQUAL(v64, (uint64_t)0xEFBEADDEADDEE1FE);
+	uint64_t v64 = (uint64_t)0xFEE1DEADDEADBEEF;
+	v64 = ethash_swap_u64(v64);
+	BOOST_REQUIRE_EQUAL(v64, (uint64_t)0xEFBEADDEADDEE1FE);
 }
 
 BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_check) {
 	uint64_t full_size = ethash_get_datasize(0);
 	uint64_t cache_size = ethash_get_cachesize(0);
-	BOOST_REQUIRE_MESSAGE(full_size < DATASET_BYTES_INIT,
+	BOOST_REQUIRE_MESSAGE(full_size < ETHASH_DATASET_BYTES_INIT,
 			"\nfull size: " << full_size << "\n"
-					<< "should be less than or equal to: " << DATASET_BYTES_INIT << "\n");
-	BOOST_REQUIRE_MESSAGE(full_size + 20 * MIX_BYTES >= DATASET_BYTES_INIT,
-			"\nfull size + 20*MIX_BYTES: " << full_size + 20 * MIX_BYTES << "\n"
-					<< "should be greater than or equal to: " << DATASET_BYTES_INIT << "\n");
-	BOOST_REQUIRE_MESSAGE(cache_size < DATASET_BYTES_INIT / 32,
+					<< "should be less than or equal to: " << ETHASH_DATASET_BYTES_INIT << "\n");
+	BOOST_REQUIRE_MESSAGE(full_size + 20 * ETHASH_MIX_BYTES >= ETHASH_DATASET_BYTES_INIT,
+			"\nfull size + 20*MIX_BYTES: " << full_size + 20 * ETHASH_MIX_BYTES << "\n"
+					<< "should be greater than or equal to: " << ETHASH_DATASET_BYTES_INIT << "\n");
+	BOOST_REQUIRE_MESSAGE(cache_size < ETHASH_DATASET_BYTES_INIT / 32,
 			"\ncache size: " << cache_size << "\n"
-					<< "should be less than or equal to: " << DATASET_BYTES_INIT / 32 << "\n");
+					<< "should be less than or equal to: " << ETHASH_DATASET_BYTES_INIT / 32 << "\n");
 }
 
 BOOST_AUTO_TEST_CASE(ethash_params_init_genesis_calcifide_check) {
