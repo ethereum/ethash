@@ -3,11 +3,11 @@ package ethash
 /*
 #cgo CFLAGS: -std=gnu99 -Wall
 #cgo LDFLAGS: -lm
-#include "src/libethash/util.c"
 #include "src/libethash/internal.c"
 #include "src/libethash/sha3.c"
 #include "src/libethash/io.c"
 #ifdef _WIN32
+#include "src/libethash/util_win32.c"
 #include "src/libethash/io_win32.c"
 #include "src/libethash/mmap_win32.c"
 #else

@@ -8,7 +8,7 @@ sources = [
     'src/libethash/sha3.c']
 if os.name == 'nt':
     sources += [
-        'src/libethash/util.c',
+        'src/libethash/util_win32.c',
         'src/libethash/io_win32.c',
         'src/libethash/mmap_win32.c',
     ]
