@@ -23,7 +23,7 @@ namespace
 	#define FOR5(v, s, e) v = 0; REPEAT5(e; v += s;)
 
     /// Keccak-f[1600]
-    inline void keccakf1600(uint64_t* a) noexcept
+    inline void keccakf1600(uint64_t* a)
     {
         uint64_t b[5] = {0};
         uint64_t t = 0;
