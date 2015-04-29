@@ -3,14 +3,7 @@
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
 #include <libethash/io.h>
-
-#ifdef WITH_CRYPTOPP
-
-#include <libethash/sha3_cryptopp.h>
-
-#else
-#include <libethash/sha3.h>
-#endif // WITH_CRYPTOPP
+#include <libethash/keccak.h>
 
 #define BOOST_TEST_MODULE Daggerhashimoto
 #define BOOST_TEST_MAIN
@@ -59,7 +52,7 @@ BOOST_AUTO_TEST_CASE(SHA256_check) {
 	ethash_h256_t input;
 	ethash_h256_t out;
 	memcpy(&input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
-	SHA3_256(&out, (uint8_t*)&input, 32);
+	keccak256(&out, (uint8_t*)&input, 32);
 	const std::string
 			expected = "2b5ddf6f4d21c23de216f44d5e4bdc68e044b71897837ea74c83908be7037cd7",
 		actual = bytesToHexString((uint8_t*)&out, 32);
@@ -71,7 +64,7 @@ BOOST_AUTO_TEST_CASE(SHA256_check) {
 BOOST_AUTO_TEST_CASE(SHA512_check) {
 	uint8_t input[64], out[64];
 	memcpy(input, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 64);
-	SHA3_512(out, input, 64);
+	keccak512(out, input, 64);
 	const std::string
 			expected = "0be8a1d334b4655fe58c6b38789f984bb13225684e86b20517a55ab2386c7b61c306f25e0627c60064cecd6d80cd67a82b3890bd1289b7ceb473aad56a359405",
 			actual = bytesToHexString(out, 64);

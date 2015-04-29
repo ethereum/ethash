@@ -4,10 +4,6 @@ project(ethash)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
 set(ETHHASH_LIBS ethash)
 
-if (WIN32 AND WANT_CRYPTOPP)
-	add_subdirectory(cryptopp)
-endif()
-
 add_subdirectory(src/libethash)
 # bin2h.cmake doesn't work
 if (NOT OpenCL_FOUND)
