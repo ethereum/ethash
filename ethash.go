@@ -74,7 +74,7 @@ func makeCache(blockNum uint64, test bool) *cache {
 	if test {
 		size = cacheSizeForTesting
 	}
-	light := C.ethash_light_new(size, (*C.ethash_h256_t)(unsafe.Pointer(&seedHash[0])))
+	light := C.ethash_light_new_internal(size, (*C.ethash_h256_t)(unsafe.Pointer(&seedHash[0])))
 	cache := &cache{light}
 	runtime.SetFinalizer(cache, freeCache)
 	return cache
@@ -126,7 +126,7 @@ func (l *Light) verify(hash common.Hash, mixDigest common.Hash, difficulty *big.
 
 	// First check: make sure header, mixDigest, nonce are correct without hitting the cache
 	// This is to prevent DOS attacks
-	chash := (*C.ethash_h256_t)(unsafe.Pointer(&hash[0]))
+	chash := *(*C.ethash_h256_t)(unsafe.Pointer(&hash[0]))
 	cnonce := C.uint64_t(nonce)
 	target := new(big.Int).Div(minDifficulty, difficulty)
 
@@ -136,7 +136,7 @@ func (l *Light) verify(hash common.Hash, mixDigest common.Hash, difficulty *big.
 		size = dagSizeForTesting
 	}
 	var ret C.ethash_return_value_t
-	C.ethash_light_compute(&ret, cache.light, size, chash, cnonce)
+	C.ethash_light_compute_internal(&ret, cache.light, size, chash, cnonce)
 	result := common.Bytes2Big(C.GoBytes(unsafe.Pointer(&ret.result), C.int(32)))
 	return result.Cmp(target) <= 0
 }
@@ -166,11 +166,11 @@ func MakeDAG(blockNum uint64, test bool, dir string) *dag {
 	if test {
 		size = dagSizeForTesting
 	}
-	full := C.ethash_full_new(
+	full := C.ethash_full_new_internal(
 		C.CString(dir),
 		(*C.ethash_h256_t)(unsafe.Pointer(&seedHash[0])),
 		size,
-		C.ethash_light_get_cache(cache.light),
+		cache.light,
 		nil,
 	)
 	if full == nil {
@@ -220,10 +220,8 @@ func (pow *Full) Search(block pow.Block, stop <-chan struct{}) (nonce uint64, mi
 	start := time.Now().UnixNano()
 
 	nonce = uint64(r.Int63())
-	cMiningHash := (*C.ethash_h256_t)(unsafe.Pointer(&miningHash[0]))
+	cMiningHash := *(*C.ethash_h256_t)(unsafe.Pointer(&miningHash[0]))
 	target := new(big.Int).Div(minDifficulty, diff)
-
-	var ret C.ethash_return_value_t
 	for {
 		select {
 		case <-stop:
@@ -236,7 +234,7 @@ func (pow *Full) Search(block pow.Block, stop <-chan struct{}) (nonce uint64, mi
 			hashes := ((float64(1e9) / float64(elapsed)) * float64(i-starti)) / 1000
 			pow.hashRate = int64(hashes)
 
-			C.ethash_full_compute(&ret, dag.full, cMiningHash, C.uint64_t(nonce))
+			ret := C.ethash_full_compute(dag.full, cMiningHash, C.uint64_t(nonce))
 			result := common.Bytes2Big(C.GoBytes(unsafe.Pointer(&ret.result), C.int(32)))
 
 			// TODO: disagrees with the spec https://github.com/ethereum/wiki/wiki/Ethash#mining
