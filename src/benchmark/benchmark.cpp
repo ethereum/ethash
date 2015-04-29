@@ -29,14 +29,7 @@
 #endif
 #include <vector>
 #include <algorithm>
-
-#ifdef WITH_CRYPTOPP
-#include <libethash/sha3_cryptopp.h>
-#include <string>
-
-#else
-#include "libethash/sha3.h"
-#endif // WITH_CRYPTOPP
+#include <libethash/keccak.h>
 
 #undef min
 #undef max
@@ -135,7 +128,7 @@ extern "C" int main(void)
 		auto time = std::chrono::duration_cast<std::chrono::milliseconds>(high_resolution_clock::now() - startTime).count();
 
 		ethash_h256_t cache_hash;
-		SHA3_256(&cache_hash, (uint8_t const*)cache_mem, params.cache_size);
+		keccak256(&cache_hash, (uint8_t const*)cache_mem, params.cache_size);
 		debugf("ethash_mkcache: %ums, sha3: %s\n", (unsigned)((time*1000)/CLOCKS_PER_SEC), bytesToHexString(&cache_hash, sizeof(cache_hash)).data());
 
 		// print a couple of test hashes

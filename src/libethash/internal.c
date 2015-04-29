@@ -32,14 +32,7 @@
 #include "internal.h"
 #include "data_sizes.h"
 #include "io.h"
-
-#ifdef WITH_CRYPTOPP
-
-#include "sha3_cryptopp.h"
-
-#else
-#include "sha3.h"
-#endif // WITH_CRYPTOPP
+#include "keccak.h"
 
 uint64_t ethash_get_datasize(uint32_t const block_number)
 {
@@ -67,10 +60,10 @@ bool static ethash_compute_cache_nodes(
 	}
 	uint32_t const num_nodes = (uint32_t) (params->cache_size / sizeof(node));
 
-	SHA3_512(nodes[0].bytes, (uint8_t*)seed, 32);
+	keccak512(nodes[0].bytes, (uint8_t*)seed, 32);
 
 	for (unsigned i = 1; i != num_nodes; ++i) {
-		SHA3_512(nodes[i].bytes, nodes[i - 1].bytes, 64);
+		keccak512(nodes[i].bytes, nodes[i - 1].bytes, 64);
 	}
 
 	for (unsigned j = 0; j != ETHASH_CACHE_ROUNDS; j++) {
@@ -81,7 +74,7 @@ bool static ethash_compute_cache_nodes(
 			for (unsigned w = 0; w != NODE_WORDS; ++w) {
 				data.words[w] ^= nodes[idx].words[w];
 			}
-			SHA3_512(nodes[i].bytes, data.bytes, sizeof(data));
+			keccak512(nodes[i].bytes, data.bytes, sizeof(data));
 		}
 	}
 
@@ -133,7 +126,7 @@ void ethash_calculate_dag_item(
 	node const* init = &cache_nodes[node_index % num_parent_nodes];
 	memcpy(ret, init, sizeof(node));
 	ret->words[0] ^= node_index;
-	SHA3_512(ret->bytes, ret->bytes, sizeof(node));
+	keccak512(ret->bytes, ret->bytes, sizeof(node));
 #if defined(_M_X64) && ENABLE_SSE
 	__m128i const fnv_prime = _mm_set1_epi32(FNV_PRIME);
 	__m128i xmm0 = ret->xmm[0];
@@ -171,7 +164,7 @@ void ethash_calculate_dag_item(
 		}
 #endif
 	}
-	SHA3_512(ret->bytes, ret->bytes, sizeof(node));
+	keccak512(ret->bytes, ret->bytes, sizeof(node));
 }
 
 bool ethash_compute_full_data(
@@ -213,7 +206,7 @@ static bool ethash_hash(
 	fix_endian64(s_mix[0].double_words[4], nonce);
 
 	// compute sha3-512 hash and replicate across mix
-	SHA3_512(s_mix->bytes, s_mix->bytes, 40);
+	keccak512(s_mix->bytes, s_mix->bytes, 40);
 	fix_endian_arr32(s_mix[0].words, 16);
 
 	node* const mix = s_mix + 1;
@@ -279,7 +272,7 @@ static bool ethash_hash(
 	fix_endian_arr32(mix->words, MIX_WORDS / 4);
 	memcpy(&ret->mix_hash, mix->bytes, 32);
 	// final Keccak hash
-	SHA3_256(&ret->result, s_mix->bytes, 64 + 32); // Keccak-256(s + compressed_mix)
+	keccak256(&ret->result, s_mix->bytes, 64 + 32); // Keccak-256(s + compressed_mix)
 	return true;
 }
 
@@ -294,9 +287,9 @@ void ethash_quick_hash(
 	memcpy(buf, header_hash, 32);
 	fix_endian64_same(nonce);
 	memcpy(&(buf[32]), &nonce, 8);
-	SHA3_512(buf, buf, 40);
+	keccak512(buf, buf, 40);
 	memcpy(&(buf[64]), mix_hash, 32);
-	SHA3_256(return_hash, buf, 64 + 32);
+	keccak256(return_hash, buf, 64 + 32);
 }
 
 void ethash_get_seedhash(ethash_h256_t* seedhash, const uint32_t block_number)
@@ -304,7 +297,7 @@ void ethash_get_seedhash(ethash_h256_t* seedhash, const uint32_t block_number)
 	ethash_h256_reset(seedhash);
 	const uint32_t epochs = block_number / ETHASH_EPOCH_LENGTH;
 	for (uint32_t i = 0; i < epochs; ++i)
-		SHA3_256(seedhash, (uint8_t*)seedhash, 32);
+		keccak256(seedhash, (uint8_t*)seedhash, 32);
 }
 
 int ethash_quick_check_difficulty(

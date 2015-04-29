@@ -8,9 +8,11 @@ set(CMAKE_BUILD_TYPE Release)
 
 if (NOT MSVC)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 endif()
 
 set(FILES 	util.h
+			keccak.h keccak.cpp
           	io.c
           	internal.c
           	ethash.h
@@ -23,18 +25,6 @@ if (MSVC)
 	list(APPEND FILES util.c io_win32.c mmap_win32.c)
 else()
 	list(APPEND FILES io_posix.c)
-endif()
-
-if (NOT CRYPTOPP_FOUND)
-	find_package(CryptoPP 5.6.2)
-endif()
-
-if (CRYPTOPP_FOUND)
-	add_definitions(-DWITH_CRYPTOPP)
-	include_directories( ${CRYPTOPP_INCLUDE_DIRS} )
-	list(APPEND FILES sha3_cryptopp.cpp sha3_cryptopp.h)
-else()
-	list(APPEND FILES sha3.c sha3.h)
 endif()
 
 add_library(${LIBRARY} ${FILES})

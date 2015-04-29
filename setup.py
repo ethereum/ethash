@@ -5,7 +5,7 @@ sources = [
     'src/python/core.c',
     'src/libethash/io.c',
     'src/libethash/internal.c',
-    'src/libethash/sha3.c']
+    'src/libethash/keccak.cpp']
 if os.name == 'nt':
     sources += [
         'src/libethash/util.c',
@@ -25,13 +25,13 @@ depends = [
     'src/libethash/io.h',
     'src/libethash/fnv.h',
     'src/libethash/internal.h',
-    'src/libethash/sha3.h',
+    'src/libethash/keccak.h',
     'src/libethash/util.h',
 ]
 pyethash = Extension('pyethash',
                      sources=sources,
                      depends=depends,
-                     extra_compile_args=["-Isrc/", "-std=gnu99", "-Wall"])
+                     extra_compile_args=["-Isrc/", "-std=gnu99", "-std=c++11", "-Wall"])
 
 setup(
     name='pyethash',

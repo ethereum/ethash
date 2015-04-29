@@ -1,8 +1,8 @@
 include setup.py
 
-# C sources
+# C/C++ sources
 include src/libethash/internal.c
-include src/libethash/sha3.c
+include src/libethash/keccak.cpp
 include src/libethash/util.c
 include src/python/core.c
 
@@ -13,5 +13,5 @@ include src/libethash/endian.h
 include src/libethash/ethash.h
 include src/libethash/fnv.h
 include src/libethash/internal.h
-include src/libethash/sha3.h
+include src/libethash/keccak.h
 include src/libethash/util.h
