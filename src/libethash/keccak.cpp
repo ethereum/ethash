@@ -1,3 +1,8 @@
+
+/*
+  Core Keccack implementation devided from https://github.com/coruus/keccak-tiny by David Leon Gil
+*/
+
 #include "keccak.h"
 
 #include <cstring>
