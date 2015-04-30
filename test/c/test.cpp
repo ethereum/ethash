@@ -229,6 +229,23 @@ BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_size_mismatch) {
 	fs::remove_all("./test_ethash_directory/");
 }
 
+BOOST_AUTO_TEST_CASE(test_ethash_get_default_dirname) {
+	char result[256];
+	// this is really not an easy thing to test for in a unit test, so yeah it does look ugly
+#ifdef _WIN32
+    #include <Shlobj.h>
+	char homedir[256];
+	BOOST_REQUIRE(SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL, 0, (WCHAR*)homedir)));
+	BOOST_REQUIRE(ethash_get_default_dirname(result, 256));
+	std::string res = std::string(homedir) + std::("\\Appdata\\Ethash\\");
+#else
+	char* homedir = getenv("HOME");
+	BOOST_REQUIRE(ethash_get_default_dirname(result, 256));
+	std::string res = std::string(homedir) + std::string("/.ethash/");
+#endif
+	BOOST_CHECK(strcmp(res.c_str(), result) == 0);
+}
+
 BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
 	uint64_t full_size;
 	uint64_t cache_size;
@@ -516,3 +533,25 @@ BOOST_AUTO_TEST_CASE(test_incomplete_dag_file) {
 	ethash_light_delete(light);
 	fs::remove_all("./test_ethash_directory/");
 }
+
+// Test of Full DAG creation with the minimal ethash.h API.
+// Commented out since travis tests would take too much time.
+// Uncomment and run on your own machine if you want to confirm
+// it works fine.
+#if 0
+static int lef_cb(unsigned _progress)
+{
+	printf("CREATING DAG. PROGRESS: %u\n", _progress);
+	fflush(stdout);
+	return 0;
+}
+
+BOOST_AUTO_TEST_CASE(full_dag_test) {
+	ethash_light_t light = ethash_light_new(55);
+	BOOST_ASSERT(light);
+	ethash_full_t full = ethash_full_new(light, lef_cb);
+	BOOST_ASSERT(full);
+	ethash_light_delete(light);
+	ethash_full_delete(full);
+}
+#endif
