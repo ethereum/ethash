@@ -170,27 +170,39 @@ BOOST_AUTO_TEST_CASE(test_ethash_dir_creation) {
 }
 
 BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_match) {
-	static const int blockn = 0;
-	ethash_h256_t seedhash = ethash_get_seedhash(blockn);
-	FILE *f = NULL;
-	BOOST_REQUIRE_EQUAL(
-		ETHASH_IO_MEMO_MISMATCH,
-		ethash_io_prepare("./test_ethash_directory/", seedhash, &f, 64, false)
-	);
-	BOOST_REQUIRE(f);
-	fclose(f);
+	uint64_t full_size;
+	uint64_t cache_size;
+	ethash_h256_t seed;
+	ethash_h256_t hash;
+	FILE* f;
+	memcpy(&seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+	memcpy(&hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
 
+	cache_size = 1024;
+	full_size = 1024 * 32;
+
+	ethash_light_t light = ethash_light_new_internal(cache_size, &seed);
+	ethash_full_t full = ethash_full_new_internal(
+		"./test_ethash_directory/",
+		&seed,
+		full_size,
+		light,
+		NULL
+	);
+	BOOST_ASSERT(full);
 	// let's make sure that the directory was created
 	BOOST_REQUIRE(fs::is_directory(fs::path("./test_ethash_directory/")));
 	// and check that we have a match when checking again
 	BOOST_REQUIRE_EQUAL(
 		ETHASH_IO_MEMO_MATCH,
-		ethash_io_prepare("./test_ethash_directory/", seedhash, &f, 64, false)
+		ethash_io_prepare("./test_ethash_directory/", seed, &f, full_size, false)
 	);
 	BOOST_REQUIRE(f);
 
 	// cleanup
 	fclose(f);
+	ethash_light_delete(light);
+	ethash_full_delete(full);
 	fs::remove_all("./test_ethash_directory/");
 }
 
@@ -414,6 +426,14 @@ static int test_full_callback_that_fails(unsigned _progress)
 	return 1;
 }
 
+static int test_full_callback_create_incomplete_dag(unsigned _progress)
+{
+	if (_progress >= 30) {
+		return 1;
+	}
+	return 0;
+}
+
 BOOST_AUTO_TEST_CASE(full_client_callback) {
 	uint64_t full_size;
 	uint64_t cache_size;
@@ -462,6 +482,37 @@ BOOST_AUTO_TEST_CASE(failing_full_client_callback) {
 		test_full_callback_that_fails
 	);
 	BOOST_ASSERT(!full);
+	ethash_light_delete(light);
+	fs::remove_all("./test_ethash_directory/");
+}
+
+BOOST_AUTO_TEST_CASE(test_incomplete_dag_file) {
+	uint64_t full_size;
+	uint64_t cache_size;
+	ethash_h256_t seed;
+	ethash_h256_t hash;
+	memcpy(&seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+	memcpy(&hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
+
+	cache_size = 1024;
+	full_size = 1024 * 32;
+
+	ethash_light_t light = ethash_light_new_internal(cache_size, &seed);
+	// create a full but stop at 30%, so no magic number is written
+	ethash_full_t full = ethash_full_new_internal(
+		"./test_ethash_directory/",
+		&seed,
+		full_size,
+		light,
+		test_full_callback_create_incomplete_dag
+	);
+	BOOST_ASSERT(!full);
+	FILE *f = NULL;
+	// confirm that we get a size_mismatch because the magic number is missing
+	BOOST_REQUIRE_EQUAL(
+		ETHASH_IO_MEMO_SIZE_MISMATCH,
+		ethash_io_prepare("./test_ethash_directory/", seed, &f, full_size, false)
+	);
 	ethash_light_delete(light);
 	fs::remove_all("./test_ethash_directory/");
 }
