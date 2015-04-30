@@ -233,6 +233,7 @@ BOOST_AUTO_TEST_CASE(test_ethash_get_default_dirname) {
 	char result[256];
 	// this is really not an easy thing to test for in a unit test, so yeah it does look ugly
 #ifdef _WIN32
+    #include <windows.h
     #include <Shlobj.h>
 	char homedir[256];
 	BOOST_REQUIRE(SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL, 0, (WCHAR*)homedir)));
