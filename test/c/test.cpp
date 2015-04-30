@@ -419,7 +419,6 @@ BOOST_AUTO_TEST_CASE(full_client_callback) {
 	uint64_t cache_size;
 	ethash_h256_t seed;
 	ethash_h256_t hash;
-	ethash_return_value_t full_out;
 	memcpy(&seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
 	memcpy(&hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
 
@@ -435,8 +434,6 @@ BOOST_AUTO_TEST_CASE(full_client_callback) {
 		test_full_callback
 	);
 	BOOST_ASSERT(full);
-	full_out = ethash_full_compute(full, hash, 5);
-	BOOST_REQUIRE(full_out.success);
 	BOOST_CHECK(g_executed);
 	BOOST_REQUIRE_EQUAL(g_prev_progress, 100);
 
@@ -450,7 +447,6 @@ BOOST_AUTO_TEST_CASE(failing_full_client_callback) {
 	uint64_t cache_size;
 	ethash_h256_t seed;
 	ethash_h256_t hash;
-	ethash_return_value_t full_out;
 	memcpy(&seed, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
 	memcpy(&hash, "~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 32);
 
@@ -465,10 +461,7 @@ BOOST_AUTO_TEST_CASE(failing_full_client_callback) {
 		light,
 		test_full_callback_that_fails
 	);
-	BOOST_ASSERT(full);
-	full_out = ethash_full_compute(full, hash, 5);
-	BOOST_REQUIRE(!full_out.success);
-	ethash_full_delete(full);
+	BOOST_ASSERT(!full);
 	ethash_light_delete(light);
 	fs::remove_all("./test_ethash_directory/");
 }

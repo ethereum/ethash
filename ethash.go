@@ -162,7 +162,7 @@ func MakeDAG(blockNum uint64, test bool, dir string) *dag {
 	}
 	seedHash, _ := GetSeedHash(blockNum)
 	cache := makeCache(blockNum, test)
-	size := C.ethash_get_cachesize(C.uint64_t(blockNum))
+	size := C.ethash_get_datasize(C.uint64_t(blockNum))
 	if test {
 		size = dagSizeForTesting
 	}
