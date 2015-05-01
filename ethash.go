@@ -69,7 +69,6 @@ func makeCache(blockNum uint64, test bool) *cache {
 	}
 	light := C.ethash_light_new_internal(size, (*C.ethash_h256_t)(unsafe.Pointer(&seedHash[0])))
 	cache := &cache{light}
-	runtime.SetFinalizer(cache, freeCache)
 	glog.V(logger.Debug).Infof("Done generating cache for epoch %d, it took %v", blockNum/epochLength, time.Since(started))
 	return cache
 }
@@ -98,6 +97,7 @@ func (l *Light) getCache(blockNum uint64) *cache {
 	// No lock is being held, so multiple goroutines
 	// might perform the generation and fight for the lock below.
 	cache := makeCache(blockNum, l.test)
+	runtime.SetFinalizer(cache, freeCache)
 	l.mu.Lock()
 	if l.epoch != epoch || l.cache == nil {
 		l.cache = cache
@@ -163,6 +163,7 @@ func MakeDAG(blockNum uint64, test bool, dir string) *dag {
 	started := time.Now()
 	seedHash, _ := GetSeedHash(blockNum)
 	cache := makeCache(blockNum, test)
+	defer freeCache(cache)
 	size := C.ethash_get_datasize(C.uint64_t(blockNum))
 	if test {
 		size = dagSizeForTesting
