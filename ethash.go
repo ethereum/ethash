@@ -1,18 +1,9 @@
 package ethash
 
 /*
-#cgo CFLAGS: -std=gnu99 -Wall
-#cgo LDFLAGS: -lm
-#include "src/libethash/internal.c"
-#include "src/libethash/sha3.c"
-#include "src/libethash/io.c"
-#ifdef _WIN32
-#include "src/libethash/util_win32.c"
-#include "src/libethash/io_win32.c"
-#include "src/libethash/mmap_win32.c"
-#else
-#include "src/libethash/io_posix.c"
-#endif
+#include "src/libethash/internal.h"
+
+int ethashGoCallback_cgo(unsigned);
 */
 import "C"
 
@@ -69,7 +60,9 @@ func freeCache(h *cache) {
 }
 
 func makeCache(blockNum uint64, test bool) *cache {
+	started := time.Now()
 	seedHash, _ := GetSeedHash(blockNum)
+	glog.V(logger.Debug).Infof("Generating cache for epoch %d (%x)", blockNum/epochLength, seedHash)
 	size := C.ethash_get_cachesize(C.uint64_t(blockNum))
 	if test {
 		size = cacheSizeForTesting
@@ -77,6 +70,7 @@ func makeCache(blockNum uint64, test bool) *cache {
 	light := C.ethash_light_new_internal(size, (*C.ethash_h256_t)(unsafe.Pointer(&seedHash[0])))
 	cache := &cache{light}
 	runtime.SetFinalizer(cache, freeCache)
+	glog.V(logger.Debug).Infof("Done generating cache for epoch %d, it took %v", blockNum/epochLength, time.Since(started))
 	return cache
 }
 
@@ -155,27 +149,36 @@ func freeDAG(h *dag) {
 	}
 }
 
+//export ethashGoCallback
+func ethashGoCallback(percent C.unsigned) C.int {
+	glog.V(logger.Info).Infof("Still generating DAG: %d%%", percent)
+	return 0
+}
+
 // used by the GO client to create the DAG file for system testing
 func MakeDAG(blockNum uint64, test bool, dir string) *dag {
 	if dir == "" {
 		dir = DefaultDir
 	}
+	started := time.Now()
 	seedHash, _ := GetSeedHash(blockNum)
 	cache := makeCache(blockNum, test)
 	size := C.ethash_get_datasize(C.uint64_t(blockNum))
 	if test {
 		size = dagSizeForTesting
 	}
+	glog.V(logger.Info).Infof("Generating DAG for epoch %d (%x)", blockNum/epochLength, seedHash)
 	full := C.ethash_full_new_internal(
 		C.CString(dir),
 		(*C.ethash_h256_t)(unsafe.Pointer(&seedHash[0])),
 		size,
 		cache.light,
-		nil,
+		(C.ethash_callback_t)(unsafe.Pointer(C.ethashGoCallback_cgo)),
 	)
 	if full == nil {
 		panic("ethash_full_new IO or memory error")
 	}
+	glog.V(logger.Info).Infof("Done generating DAG for epoch %d, it took %v", blockNum/epochLength, time.Since(started))
 	dag := &dag{full: full}
 	runtime.SetFinalizer(dag, freeDAG)
 	return dag
