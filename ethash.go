@@ -28,11 +28,9 @@ import (
 	"github.com/ethereum/go-ethereum/pow"
 )
 
-var minDifficulty = new(big.Int).Exp(big.NewInt(2), big.NewInt(256), big.NewInt(0))
-
 var (
-	DefaultDir string = defaultDir()
-	TheLight   Light
+	minDifficulty = new(big.Int).Exp(big.NewInt(2), big.NewInt(256), big.NewInt(0))
+	sharedLight   = new(Light)
 )
 
 const (
@@ -40,6 +38,8 @@ const (
 	cacheSizeForTesting C.uint64_t = 1024
 	dagSizeForTesting   C.uint64_t = 1024 * 32
 )
+
+var DefaultDir = defaultDir()
 
 func defaultDir() string {
 	home := os.Getenv("HOME")
@@ -308,12 +308,12 @@ func (pow *Full) Turbo(on bool) {
 }
 
 type Ethash struct {
-	Light
-	Full
+	*Light
+	*Full
 }
 
 func New() *Ethash {
-	return &Ethash{Light: TheLight}
+	return &Ethash{Light: sharedLight}
 }
 
 // NewForTesting creates a proof of work for use in unit tests.
@@ -327,7 +327,7 @@ func NewForTesting() (*Ethash, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Ethash{Light{test: true}, Full{Dir: dir, test: true}}, nil
+	return &Ethash{&Light{test: true}, &Full{Dir: dir, test: true}}, nil
 }
 
 func (pow *Ethash) Stop() {
