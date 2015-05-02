@@ -10,6 +10,7 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"math/rand"
 	"os"
@@ -315,11 +316,18 @@ func New() *Ethash {
 	return &Ethash{Light: TheLight}
 }
 
-func NewForTesting() *Ethash {
-	return &Ethash{
-		Light{test: true},
-		Full{test: true},
+// NewForTesting creates a proof of work for use in unit tests.
+// It uses a smaller DAG and cache size to keep test times low.
+// DAG files are stored in a temporary directory.
+//
+// Nonces found by a testing instance are not verifiable with a
+// regular-size cache.
+func NewForTesting() (*Ethash, error) {
+	dir, err := ioutil.TempDir("", "ethash-test")
+	if err != nil {
+		return nil, err
 	}
+	return &Ethash{Light{test: true}, Full{Dir: dir, test: true}}, nil
 }
 
 func (pow *Ethash) Stop() {

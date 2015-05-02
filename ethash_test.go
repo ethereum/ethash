@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"log"
 	"math/big"
+	"os"
 	"sync"
 	"testing"
 
@@ -32,7 +33,11 @@ func (b *testBlock) MixDigest() common.Hash   { return b.mixDigest }
 func (b *testBlock) NumberU64() uint64        { return b.number }
 
 func TestEthashConcurrentVerify(t *testing.T) {
-	eth := NewForTesting()
+	eth, err := NewForTesting()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(eth.Full.Dir)
 	defer eth.Stop()
 
 	block := &testBlock{difficulty: big.NewInt(10)}
@@ -54,8 +59,12 @@ func TestEthashConcurrentVerify(t *testing.T) {
 }
 
 func TestEthashConcurrentSearch(t *testing.T) {
-	eth := NewForTesting()
+	eth, err := NewForTesting()
+	if err != nil {
+		t.Fatal(err)
+	}
 	eth.Turbo(true)
+	defer os.RemoveAll(eth.Full.Dir)
 	defer eth.Stop()
 
 	// launch n searches concurrently.
@@ -91,7 +100,11 @@ func TestEthashConcurrentSearch(t *testing.T) {
 }
 
 func TestEthashSearchAcrossEpoch(t *testing.T) {
-	eth := NewForTesting()
+	eth, err := NewForTesting()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(eth.Full.Dir)
 	defer eth.Stop()
 
 	for i := epochLength - 40; i < epochLength+40; i++ {
