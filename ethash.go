@@ -8,6 +8,7 @@ int ethashGoCallback_cgo(unsigned);
 import "C"
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -26,8 +27,6 @@ import (
 	"github.com/ethereum/go-ethereum/pow"
 )
 
-const epochLength uint64 = 30000
-
 var minDifficulty = new(big.Int).Exp(big.NewInt(2), big.NewInt(256), big.NewInt(0))
 
 var (
@@ -36,8 +35,9 @@ var (
 )
 
 const (
-	cacheSizeForTesting = C.uint64_t(1024)
-	dagSizeForTesting   = C.uint64_t(1024 * 32)
+	epochLength         uint64     = 30000
+	cacheSizeForTesting C.uint64_t = 1024
+	dagSizeForTesting   C.uint64_t = 1024 * 32
 )
 
 func defaultDir() string {
@@ -51,102 +51,158 @@ func defaultDir() string {
 	return filepath.Join(home, ".ethash")
 }
 
+// cache wraps an ethash_light_t with some metadata
+// and automatic memory management.
 type cache struct {
-	light *C.struct_ethash_light
-}
-
-func freeCache(h *cache) {
-	C.ethash_light_delete(h.light)
-}
-
-func makeCache(blockNum uint64, test bool) *cache {
-	started := time.Now()
-	seedHash, _ := GetSeedHash(blockNum)
-	glog.V(logger.Debug).Infof("Generating cache for epoch %d (%x)", blockNum/epochLength, seedHash)
-	size := C.ethash_get_cachesize(C.uint64_t(blockNum))
-	if test {
-		size = cacheSizeForTesting
-	}
-	light := C.ethash_light_new_internal(size, (*C.ethash_h256_t)(unsafe.Pointer(&seedHash[0])))
-	cache := &cache{light}
-	glog.V(logger.Debug).Infof("Done generating cache for epoch %d, it took %v", blockNum/epochLength, time.Since(started))
-	return cache
-}
-
-// Light wraps an ethash cache for light client verification
-// of block nonces.
-type Light struct {
-	test bool // if set use a smaller cache size
-
-	// This is a one-element cache of caches.
-	// TODO: keep multiple caches for recent epochs.
-	mu    sync.RWMutex
 	epoch uint64
-	cache *cache
+	test  bool
+
+	gen sync.Once // ensures cache is only generated once.
+	ptr *C.struct_ethash_light
 }
 
-func (l *Light) getCache(blockNum uint64) *cache {
-	l.mu.RLock()
-	epoch := blockNum / epochLength
-	if l.epoch == epoch && l.cache != nil {
-		l.mu.RUnlock()
-		return l.cache
-	}
-	l.mu.RUnlock()
-	// Create the actual cache for the epoch.
-	// No lock is being held, so multiple goroutines
-	// might perform the generation and fight for the lock below.
-	cache := makeCache(blockNum, l.test)
-	runtime.SetFinalizer(cache, freeCache)
-	l.mu.Lock()
-	if l.epoch != epoch || l.cache == nil {
-		l.cache = cache
-	}
-	l.mu.Unlock()
-	return cache
+// generate creates the actual cache. it can be called from multiple
+// goroutines. the first call will generate the cache, subsequent
+// calls wait until it is generated.
+func (cache *cache) generate() {
+	cache.gen.Do(func() {
+		started := time.Now()
+		seedHash := makeSeedHash(cache.epoch)
+		glog.V(logger.Debug).Infof("Generating cache for epoch %d (%x)", cache.epoch, seedHash)
+		size := C.ethash_get_cachesize(C.uint64_t(cache.epoch * epochLength))
+		if cache.test {
+			size = cacheSizeForTesting
+		}
+		cache.ptr = C.ethash_light_new_internal(size, (*C.ethash_h256_t)(unsafe.Pointer(&seedHash[0])))
+		runtime.SetFinalizer(cache, freeCache)
+		glog.V(logger.Debug).Infof("Done generating cache for epoch %d, it took %v", cache.epoch, time.Since(started))
+	})
 }
 
+func freeCache(cache *cache) {
+	C.ethash_light_delete(cache.ptr)
+	cache.ptr = nil
+}
+
+// Light implements the Verify half of the proof of work.
+// It uses a small in-memory cache to verify the nonces
+// found by Full.
+type Light struct {
+	test    bool       // if set use a smaller cache size
+	mu      sync.Mutex // protects current
+	current *cache     // last cache which was generated.
+	// TODO: keep multiple caches.
+}
+
+// Verify checks whether the block's nonce is valid.
 func (l *Light) Verify(block pow.Block) bool {
-	return l.verify(block.HashNoNonce(), block.MixDigest(), block.Difficulty(), block.NumberU64(), block.Nonce())
-}
-
-func (l *Light) verify(hash common.Hash, mixDigest common.Hash, difficulty *big.Int, blockNum uint64, nonce uint64) bool {
-	// Make sure the block num is valid
+	var (
+		blockNum   = block.NumberU64()
+		hash       = block.HashNoNonce()
+		difficulty = block.Difficulty()
+		nonce      = block.Nonce()
+		cache      = l.getCache(blockNum)
+		dagSize    = C.ethash_get_datasize(C.uint64_t(blockNum))
+	)
+	// Make sure the block num is valid.
 	if blockNum >= epochLength*2048 {
-		glog.V(logger.Info).Infoln(fmt.Sprintf("Block number exceeds limit, invalid (value is %v, limit is %v)",
-			blockNum, epochLength*2048))
+		glog.V(logger.Info).Infof("Block number exceeds limit, invalid (value is %d, limit is %d)", blockNum, epochLength*2048)
 		return false
 	}
+	if l.test {
+		dagSize = dagSizeForTesting
+	}
 
-	// First check: make sure header, mixDigest, nonce are correct without hitting the cache
-	// This is to prevent DOS attacks
+	// First check: make sure header, mixDigest, nonce are correct
+	// without hitting the cache This is to prevent DOS attacks.
+	// TODO: do what the comment says.
 	chash := *(*C.ethash_h256_t)(unsafe.Pointer(&hash[0]))
 	cnonce := C.uint64_t(nonce)
 	target := new(big.Int).Div(minDifficulty, difficulty)
 
-	cache := l.getCache(blockNum)
-	size := C.ethash_get_datasize(C.uint64_t(blockNum))
-	if l.test {
-		size = dagSizeForTesting
-	}
 	var ret C.ethash_return_value_t
-	C.ethash_light_compute_internal(&ret, cache.light, size, chash, cnonce)
+	C.ethash_light_compute_internal(&ret, cache.ptr, dagSize, chash, cnonce)
+
+	// Make sure cache is live until after the call.
+	// This is important because a GC might happen and execute
+	// the finalizer before the C call completes.
+	_ = cache
+
 	result := common.Bytes2Big(C.GoBytes(unsafe.Pointer(&ret.result), C.int(32)))
 	return result.Cmp(target) <= 0
 }
 
+func (l *Light) getCache(blockNum uint64) *cache {
+	var c *cache
+	epoch := blockNum / epochLength
+	// Update or reuse the last cache.
+	l.mu.Lock()
+	if l.current != nil && l.current.epoch == epoch {
+		c = l.current
+	} else {
+		c = &cache{epoch: epoch, test: l.test}
+		l.current = c
+	}
+	l.mu.Unlock()
+	// Wait for the cache to finish generating.
+	c.generate()
+	return c
+}
+
+// dag wraps an ethash_full_t with some metadata
+// and automatic memory management.
 type dag struct {
-	mu   sync.Mutex // prevents double free
-	full *C.struct_ethash_full
+	epoch uint64
+	test  bool
+	dir   string
+
+	gen sync.Once // ensures DAG is only generated once.
+	ptr *C.struct_ethash_full
+}
+
+// generate creates the actual DAG. it can be called from multiple
+// goroutines. the first call will generate the DAG, subsequent
+// calls wait until it is generated.
+func (d *dag) generate() {
+	d.gen.Do(func() {
+		var (
+			started   = time.Now()
+			seedHash  = makeSeedHash(d.epoch)
+			blockNum  = C.uint64_t(d.epoch * epochLength)
+			cacheSize = C.ethash_get_cachesize(blockNum)
+			dagSize   = C.ethash_get_datasize(blockNum)
+		)
+		if d.test {
+			cacheSize = cacheSizeForTesting
+			dagSize = dagSizeForTesting
+		}
+		if d.dir == "" {
+			d.dir = DefaultDir
+		}
+		glog.V(logger.Info).Infof("Generating DAG for epoch %d (%x)", d.epoch, seedHash)
+		// Generate a temporary cache.
+		// TODO: this could share the cache with Light
+		cache := C.ethash_light_new_internal(cacheSize, (*C.ethash_h256_t)(unsafe.Pointer(&seedHash[0])))
+		defer C.ethash_light_delete(cache)
+		// Generate the actual DAG.
+		d.ptr = C.ethash_full_new_internal(
+			C.CString(d.dir),
+			(*C.ethash_h256_t)(unsafe.Pointer(&seedHash[0])),
+			dagSize,
+			cache,
+			(C.ethash_callback_t)(unsafe.Pointer(C.ethashGoCallback_cgo)),
+		)
+		if d.ptr == nil {
+			panic("ethash_full_new IO or memory error")
+		}
+		runtime.SetFinalizer(d, freeDAG)
+		glog.V(logger.Info).Infof("Done generating DAG for epoch %d, it took %v", d.epoch, time.Since(started))
+	})
 }
 
 func freeDAG(h *dag) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if h.full != nil {
-		C.ethash_full_delete(h.full)
-		h.full = nil
-	}
+	C.ethash_full_delete(h.ptr)
+	h.ptr = nil
 }
 
 //export ethashGoCallback
@@ -155,36 +211,22 @@ func ethashGoCallback(percent C.unsigned) C.int {
 	return 0
 }
 
-// used by the GO client to create the DAG file for system testing
-func MakeDAG(blockNum uint64, test bool, dir string) *dag {
-	if dir == "" {
-		dir = DefaultDir
+// MakeDAG pre-generates a DAG file for the given block number in the
+// given directory. If dir is the empty string, the default directory
+// is used.
+func MakeDAG(blockNum uint64, dir string) error {
+	d := &dag{epoch: blockNum / epochLength, dir: dir}
+	if blockNum >= epochLength*2048 {
+		return fmt.Errorf("block number too high, limit is %d", epochLength*2048)
 	}
-	started := time.Now()
-	seedHash, _ := GetSeedHash(blockNum)
-	cache := makeCache(blockNum, test)
-	defer freeCache(cache)
-	size := C.ethash_get_datasize(C.uint64_t(blockNum))
-	if test {
-		size = dagSizeForTesting
+	d.generate()
+	if d.ptr == nil {
+		return errors.New("failed")
 	}
-	glog.V(logger.Info).Infof("Generating DAG for epoch %d (%x)", blockNum/epochLength, seedHash)
-	full := C.ethash_full_new_internal(
-		C.CString(dir),
-		(*C.ethash_h256_t)(unsafe.Pointer(&seedHash[0])),
-		size,
-		cache.light,
-		(C.ethash_callback_t)(unsafe.Pointer(C.ethashGoCallback_cgo)),
-	)
-	if full == nil {
-		panic("ethash_full_new IO or memory error")
-	}
-	glog.V(logger.Info).Infof("Done generating DAG for epoch %d, it took %v", blockNum/epochLength, time.Since(started))
-	dag := &dag{full: full}
-	runtime.SetFinalizer(dag, freeDAG)
-	return dag
+	return nil
 }
 
+// Full implements the Search half of the proof of work.
 type Full struct {
 	Dir string // use this to specify a non-default DAG directory
 
@@ -192,24 +234,23 @@ type Full struct {
 	turbo    bool
 	hashRate int64
 
-	mu    sync.Mutex // protects the fields below
-	epoch uint64     // epoch number of current full dag
-	dag   *dag       // current full DAG
+	mu      sync.Mutex // protects dag
+	current *dag       // current full DAG
 }
 
-func (pow *Full) getDAG(blockNum uint64) *dag {
-	pow.mu.Lock()
-	defer pow.mu.Unlock()
+func (pow *Full) getDAG(blockNum uint64) (d *dag) {
 	epoch := blockNum / epochLength
-	if pow.epoch == epoch && pow.dag != nil {
-		return pow.dag // up to date
+	pow.mu.Lock()
+	if pow.current != nil && pow.current.epoch == epoch {
+		d = pow.current
+	} else {
+		d = &dag{epoch: epoch, test: pow.test, dir: pow.Dir}
+		pow.current = d
 	}
-	// Generate a new DAG.
-	// This computation is very very expensive.
-	// The lock should prevent more than one of them
-	// to run at the same time.
-	pow.dag = MakeDAG(blockNum, pow.test, pow.Dir)
-	return pow.dag
+	pow.mu.Unlock()
+	// wait for it to finish generating.
+	d.generate()
+	return d
 }
 
 func (pow *Full) Search(block pow.Block, stop <-chan struct{}) (nonce uint64, mixDigest []byte) {
@@ -238,7 +279,7 @@ func (pow *Full) Search(block pow.Block, stop <-chan struct{}) (nonce uint64, mi
 			hashes := ((float64(1e9) / float64(elapsed)) * float64(i-starti)) / 1000
 			pow.hashRate = int64(hashes)
 
-			ret := C.ethash_full_compute(dag.full, cMiningHash, C.uint64_t(nonce))
+			ret := C.ethash_full_compute(dag.ptr, cMiningHash, C.uint64_t(nonce))
 			result := common.Bytes2Big(C.GoBytes(unsafe.Pointer(&ret.result), C.int(32)))
 
 			// TODO: disagrees with the spec https://github.com/ethereum/wiki/wiki/Ethash#mining
@@ -256,10 +297,12 @@ func (pow *Full) Search(block pow.Block, stop <-chan struct{}) (nonce uint64, mi
 }
 
 func (pow *Full) GetHashrate() int64 {
+	// TODO: this needs to use an atomic operation.
 	return pow.hashRate
 }
 
 func (pow *Full) Turbo(on bool) {
+	// TODO: this needs to use an atomic operation.
 	pow.turbo = on
 }
 
@@ -279,25 +322,26 @@ func NewForTesting() *Ethash {
 	}
 }
 
-func GetSeedHash(blockNum uint64) ([]byte, error) {
-	if blockNum >= epochLength*2048 {
-		return nil, fmt.Errorf("block number is out of bounds (value %v, limit is %v)", blockNum, epochLength*2048)
-	}
-
-	epoch := blockNum / epochLength
-	seedHash := make([]byte, 32)
-	var i uint64
-	for i = 0; i < epoch; i++ {
-		seedHash = crypto.Sha3(seedHash)
-	}
-	return seedHash, nil
-}
-
 func (pow *Ethash) Stop() {
 	pow.Light.mu.Lock()
 	pow.Full.mu.Lock()
 	defer pow.Light.mu.Unlock()
 	defer pow.Full.mu.Unlock()
-	pow.Full.dag = nil
-	pow.Light.cache = nil
+	pow.Full.current = nil
+	pow.Light.current = nil
+}
+
+func GetSeedHash(blockNum uint64) ([]byte, error) {
+	if blockNum >= epochLength*2048 {
+		return nil, fmt.Errorf("block number too high, limit is %d", epochLength*2048)
+	}
+	return makeSeedHash(blockNum / epochLength), nil
+}
+
+func makeSeedHash(epoch uint64) []byte {
+	sh := make([]byte, 32)
+	for ; epoch > 0; epoch-- {
+		sh = crypto.Sha3(sh)
+	}
+	return sh
 }

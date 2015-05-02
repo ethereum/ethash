@@ -2,6 +2,7 @@ package ethash
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/hex"
 	"log"
 	"math/big"
@@ -10,6 +11,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 )
+
+func init() {
+	// glog.SetV(6)
+	// glog.SetToStderr(true)
+}
 
 type testBlock struct {
 	difficulty  *big.Int
@@ -25,9 +31,11 @@ func (b *testBlock) Nonce() uint64            { return b.nonce }
 func (b *testBlock) MixDigest() common.Hash   { return b.mixDigest }
 func (b *testBlock) NumberU64() uint64        { return b.number }
 
-func TestEthash(t *testing.T) {
-	block := &testBlock{difficulty: big.NewInt(10)}
+func TestEthashConcurrentVerify(t *testing.T) {
 	eth := NewForTesting()
+	defer eth.Stop()
+
+	block := &testBlock{difficulty: big.NewInt(10)}
 	nonce, _ := eth.Search(block, nil)
 	block.nonce = nonce
 
@@ -43,6 +51,58 @@ func TestEthash(t *testing.T) {
 		}()
 	}
 	wg.Wait()
+}
+
+func TestEthashConcurrentSearch(t *testing.T) {
+	eth := NewForTesting()
+	eth.Turbo(true)
+	defer eth.Stop()
+
+	// launch n searches concurrently.
+	var (
+		block   = &testBlock{difficulty: big.NewInt(35000)}
+		nsearch = 10
+		wg      = new(sync.WaitGroup)
+		found   = make(chan uint64)
+		stop    = make(chan struct{})
+	)
+	rand.Read(block.hashNoNonce[:])
+	wg.Add(nsearch)
+	for i := 0; i < nsearch; i++ {
+		go func() {
+			nonce, _ := eth.Search(block, stop)
+			select {
+			case found <- nonce:
+			case <-stop:
+			}
+			wg.Done()
+		}()
+	}
+
+	// wait for one of them to find the nonce
+	nonce := <-found
+	// stop the others
+	close(stop)
+	wg.Wait()
+
+	if block.nonce = nonce; !eth.Verify(block) {
+		t.Error("Block could not be verified")
+	}
+}
+
+func TestEthashSearchAcrossEpoch(t *testing.T) {
+	eth := NewForTesting()
+	defer eth.Stop()
+
+	for i := epochLength - 40; i < epochLength+40; i++ {
+		block := &testBlock{number: i, difficulty: big.NewInt(90)}
+		rand.Read(block.hashNoNonce[:])
+		nonce, _ := eth.Search(block, nil)
+		block.nonce = nonce
+		if !eth.Verify(block) {
+			t.Fatalf("Block could not be verified")
+		}
+	}
 }
 
 func TestGetSeedHash(t *testing.T) {
