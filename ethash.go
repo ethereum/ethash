@@ -97,40 +97,42 @@ type Light struct {
 
 // Verify checks whether the block's nonce is valid.
 func (l *Light) Verify(block pow.Block) bool {
+	// TODO: do ethash_quick_verify before getCache in order
+	// to prevent DOS attacks.
 	var (
 		blockNum   = block.NumberU64()
-		hash       = block.HashNoNonce()
 		difficulty = block.Difficulty()
-		nonce      = block.Nonce()
 		cache      = l.getCache(blockNum)
 		dagSize    = C.ethash_get_datasize(C.uint64_t(blockNum))
 	)
-	// Make sure the block num is valid.
-	if blockNum >= epochLength*2048 {
-		glog.V(logger.Info).Infof("Block number exceeds limit, invalid (value is %d, limit is %d)", blockNum, epochLength*2048)
-		return false
-	}
 	if l.test {
 		dagSize = dagSizeForTesting
 	}
-
-	// First check: make sure header, mixDigest, nonce are correct
-	// without hitting the cache This is to prevent DOS attacks.
-	// TODO: do what the comment says.
-	chash := *(*C.ethash_h256_t)(unsafe.Pointer(&hash[0]))
-	cnonce := C.uint64_t(nonce)
-	target := new(big.Int).Div(minDifficulty, difficulty)
-
-	var ret C.ethash_return_value_t
-	C.ethash_light_compute_internal(&ret, cache.ptr, dagSize, chash, cnonce)
-
-	// Make sure cache is live until after the call.
+	if blockNum >= epochLength*2048 {
+		glog.V(logger.Debug).Infof("block number %d too high, limit is %d", epochLength*2048)
+		return false
+	}
+	// Recompute the hash using the cache.
+	hash := hashToH256(block.HashNoNonce())
+	ret := C.ethash_light_compute_internal(cache.ptr, dagSize, hash, C.uint64_t(block.Nonce()))
+	if !ret.success {
+		return false
+	}
+	// Make sure cache is live until after the C call.
 	// This is important because a GC might happen and execute
-	// the finalizer before the C call completes.
+	// the finalizer before the call completes.
 	_ = cache
+	// The actual check.
+	target := new(big.Int).Div(minDifficulty, difficulty)
+	return h256ToHash(ret.result).Big().Cmp(target) <= 0
+}
 
-	result := common.Bytes2Big(C.GoBytes(unsafe.Pointer(&ret.result), C.int(32)))
-	return result.Cmp(target) <= 0
+func h256ToHash(in C.struct_ethash_h256) common.Hash {
+	return *(*common.Hash)(unsafe.Pointer(&in.b))
+}
+
+func hashToH256(in common.Hash) C.struct_ethash_h256 {
+	return C.struct_ethash_h256{b: *(*[32]C.uint8_t)(unsafe.Pointer(&in[0]))}
 }
 
 func (l *Light) getCache(blockNum uint64) *cache {
@@ -188,7 +190,7 @@ func (d *dag) generate() {
 		// Generate the actual DAG.
 		d.ptr = C.ethash_full_new_internal(
 			C.CString(d.dir),
-			(*C.ethash_h256_t)(unsafe.Pointer(&seedHash[0])),
+			hashToH256(seedHash),
 			dagSize,
 			cache,
 			(C.ethash_callback_t)(unsafe.Pointer(C.ethashGoCallback_cgo)),
@@ -258,7 +260,6 @@ func (pow *Full) Search(block pow.Block, stop <-chan struct{}) (nonce uint64, mi
 	dag := pow.getDAG(block.NumberU64())
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	miningHash := block.HashNoNonce()
 	diff := block.Difficulty()
 
 	i := int64(0)
@@ -266,7 +267,7 @@ func (pow *Full) Search(block pow.Block, stop <-chan struct{}) (nonce uint64, mi
 	start := time.Now().UnixNano()
 
 	nonce = uint64(r.Int63())
-	cMiningHash := *(*C.ethash_h256_t)(unsafe.Pointer(&miningHash[0]))
+	hash := hashToH256(block.HashNoNonce())
 	target := new(big.Int).Div(minDifficulty, diff)
 	for {
 		select {
@@ -280,11 +281,11 @@ func (pow *Full) Search(block pow.Block, stop <-chan struct{}) (nonce uint64, mi
 			hashes := ((float64(1e9) / float64(elapsed)) * float64(i-starti)) / 1000
 			pow.hashRate = int64(hashes)
 
-			ret := C.ethash_full_compute(dag.ptr, cMiningHash, C.uint64_t(nonce))
-			result := common.Bytes2Big(C.GoBytes(unsafe.Pointer(&ret.result), C.int(32)))
+			ret := C.ethash_full_compute(dag.ptr, hash, C.uint64_t(nonce))
+			result := h256ToHash(ret.result).Big()
 
 			// TODO: disagrees with the spec https://github.com/ethereum/wiki/wiki/Ethash#mining
-			if result.Cmp(target) <= 0 {
+			if ret.success && result.Cmp(target) <= 0 {
 				mixDigest = C.GoBytes(unsafe.Pointer(&ret.mix_hash), C.int(32))
 				return nonce, mixDigest
 			}
@@ -343,13 +344,13 @@ func GetSeedHash(blockNum uint64) ([]byte, error) {
 	if blockNum >= epochLength*2048 {
 		return nil, fmt.Errorf("block number too high, limit is %d", epochLength*2048)
 	}
-	return makeSeedHash(blockNum / epochLength), nil
+	sh := makeSeedHash(blockNum / epochLength)
+	return sh[:], nil
 }
 
-func makeSeedHash(epoch uint64) []byte {
-	sh := make([]byte, 32)
+func makeSeedHash(epoch uint64) (sh common.Hash) {
 	for ; epoch > 0; epoch-- {
-		sh = crypto.Sha3(sh)
+		sh = crypto.Sha3Hash(sh[:])
 	}
 	return sh
 }

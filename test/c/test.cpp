@@ -236,7 +236,7 @@ BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_match) {
 	ethash_light_t light = ethash_light_new_internal(cache_size, &seed);
 	ethash_full_t full = ethash_full_new_internal(
 		"./test_ethash_directory/",
-		&seed,
+		seed,
 		full_size,
 		light,
 		NULL
@@ -322,7 +322,7 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
 	ethash_light_t light = ethash_light_new_internal(cache_size, &seed);
 	ethash_full_t full = ethash_full_new_internal(
 		"./test_ethash_directory/",
-		&seed,
+		seed,
 		full_size,
 		light,
 		NULL
@@ -366,7 +366,8 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
 		uint64_t nonce = 0x7c7c597c;
 		full_out = ethash_full_compute(full, hash, nonce);
 		BOOST_REQUIRE(full_out.success);
-		BOOST_REQUIRE(ethash_light_compute_internal(&light_out, light, full_size, hash, nonce));
+		light_out = ethash_light_compute_internal(light, full_size, hash, nonce);
+		BOOST_REQUIRE(light_out.success);
 		const std::string
 				light_result_string = blockhashToHexString(&light_out.result),
 				full_result_string = blockhashToHexString(&full_out.result);
@@ -395,7 +396,8 @@ BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
 		BOOST_REQUIRE_MESSAGE(light_result_string != full_result_string,
 				"\nlight result and full result should differ: " << light_result_string.c_str() << "\n");
 
-		BOOST_REQUIRE(ethash_light_compute_internal(&light_out, light, full_size, hash, 5));
+		light_out = ethash_light_compute_internal(light, full_size, hash, 5);
+		BOOST_REQUIRE(light_out.success);
 		light_result_string = blockhashToHexString(&light_out.result);
 		BOOST_REQUIRE_MESSAGE(light_result_string == full_result_string,
 				"\nlight result and full result should be the same\n"
@@ -445,7 +447,7 @@ BOOST_AUTO_TEST_CASE(ethash_full_new_when_dag_exists_with_wrong_size) {
 	BOOST_ASSERT(light);
 	ethash_full_t full = ethash_full_new_internal(
 		"./test_ethash_directory/",
-		&seed,
+		seed,
 		full_size,
 		light,
 		NULL
@@ -455,7 +457,8 @@ BOOST_AUTO_TEST_CASE(ethash_full_new_when_dag_exists_with_wrong_size) {
 		uint64_t nonce = 0x7c7c597c;
 		full_out = ethash_full_compute(full, hash, nonce);
 		BOOST_REQUIRE(full_out.success);
-		BOOST_REQUIRE(ethash_light_compute_internal(&light_out, light, full_size, hash, nonce));
+		light_out = ethash_light_compute_internal(light, full_size, hash, nonce);
+		BOOST_REQUIRE(light_out.success);
 		const std::string
 				light_result_string = blockhashToHexString(&light_out.result),
 				full_result_string = blockhashToHexString(&full_out.result);
@@ -518,7 +521,7 @@ BOOST_AUTO_TEST_CASE(full_client_callback) {
 	ethash_light_t light = ethash_light_new_internal(cache_size, &seed);
 	ethash_full_t full = ethash_full_new_internal(
 		"./test_ethash_directory/",
-		&seed,
+		seed,
 		full_size,
 		light,
 		test_full_callback
@@ -546,7 +549,7 @@ BOOST_AUTO_TEST_CASE(failing_full_client_callback) {
 	ethash_light_t light = ethash_light_new_internal(cache_size, &seed);
 	ethash_full_t full = ethash_full_new_internal(
 		"./test_ethash_directory/",
-		&seed,
+		seed,
 		full_size,
 		light,
 		test_full_callback_that_fails
@@ -571,7 +574,7 @@ BOOST_AUTO_TEST_CASE(test_incomplete_dag_file) {
 	// create a full but stop at 30%, so no magic number is written
 	ethash_full_t full = ethash_full_new_internal(
 		"./test_ethash_directory/",
-		&seed,
+		seed,
 		full_size,
 		light,
 		test_full_callback_create_incomplete_dag
