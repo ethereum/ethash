@@ -60,6 +60,9 @@ int fromHex(char _i)
 		return _i - 'a' + 10;
 	if (_i >= 'A' && _i <= 'F')
 		return _i - 'A' + 10;
+
+	BOOST_REQUIRE_MESSAGE(false, "should never get here");
+	return -1;
 }
 
 bytes hexStringToBytes(std::string const& _s)
@@ -299,7 +302,9 @@ BOOST_AUTO_TEST_CASE(test_ethash_get_default_dirname) {
 	BOOST_REQUIRE(ethash_get_default_dirname(result, 256));
 	std::string res = std::string(homedir) + std::string("/.ethash/");
 #endif
-	BOOST_CHECK(strcmp(res.c_str(), result) == 0);
+	BOOST_CHECK_MESSAGE(strcmp(res.c_str(), result) == 0,
+		"Expected \"" + res + "\" but got \"" + std::string(result) +  "\""
+   );
 }
 
 BOOST_AUTO_TEST_CASE(light_and_full_client_checks) {
