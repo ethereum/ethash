@@ -313,8 +313,11 @@ type Ethash struct {
 	*Full
 }
 
+// New creates an instance of the proof of work.
+// A single instance of Light is shared across all instances
+// created with New.
 func New() *Ethash {
-	return &Ethash{Light: sharedLight}
+	return &Ethash{sharedLight, &Full{turbo: true}}
 }
 
 // NewForTesting creates a proof of work for use in unit tests.
