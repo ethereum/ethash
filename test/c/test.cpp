@@ -12,6 +12,11 @@
 #include <libethash/sha3.h>
 #endif // WITH_CRYPTOPP
 
+#ifdef _WIN32
+#include <windows.h>
+#include <Shlobj.h>
+#endif
+
 #define BOOST_TEST_MODULE Daggerhashimoto
 #define BOOST_TEST_MAIN
 
@@ -69,7 +74,7 @@ bytes hexStringToBytes(std::string const& _s)
 			ret.push_back(fromHex(_s[s++]));
 		}
 		catch (...)
-		{ 
+		{
 			ret.push_back(0);
 		}
 	for (unsigned i = s; i < _s.size(); i += 2)
@@ -85,10 +90,10 @@ bytes hexStringToBytes(std::string const& _s)
 
 ethash_h256_t stringToBlockhash(std::string const& _s)
 {
-    ethash_h256_t ret;
-    bytes b = hexStringToBytes(_s);
-    memcpy(&ret, b.data(), b.size());
-    return ret;
+	ethash_h256_t ret;
+	bytes b = hexStringToBytes(_s);
+	memcpy(&ret, b.data(), b.size());
+	return ret;
 }
 
 
@@ -285,12 +290,10 @@ BOOST_AUTO_TEST_CASE(test_ethash_get_default_dirname) {
 	char result[256];
 	// this is really not an easy thing to test for in a unit test, so yeah it does look ugly
 #ifdef _WIN32
-    #include <windows.h
-    #include <Shlobj.h>
 	char homedir[256];
 	BOOST_REQUIRE(SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL, 0, (WCHAR*)homedir)));
 	BOOST_REQUIRE(ethash_get_default_dirname(result, 256));
-	std::string res = std::string(homedir) + std::("\\Appdata\\Ethash\\");
+	std::string res = std::string(homedir) + std::string("\\Appdata\\Ethash\\");
 #else
 	char* homedir = getenv("HOME");
 	BOOST_REQUIRE(ethash_get_default_dirname(result, 256));
@@ -589,15 +592,14 @@ BOOST_AUTO_TEST_CASE(test_incomplete_dag_file) {
 
 BOOST_AUTO_TEST_CASE(test_block_verification) {
 	ethash_light_t light = ethash_light_new(22);
-    ethash_h256_t seedhash = stringToBlockhash("372eca2454ead349c3df0ab5d00b0b706b23e49d469387db91811cee0358fc6d");
-    
+	ethash_h256_t seedhash = stringToBlockhash("372eca2454ead349c3df0ab5d00b0b706b23e49d469387db91811cee0358fc6d");
 	BOOST_ASSERT(light);
-    ethash_return_value_t ret = ethash_light_compute(
-        light, 
-        seedhash,
-        0x495732e0ed7a801c
-    );
-    BOOST_REQUIRE_EQUAL(blockhashToHexString(&ret.result), "00000b184f1fdd88bfd94c86c39e65db0c36144d5e43f745f722196e730cb614");
+	ethash_return_value_t ret = ethash_light_compute(
+		light,
+		seedhash,
+		0x495732e0ed7a801c
+	);
+	BOOST_REQUIRE_EQUAL(blockhashToHexString(&ret.result), "00000b184f1fdd88bfd94c86c39e65db0c36144d5e43f745f722196e730cb614");
 	ethash_light_delete(light);
 }
 
