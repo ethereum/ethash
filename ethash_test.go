@@ -32,6 +32,39 @@ func (b *testBlock) Nonce() uint64            { return b.nonce }
 func (b *testBlock) MixDigest() common.Hash   { return b.mixDigest }
 func (b *testBlock) NumberU64() uint64        { return b.number }
 
+var validBlocks = []*testBlock{
+	// from proof of concept nine testnet, epoch 0
+	{
+		number:      22,
+		hashNoNonce: common.HexToHash("372eca2454ead349c3df0ab5d00b0b706b23e49d469387db91811cee0358fc6d"),
+		difficulty:  big.NewInt(132416),
+		nonce:       0x495732e0ed7a801c,
+	},
+	// from proof of concept nine testnet, epoch 1
+	{
+		number:      30001,
+		hashNoNonce: common.HexToHash("7e44356ee3441623bc72a683fd3708fdf75e971bbe294f33e539eedad4b92b34"),
+		difficulty:  big.NewInt(1532671),
+		nonce:       0x318df1c8adef7e5e,
+	},
+	// from proof of concept nine testnet, epoch 2
+	{
+		number:      60000,
+		hashNoNonce: common.HexToHash("5fc898f16035bf5ac9c6d9077ae1e3d5fc1ecc3c9fd5bee8bb00e810fdacbaa0"),
+		difficulty:  big.NewInt(2467358),
+		nonce:       0x50377003e5d830ca,
+	},
+}
+
+func TestEthashVerifyValid(t *testing.T) {
+	eth := New()
+	for i, block := range validBlocks {
+		if !eth.Verify(block) {
+			t.Errorf("block %d (%x) did not validate.", i, block.hashNoNonce[:6])
+		}
+	}
+}
+
 func TestEthashConcurrentVerify(t *testing.T) {
 	eth, err := NewForTesting()
 	if err != nil {
