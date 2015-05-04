@@ -22,13 +22,18 @@
 #include <boost/test/unit_test.hpp>
 
 using namespace std;
+using byte = uint8_t;
+using bytes = std::vector<byte>;
 namespace fs = boost::filesystem;
 
 // Just an alloca "wrapper" to silence uint64_t to size_t conversion warnings in windows
 // consider replacing alloca calls with something better though!
 #define our_alloca(param__) alloca((size_t)(param__))
 
-std::string bytesToHexString(const uint8_t *str, const uint64_t s) {
+
+// some functions taken from eth::dev for convenience.
+std::string bytesToHexString(const uint8_t *str, const uint64_t s)
+{
 	std::ostringstream ret;
 
 	for (size_t i = 0; i < s; ++i)
@@ -37,9 +42,56 @@ std::string bytesToHexString(const uint8_t *str, const uint64_t s) {
 	return ret.str();
 }
 
-std::string blockhashToHexString(ethash_h256_t *hash) {
-	return bytesToHexString((uint8_t*)hash, 32);
+std::string blockhashToHexString(ethash_h256_t* _hash)
+{
+	return bytesToHexString((uint8_t*)_hash, 32);
 }
+
+int fromHex(char _i)
+{
+	if (_i >= '0' && _i <= '9')
+		return _i - '0';
+	if (_i >= 'a' && _i <= 'f')
+		return _i - 'a' + 10;
+	if (_i >= 'A' && _i <= 'F')
+		return _i - 'A' + 10;
+}
+
+bytes hexStringToBytes(std::string const& _s)
+{
+	unsigned s = (_s[0] == '0' && _s[1] == 'x') ? 2 : 0;
+	std::vector<uint8_t> ret;
+	ret.reserve((_s.size() - s + 1) / 2);
+
+	if (_s.size() % 2)
+		try
+		{
+			ret.push_back(fromHex(_s[s++]));
+		}
+		catch (...)
+		{ 
+			ret.push_back(0);
+		}
+	for (unsigned i = s; i < _s.size(); i += 2)
+		try
+		{
+			ret.push_back((byte)(fromHex(_s[i]) * 16 + fromHex(_s[i + 1])));
+		}
+		catch (...){
+			ret.push_back(0);
+		}
+	return ret;
+}
+
+ethash_h256_t stringToBlockhash(std::string const& _s)
+{
+    ethash_h256_t ret;
+    bytes b = hexStringToBytes(_s);
+    memcpy(&ret, b.data(), b.size());
+    return ret;
+}
+
+
 
 BOOST_AUTO_TEST_CASE(fnv_hash_check) {
 	uint32_t x = 1235U;
@@ -533,6 +585,20 @@ BOOST_AUTO_TEST_CASE(test_incomplete_dag_file) {
 	);
 	ethash_light_delete(light);
 	fs::remove_all("./test_ethash_directory/");
+}
+
+BOOST_AUTO_TEST_CASE(test_block_verification) {
+	ethash_light_t light = ethash_light_new(22);
+    ethash_h256_t seedhash = stringToBlockhash("372eca2454ead349c3df0ab5d00b0b706b23e49d469387db91811cee0358fc6d");
+    
+	BOOST_ASSERT(light);
+    ethash_return_value_t ret = ethash_light_compute(
+        light, 
+        seedhash,
+        0x495732e0ed7a801c
+    );
+    BOOST_REQUIRE_EQUAL(blockhashToHexString(&ret.result), "00000b184f1fdd88bfd94c86c39e65db0c36144d5e43f745f722196e730cb614");
+	ethash_light_delete(light);
 }
 
 // Test of Full DAG creation with the minimal ethash.h API.
