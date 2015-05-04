@@ -71,7 +71,6 @@ func TestEthashConcurrentVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(eth.Full.Dir)
-	defer eth.Stop()
 
 	block := &testBlock{difficulty: big.NewInt(10)}
 	nonce, _ := eth.Search(block, nil)
@@ -98,7 +97,6 @@ func TestEthashConcurrentSearch(t *testing.T) {
 	}
 	eth.Turbo(true)
 	defer os.RemoveAll(eth.Full.Dir)
-	defer eth.Stop()
 
 	// launch n searches concurrently.
 	var (
@@ -138,7 +136,6 @@ func TestEthashSearchAcrossEpoch(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(eth.Full.Dir)
-	defer eth.Stop()
 
 	for i := epochLength - 40; i < epochLength+40; i++ {
 		block := &testBlock{number: i, difficulty: big.NewInt(90)}

@@ -308,6 +308,8 @@ func (pow *Full) Turbo(on bool) {
 	pow.turbo = on
 }
 
+// Ethash combines block verification with Light and
+// nonce searching with Full into a single proof of work.
 type Ethash struct {
 	*Light
 	*Full
@@ -332,15 +334,6 @@ func NewForTesting() (*Ethash, error) {
 		return nil, err
 	}
 	return &Ethash{&Light{test: true}, &Full{Dir: dir, test: true}}, nil
-}
-
-func (pow *Ethash) Stop() {
-	pow.Light.mu.Lock()
-	pow.Full.mu.Lock()
-	defer pow.Light.mu.Unlock()
-	defer pow.Full.mu.Unlock()
-	pow.Full.current = nil
-	pow.Light.current = nil
 }
 
 func GetSeedHash(blockNum uint64) ([]byte, error) {
