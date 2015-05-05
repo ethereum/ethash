@@ -30,6 +30,7 @@
 #include <vector>
 #include <libethash/util.h>
 #include <libethash/ethash.h>
+#include <libethash/internal.h>
 #include "ethash_cl_miner.h"
 #include "ethash_cl_miner_kernel.h"
 
@@ -115,10 +116,10 @@ void ethash_cl_miner::finish()
 		m_queue.finish();
 }
 
-bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*)> _fillDAG, unsigned workgroup_size, unsigned _platformId, unsigned _deviceId)
+bool ethash_cl_miner::init(uint64_t block_number, std::function<void(void*)> _fillDAG, unsigned workgroup_size, unsigned _platformId, unsigned _deviceId)
 {
 	// store params
-	m_params = params;
+	m_fullSize = ethash_get_datasize(block_number);
 
 	// get all platforms
 	std::vector<cl::Platform> platforms;
@@ -130,7 +131,6 @@ bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*
 	}
 
 	// use selected platform
-
 	_platformId = std::min<unsigned>(_platformId, platforms.size() - 1);
 
 	cout << "Using platform: " << platforms[_platformId].getInfo<CL_PLATFORM_NAME>().c_str() << endl;
@@ -155,9 +155,7 @@ bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*
 		return false;
 	}
 	if (strncmp("OpenCL 1.1", device_version.c_str(), 10) == 0)
-	{
 		m_opencl_1_1 = true;
-	}
 
 	// create context
 	m_context = cl::Context(std::vector<cl::Device>(&device, &device + 1));
@@ -169,7 +167,7 @@ bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*
 	// patch source code
 	std::string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
 	add_definition(code, "GROUP_SIZE", m_workgroup_size);
-	add_definition(code, "DAG_SIZE", (unsigned)(params.full_size / ETHASH_MIX_BYTES));
+	add_definition(code, "DAG_SIZE", (unsigned)(m_fullSize / ETHASH_MIX_BYTES));
 	add_definition(code, "ACCESSES", ETHASH_ACCESSES);
 	add_definition(code, "MAX_OUTPUTS", c_max_search_results);
 	//debugf("%s", code.c_str());
@@ -192,7 +190,7 @@ bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*
 	m_search_kernel = cl::Kernel(program, "ethash_search");
 
 	// create buffer for dag
-	m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, params.full_size);
+	m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, m_fullSize);
 
 	// create buffer for header
 	m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
@@ -200,7 +198,7 @@ bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*
 	// compute dag on CPU
 	{
 		// if this throws then it's because we probably need to subdivide the dag uploads for compatibility
-		void* dag_ptr = m_queue.enqueueMapBuffer(m_dag, true, m_opencl_1_1 ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, params.full_size);
+		void* dag_ptr = m_queue.enqueueMapBuffer(m_dag, true, m_opencl_1_1 ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, m_fullSize);
 		// memcpying 1GB: horrible... really. horrible. but necessary since we can't mmap *and* gpumap.
 		_fillDAG(dag_ptr);
 		m_queue.enqueueUnmapMemObject(m_dag, dag_ptr);

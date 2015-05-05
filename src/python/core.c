@@ -250,8 +250,7 @@ get_seedhash(PyObject *self, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, error_message);
         return 0;
     }
-    ethash_h256_t seedhash;
-    ethash_get_seedhash(&seedhash, block_number);
+    ethash_h256_t seedhash = ethash_get_seedhash(block_number);
     return Py_BuildValue(PY_STRING_FORMAT, (char *) &seedhash, 32);
 }
 
