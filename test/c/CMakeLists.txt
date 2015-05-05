@@ -27,7 +27,7 @@ IF( NOT Boost_FOUND )
     find_package(Boost 1.48.0 COMPONENTS unit_test_framework system filesystem)
 ENDIF()
 
-IF( Boost_FOUND )
+IF (Boost_FOUND)
     include_directories( ${Boost_INCLUDE_DIR} )
     include_directories(../../src)
 
@@ -52,7 +52,7 @@ IF( Boost_FOUND )
     target_link_libraries(Test ${ETHHASH_LIBS})
     target_link_libraries(Test ${Boost_FILESYSTEM_LIBRARIES})
     target_link_libraries(Test ${Boost_SYSTEM_LIBRARIES})
-    target_link_libraries (Test ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
+    target_link_libraries (Test ${Boost_UNIT_TEST_FRAMEWORK_LIBRARIES})
 
     if (CRYPTOPP_FOUND)
         TARGET_LINK_LIBRARIES(Test ${CRYPTOPP_LIBRARIES})
