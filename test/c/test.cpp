@@ -252,6 +252,8 @@ BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_match) {
 	BOOST_ASSERT(full);
 	// let's make sure that the directory was created
 	BOOST_REQUIRE(fs::is_directory(fs::path("./test_ethash_directory/")));
+	// delete the full here so that memory is properly unmapped and FILE handler freed
+	ethash_full_delete(full);
 	// and check that we have a match when checking again
 	BOOST_REQUIRE_EQUAL(
 		ETHASH_IO_MEMO_MATCH,
@@ -262,7 +264,6 @@ BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_match) {
 	// cleanup
 	fclose(f);
 	ethash_light_delete(light);
-	ethash_full_delete(full);
 	fs::remove_all("./test_ethash_directory/");
 }
 
