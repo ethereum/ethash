@@ -205,10 +205,10 @@ BOOST_AUTO_TEST_CASE(test_ethash_io_mutable_name) {
 	// should have at least 8 bytes provided since this is what we test :)
 	ethash_h256_t seed1 = ethash_h256_static_init(0, 10, 65, 255, 34, 55, 22, 8);
 	ethash_io_mutable_name(1, &seed1, mutable_name);
-	BOOST_REQUIRE_EQUAL(0, strcmp(mutable_name, "1_000a41ff22371608"));
+	BOOST_REQUIRE_EQUAL(0, strcmp(mutable_name, "full-R1-000a41ff22371608"));
 	ethash_h256_t seed2 = ethash_h256_static_init(0, 0, 0, 0, 0, 0, 0, 0);
 	ethash_io_mutable_name(44, &seed2, mutable_name);
-	BOOST_REQUIRE_EQUAL(0, strcmp(mutable_name, "44_0000000000000000"));
+	BOOST_REQUIRE_EQUAL(0, strcmp(mutable_name, "full-R44-0000000000000000"));
 }
 
 BOOST_AUTO_TEST_CASE(test_ethash_dir_creation) {
