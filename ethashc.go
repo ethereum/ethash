@@ -12,7 +12,7 @@ package ethash
 */
 
 /*
-#cgo CFLAGS: -std=gnu99 -Wall
+#cgo CFLAGS: -std=gnu99 -Wall -DETHASH_NO_CRITICAL_OUTPUT
 #cgo windows CFLAGS: -mno-stack-arg-probe
 #cgo LDFLAGS: -lm
 
