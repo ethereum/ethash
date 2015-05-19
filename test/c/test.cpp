@@ -292,10 +292,11 @@ BOOST_AUTO_TEST_CASE(test_ethash_io_memo_file_size_mismatch) {
 
 BOOST_AUTO_TEST_CASE(test_ethash_get_default_dirname) {
 	char result[256];
-	// this is really not an easy thing to test for in a unit test, so yeah it does look ugly
+	// this is really not an easy thing to test for in a unit test
+	// TODO: Improve this test ...
 #ifdef _WIN32
 	char homedir[256];
-	BOOST_REQUIRE(SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL, 0, (WCHAR*)homedir)));
+	BOOST_REQUIRE(SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_PROFILE, NULL, 0, (CHAR*)homedir)));
 	BOOST_REQUIRE(ethash_get_default_dirname(result, 256));
 	std::string res = std::string(homedir) + std::string("\\Appdata\\Ethash\\");
 #else
