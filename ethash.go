@@ -107,6 +107,16 @@ func (l *Light) Verify(block pow.Block) bool {
 	}
 
 	difficulty := block.Difficulty()
+	/* Cannot happen if block header diff is validated prior to PoW, but can
+		 happen if PoW is checked first due to parallel PoW checking.
+		 We could check the minimum valid difficulty but for SoC we avoid (duplicating)
+	   Ethereum protocol consensus rules here which are not in scope of Ethash
+	*/
+	if difficulty.Cmp(common.Big0) == 0 {
+		glog.V(logger.Debug).Infof("invalid block difficulty")
+		return false
+	}
+
 	cache := l.getCache(blockNum)
 	dagSize := C.ethash_get_datasize(C.uint64_t(blockNum))
 
