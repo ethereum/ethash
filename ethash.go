@@ -100,18 +100,18 @@ type Light struct {
 func (l *Light) Verify(block pow.Block) bool {
 	// TODO: do ethash_quick_verify before getCache in order
 	// to prevent DOS attacks.
-	var (
-		blockNum   = block.NumberU64()
-		difficulty = block.Difficulty()
-		cache      = l.getCache(blockNum)
-		dagSize    = C.ethash_get_datasize(C.uint64_t(blockNum))
-	)
-	if l.test {
-		dagSize = dagSizeForTesting
-	}
+	blockNum := block.NumberU64()
 	if blockNum >= epochLength*2048 {
 		glog.V(logger.Debug).Infof("block number %d too high, limit is %d", epochLength*2048)
 		return false
+	}
+
+	difficulty := block.Difficulty()
+	cache := l.getCache(blockNum)
+	dagSize := C.ethash_get_datasize(C.uint64_t(blockNum))
+
+	if l.test {
+		dagSize = dagSizeForTesting
 	}
 	// Recompute the hash using the cache.
 	hash := hashToH256(block.HashNoNonce())
