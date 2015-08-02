@@ -79,9 +79,8 @@ type OpenCLDevice struct {
 	openCL11 bool // sometimes we need to check OpenCL version
 	openCL12 bool
 
-	dagChunks []*cl.MemObject // DAG in device mem
-
-	headerBuff    *cl.MemObject // Hash of block-to-mine in device mem
+	dagBuf        *cl.MemObject
+	headerBuf     *cl.MemObject // Hash of block-to-mine in device mem
 	searchBuffers []*cl.MemObject
 
 	searchKernel *cl.Kernel
@@ -103,8 +102,7 @@ type OpenCLMiner struct {
 	deviceIds []int
 	devices   []*OpenCLDevice
 
-	dagSize      uint64
-	dagChunksNum uint64
+	dagSize uint64
 
 	hashRate int32 // Go atomics & uint64 have some issues, int32 is supported on all platforms
 }
@@ -124,7 +122,7 @@ const (
 	// See [4]
 	workGroupSize    = 32 // must be multiple of 8
 	maxSearchResults = 63
-	searchBuffSize   = 2
+	searchBufSize    = 2
 	globalWorkSize   = 1024 * 256
 
 	//gpuMemMargin = 1024 * 1024 * 512
@@ -133,14 +131,13 @@ const (
 	//checkGpuMemMargin = true
 )
 
-func NewCL(dagChunksNum uint64, deviceIds []int) *OpenCLMiner {
+func NewCL(deviceIds []int) *OpenCLMiner {
 	ids := make([]int, len(deviceIds))
 	copy(ids, deviceIds)
 	return &OpenCLMiner{
-		ethash:       New(),
-		dagChunksNum: dagChunksNum,
-		dagSize:      0,
-		deviceIds:    ids,
+		ethash:    New(),
+		dagSize:   0,
+		deviceIds: ids,
 	} // dagSize is used to see if we need to update DAG.
 }
 
@@ -208,15 +205,10 @@ func PrintDevices() {
 		}
 		fmt.Printf("Found %v devices. Benchmark first GPU:       geth gpubench 0\n", len(found))
 		fmt.Printf("Mine using all GPUs:                        geth --minegpu %v\n", idsFormat)
-		fmt.Println("You may also need to enable chunking:            --gpuchunks")
 	}
 }
 
 func InitCL(blockNum uint64, c *OpenCLMiner) error {
-	if !(c.dagChunksNum == 1 || c.dagChunksNum == 4) {
-		return fmt.Errorf("DAG chunks num must be 1 or 4")
-	}
-
 	platforms, err := cl.GetPlatforms()
 	if err != nil {
 		return fmt.Errorf("Plaform error: %v\nCheck your OpenCL installation and then run geth gpuinfo", err)
@@ -278,15 +270,12 @@ func initCLDevice(deviceId int, device *cl.Device, c *OpenCLMiner) error {
 	}
 
 	if c.dagSize > devGlobalMem {
-		fmt.Printf("WARNING: device memory may be insufficient: %v. DAG size: %v. You may have to run with --gpuchunks\n", devGlobalMem, c.dagSize)
-		// TODO: we continue since it seems sometimes clGetDeviceInfo reports wrong numbers
-		//return fmt.Errorf("Insufficient device memory")
+		fmt.Printf("WARNING: device memory may be insufficient: %v. DAG size: %v.\n", devGlobalMem, c.dagSize)
 	}
 
 	if c.dagSize > devMaxAlloc {
 		fmt.Printf("WARNING: DAG size (%v) larger than device max memory allocation size (%v).\n", c.dagSize, devMaxAlloc)
-		fmt.Printf("You may have to run with --gpuchunks\n")
-		//return fmt.Errorf("Insufficient device memory")
+		fmt.Printf("You probably have to export GPU_MAX_ALLOC_PERCENT=95\n")
 	}
 
 	fmt.Printf("Initialising device %v: %v\n", deviceId, device.Name())
@@ -333,13 +322,8 @@ func initCLDevice(deviceId int, device *cl.Device, c *OpenCLMiner) error {
 	}
 
 	var searchKernelName, hashKernelName string
-	if c.dagChunksNum == 4 {
-		searchKernelName = "ethash_search_chunks"
-		hashKernelName = "ethash_hash_chunks"
-	} else {
-		searchKernelName = "ethash_search"
-		hashKernelName = "ethash_hash"
-	}
+	searchKernelName = "ethash_search"
+	hashKernelName = "ethash_hash"
 
 	searchKernel, err := program.CreateKernel(searchKernelName)
 	hashKernel, err := program.CreateKernel(hashKernelName)
@@ -347,69 +331,30 @@ func initCLDevice(deviceId int, device *cl.Device, c *OpenCLMiner) error {
 		return fmt.Errorf("kernel err:", err)
 	}
 
-	// TODO: in case chunk allocation is not default when this DAG size appears, patch
-	// the Go bindings (context.go) to work with uint64 as size_t
+	// TODO: when this DAG size appears, patch the Go bindings
+	// (context.go) to work with uint64 as size_t
 	if c.dagSize > math.MaxInt32 {
-		fmt.Println("DAG too large for non-chunk allocation. Try running with --opencl-mem-chunking")
-		return fmt.Errorf("DAG too large for non-chunk alloc")
+		fmt.Println("DAG too large for allocation.")
+		return fmt.Errorf("DAG too large for alloc")
 	}
 
-	chunkSize := func(i uint64) uint64 {
-		if c.dagChunksNum == 4 {
-			if i == 3 {
-				return c.dagSize - 3*((c.dagSize>>9)<<7)
-			} else {
-				return (c.dagSize >> 9) << 7
-			}
-		} else {
-			return c.dagSize
-		}
-	}
-
-	// allocate device mem
-	dagChunks := make([]*cl.MemObject, c.dagChunksNum)
-	for i := uint64(0); i < c.dagChunksNum; i++ {
-		// TODO: patch up Go bindings to work with size_t, chunkSize will overflow if > maxint32
-		// TODO: fuck. shit's gonna overflow soon
-		dagChunk, err := context.CreateEmptyBuffer(cl.MemReadOnly, int(chunkSize(i)))
-		if err != nil {
-			return fmt.Errorf("allocating dag chunks failed: ", err)
-		}
-		dagChunks[i] = dagChunk
+	// TODO: patch up Go bindings to work with size_t, will overflow if > maxint32
+	// TODO: fuck. shit's gonna overflow soon
+	dagBuf := *(new(*cl.MemObject))
+	dagBuf, err = context.CreateEmptyBuffer(cl.MemReadOnly, int(c.dagSize))
+	if err != nil {
+		return fmt.Errorf("allocating dag buf failed: ", err)
 	}
 
 	// write DAG to device mem
-	var offset uint64
-	for i := uint64(0); i < c.dagChunksNum; i++ {
-		offset = chunkSize(0) * i
-		size := chunkSize(i)
-		dagPtr := uintptr(unsafe.Pointer(c.ethash.Full.current.ptr.data))
-		offsetPtr := unsafe.Pointer(dagPtr + uintptr(offset))
-		fmt.Println("OpenCL EnqueueWriteBuffer (DAG): host mem offset, chunkSize, dagSize: ", offset, size, c.dagSize)
-		// offset into device buffer is always 0, offset into DAG depends on chunk
-		if c.dagChunksNum == 1 {
-			_, err = queue.EnqueueWriteBuffer(dagChunks[i], true, 0, int(size), offsetPtr, nil)
-			if err != nil {
-				return fmt.Errorf("writing to dag chunk failed: ", err)
-			}
-		} else {
-			// TODO: replace with EnqueueWriteBuffer
-			mmo, _, err := queue.EnqueueMapBuffer(dagChunks[i], true, cl.MapFlagWrite, 0, int(size), nil)
-			if err != nil {
-				fmt.Println("Error in Search clEnqueueMapBuffer: ", err)
-				return fmt.Errorf("mapping buffer for DAG chunk write failed: ", err)
-			}
-			C.memcpy(mmo.Ptr(), offsetPtr, C.size_t(size))
-			_, err = queue.EnqueueUnmapMemObject(dagChunks[i], mmo, nil)
-			if err != nil {
-				fmt.Println("Error in Search clEnqueueUnmapMemObject: ", err)
-				return fmt.Errorf("unmapping buffer after DAG chunk write failed: ", err)
-			}
-		}
+	dagPtr := unsafe.Pointer(c.ethash.Full.current.ptr.data)
+	_, err = queue.EnqueueWriteBuffer(dagBuf, true, 0, int(c.dagSize), dagPtr, nil)
+	if err != nil {
+		return fmt.Errorf("writing to dag buf failed: ", err)
 	}
 
-	searchBuffers := make([]*cl.MemObject, searchBuffSize)
-	for i := 0; i < searchBuffSize; i++ {
+	searchBuffers := make([]*cl.MemObject, searchBufSize)
+	for i := 0; i < searchBufSize; i++ {
 		searchBuff, err := context.CreateEmptyBuffer(cl.MemWriteOnly, (1+maxSearchResults)*SIZEOF_UINT32)
 		if err != nil {
 			return fmt.Errorf("search buffer err:", err)
@@ -418,7 +363,7 @@ func initCLDevice(deviceId int, device *cl.Device, c *OpenCLMiner) error {
 	}
 
 	// hash of block-to-mine in device mem
-	headerBuff, err := context.CreateEmptyBuffer(cl.MemReadOnly, 32)
+	headerBuf, err := context.CreateEmptyBuffer(cl.MemReadOnly, 32)
 	if err != nil {
 		return fmt.Errorf("header buffer err:", err)
 	}
@@ -441,8 +386,8 @@ func initCLDevice(deviceId int, device *cl.Device, c *OpenCLMiner) error {
 		openCL11: cl11,
 		openCL12: cl12,
 
-		dagChunks:     dagChunks,
-		headerBuff:    headerBuff,
+		dagBuf:        dagBuf,
+		headerBuf:     headerBuf,
 		searchBuffers: searchBuffers,
 
 		searchKernel: searchKernel,
@@ -489,13 +434,13 @@ func (c *OpenCLMiner) Search(block pow.Block, stop <-chan struct{}, index int) (
 
 	d := c.devices[index]
 
-	_, err := d.queue.EnqueueWriteBuffer(d.headerBuff, false, 0, 32, unsafe.Pointer(&headerHash[0]), nil)
+	_, err := d.queue.EnqueueWriteBuffer(d.headerBuf, false, 0, 32, unsafe.Pointer(&headerHash[0]), nil)
 	if err != nil {
 		fmt.Println("Error in Search clEnqueueWriterBuffer : ", err)
 		return 0, []byte{0}
 	}
 
-	for i := 0; i < searchBuffSize; i++ {
+	for i := 0; i < searchBufSize; i++ {
 		_, err := d.queue.EnqueueWriteBuffer(d.searchBuffers[i], false, 0, 4, unsafe.Pointer(&zero), nil)
 		if err != nil {
 			fmt.Println("Error in Search clEnqueueWriterBuffer : ", err)
@@ -510,27 +455,24 @@ func (c *OpenCLMiner) Search(block pow.Block, stop <-chan struct{}, index int) (
 		return 0, []byte{0}
 	}
 
-	err = d.searchKernel.SetArg(1, d.headerBuff)
+	err = d.searchKernel.SetArg(1, d.headerBuf)
 	if err != nil {
 		fmt.Println("Error in Search clSetKernelArg : ", err)
 		return 0, []byte{0}
 	}
 
-	argPos := 2
-	for i := uint64(0); i < c.dagChunksNum; i++ {
-		err = d.searchKernel.SetArg(argPos, d.dagChunks[i])
-		if err != nil {
-			fmt.Println("Error in Search clSetKernelArg : ", err)
-			return 0, []byte{0}
-		}
-		argPos++
-	}
-	err = d.searchKernel.SetArg(argPos+1, target64)
+	err = d.searchKernel.SetArg(2, d.dagBuf)
 	if err != nil {
 		fmt.Println("Error in Search clSetKernelArg : ", err)
 		return 0, []byte{0}
 	}
-	err = d.searchKernel.SetArg(argPos+2, uint32(math.MaxUint32))
+
+	err = d.searchKernel.SetArg(4, target64)
+	if err != nil {
+		fmt.Println("Error in Search clSetKernelArg : ", err)
+		return 0, []byte{0}
+	}
+	err = d.searchKernel.SetArg(5, uint32(math.MaxUint32))
 	if err != nil {
 		fmt.Println("Error in Search clSetKernelArg : ", err)
 		return 0, []byte{0}
@@ -546,7 +488,7 @@ func (c *OpenCLMiner) Search(block pow.Block, stop <-chan struct{}, index int) (
 		}
 	}
 
-	pending := make([]pendingSearch, 0, searchBuffSize)
+	pending := make([]pendingSearch, 0, searchBufSize)
 	var p *pendingSearch
 	searchBufIndex := uint32(0)
 	var checkNonce uint64
@@ -589,20 +531,13 @@ func (c *OpenCLMiner) Search(block pow.Block, stop <-chan struct{}, index int) (
 			fmt.Println("Error in Search clSetKernelArg : ", err)
 			return 0, []byte{0}
 		}
-		// TODO: only works with 1 or 4 currently
-		var argPos int
-		if c.dagChunksNum == 1 {
-			argPos = 3
-		} else if c.dagChunksNum == 4 {
-			argPos = 6
-		}
-		err = d.searchKernel.SetArg(argPos, nonce)
+		err = d.searchKernel.SetArg(3, nonce)
 		if err != nil {
 			fmt.Println("Error in Search clSetKernelArg : ", err)
 			return 0, []byte{0}
 		}
 
-		// executes kernel; either the "ethash_search" or "ethash_search_chunks" function
+		// executes kernel
 		_, err := d.queue.EnqueueNDRangeKernel(
 			d.searchKernel,
 			[]int{0},
@@ -615,9 +550,9 @@ func (c *OpenCLMiner) Search(block pow.Block, stop <-chan struct{}, index int) (
 		}
 
 		pending = append(pending, pendingSearch{bufIndex: searchBufIndex, startNonce: nonce})
-		searchBufIndex = (searchBufIndex + 1) % searchBuffSize
+		searchBufIndex = (searchBufIndex + 1) % searchBufSize
 
-		if len(pending) == searchBuffSize {
+		if len(pending) == searchBufSize {
 			p = &(pending[searchBufIndex])
 			cres, _, err := d.queue.EnqueueMapBuffer(d.searchBuffers[p.bufIndex], true,
 				cl.MapFlagRead, 0, (1+maxSearchResults)*SIZEOF_UINT32,
