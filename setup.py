@@ -28,13 +28,13 @@ depends = [
     'src/libethash/sha3.h',
     'src/libethash/util.h',
 ]
-pyethash = Extension('pyethash',
+cethash = Extension('cethash',
                      sources=sources,
                      depends=depends,
                      extra_compile_args=["-Isrc/", "-std=gnu99", "-Wall"])
 
 setup(
-    name='pyethash',
+    name='cethash',
     author="Matthew Wampler-Doty",
     author_email="matthew.wampler.doty@gmail.com",
     license='GPL',
@@ -43,5 +43,5 @@ setup(
     download_url='https://github.com/ethereum/ethash/tarball/v23',
     description=('Python wrappers for ethash, the ethereum proof of work'
                  'hashing function'),
-    ext_modules=[pyethash],
+    ext_modules=[cethash],
 )
