@@ -46,6 +46,8 @@
 
 */
 
+// +build opencl
+
 package ethash
 
 //#cgo LDFLAGS: -w
