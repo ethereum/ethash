@@ -85,12 +85,37 @@ var invalidZeroDiffBlock = testBlock{
 	mixDigest:   crypto.Sha3Hash([]byte("bar")),
 }
 
+func TestEthashVerifyValidWithTarget(t *testing.T) {
+	eth := New()
+	for i, block := range validBlocks {
+		isValid, target := eth.VerifyWithTarget(block)
+		if !isValid {
+			t.Errorf("block %d (%x) did not validate.", i, block.hashNoNonce[:6])
+		}
+		blockTarget := new(big.Int).Div(maxUint256, block.Difficulty())
+		if target.Cmp(blockTarget) >= 0 {
+			t.Errorf("target should be greater than or equal to")
+		}
+	}
+}
+
 func TestEthashVerifyValid(t *testing.T) {
 	eth := New()
 	for i, block := range validBlocks {
 		if !eth.Verify(block) {
 			t.Errorf("block %d (%x) did not validate.", i, block.hashNoNonce[:6])
 		}
+	}
+}
+
+func TestEthashVerifyWithTargetInvalid(t *testing.T) {
+	eth := New()
+	isValid, diff := eth.VerifyWithTarget(&invalidZeroDiffBlock)
+	if isValid {
+		t.Errorf("should not validate - we just ensure it does not panic on this block")
+	}
+	if diff != nil {
+		t.Errorf("target should be nil for invalid block")
 	}
 }
 
