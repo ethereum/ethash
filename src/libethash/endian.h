@@ -24,7 +24,10 @@
 # include <endian.h>
 #endif
 
-#if defined(_WIN32)
+#if defined(__GNUC__)
+#define ethash_swap_u32 __builtin_bswap32
+#define ethash_swap_u64 __builtin_bswap64
+#elif defined(_WIN32)
 #include <stdlib.h>
 #define ethash_swap_u32(input_) _byteswap_ulong(input_)
 #define ethash_swap_u64(input_) _byteswap_uint64(input_)
