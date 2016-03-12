@@ -119,12 +119,17 @@ type Light struct {
 
 // Verify checks whether the block's nonce is valid.
 func (l *Light) Verify(block pow.Block) bool {
+	result, _ := l.VerifyWithTarget(block)
+	return result
+}
+
+func (l *Light) VerifyWithTarget(block pow.Block) (bool, *big.Int) {
 	// TODO: do ethash_quick_verify before getCache in order
 	// to prevent DOS attacks.
 	blockNum := block.NumberU64()
 	if blockNum >= epochLength*2048 {
 		glog.V(logger.Debug).Infof("block number %d too high, limit is %d", epochLength*2048)
-		return false
+		return false, nil
 	}
 
 	difficulty := block.Difficulty()
@@ -135,7 +140,7 @@ func (l *Light) Verify(block pow.Block) bool {
 	*/
 	if difficulty.Cmp(common.Big0) == 0 {
 		glog.V(logger.Debug).Infof("invalid block difficulty")
-		return false
+		return false, nil
 	}
 
 	cache := l.getCache(blockNum)
@@ -148,12 +153,12 @@ func (l *Light) Verify(block pow.Block) bool {
 	hash := hashToH256(block.HashNoNonce())
 	ret := C.ethash_light_compute_internal(cache.ptr, dagSize, hash, C.uint64_t(block.Nonce()))
 	if !ret.success {
-		return false
+		return false, nil
 	}
 
 	// avoid mixdigest malleability as it's not included in a block's "hashNononce"
 	if block.MixDigest() != h256ToHash(ret.mix_hash) {
-		return false
+		return false, nil
 	}
 
 	// Make sure cache is live until after the C call.
@@ -162,7 +167,8 @@ func (l *Light) Verify(block pow.Block) bool {
 	_ = cache
 	// The actual check.
 	target := new(big.Int).Div(maxUint256, difficulty)
-	return h256ToHash(ret.result).Big().Cmp(target) <= 0
+	blockTarget := h256ToHash(ret.result).Big()
+	return blockTarget.Cmp(target) <= 0, blockTarget
 }
 
 func h256ToHash(in C.ethash_h256_t) common.Hash {
