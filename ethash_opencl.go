@@ -556,14 +556,13 @@ func (c *OpenCLMiner) Search(block pow.Block, stop <-chan struct{}, index int) (
 				upperNonce := uint64(binary.LittleEndian.Uint32(results[lo:hi]))
 				checkNonce = p.startNonce + upperNonce
 				if checkNonce != 0 {
-					cn := C.uint64_t(checkNonce)
-					ds := C.uint64_t(c.dagSize)
 					// We verify that the nonce is indeed a solution by
 					// executing the Ethash verification function (on the CPU).
-					cache := c.ethash.Light.getCache(block.NumberU64()) // Separate variable to keep reference alive while inside C
-					ret := C.ethash_light_compute_internal(cache.ptr, ds, hashToH256(headerHash), cn)
+					cache := c.ethash.Light.getCache(block.NumberU64())
+					ok, mixDigest, result := cache.compute(c.dagSize, headerHash, checkNonce)
+
 					// TODO: return result first
-					if ret.success && h256ToHash(ret.result).Big().Cmp(target256) <= 0 {
+					if ok && result.Big().Cmp(target256) <= 0 {
 						_, err = d.queue.EnqueueUnmapMemObject(d.searchBuffers[p.bufIndex], cres, nil)
 						if err != nil {
 							fmt.Println("Error in Search clEnqueueUnmapMemObject: ", err)
@@ -574,7 +573,7 @@ func (c *OpenCLMiner) Search(block pow.Block, stop <-chan struct{}, index int) (
 								fmt.Println("Error in Search WaitForEvents: ", err)
 							}
 						}
-						return checkNonce, C.GoBytes(unsafe.Pointer(&ret.mix_hash), C.int(32))
+						return checkNonce, mixDigest.Bytes()
 					}
 					_, err := d.queue.EnqueueWriteBuffer(d.searchBuffers[p.bufIndex], false, 0, 4, unsafe.Pointer(&zero), nil)
 					if err != nil {
