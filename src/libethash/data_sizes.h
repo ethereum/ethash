@@ -33,8 +33,21 @@ extern "C" {
 
 // 2048 Epochs (~20 years) worth of tabulated DAG sizes
 
-// TODO: find the Mathematica code used to generate this dataset
+// Generated with the following Mathematica Code:
 
+// GetDataSizes[n_] := Module[{
+//  DataSetSizeBytesInit = 2^30,
+//  MixBytes = 128,
+//  DataSetGrowth = 2^23,
+//  j = 0},
+//  Reap[
+//   While[j < n,
+//    Module[{i =
+//     Floor[(DataSetSizeBytesInit + DataSetGrowth * j) / MixBytes]},
+//     While[! PrimeQ[i], i--];
+//      Sow[i*MixBytes]; j++]]]][[2]][[1]]
+//
+// GetDataSizes[2048]
 
 static const uint64_t dag_sizes[2048] = {
 	1073739904U, 1082130304U, 1090514816U, 1098906752U, 1107293056U,
@@ -454,16 +467,17 @@ static const uint64_t dag_sizes[2048] = {
 // Generated with the following Mathematica Code:
 
 // GetCacheSizes[n_] := Module[{
-// CacheSizeBytesInit = 2^24,
-// CacheGrowth = 2^17,
-// HashBytes = 64,
-// j = 0},
-// Reap[
-//  While[j < n,
-// Module[{i =
-// Floor[(CacheSizeBytesInit + CacheGrowth * j) / HashBytes]},
-// While[! PrimeQ[i], i--];
-// Sow[i*HashBytes]; j++]]]][[2]][[1]]
+//  CacheSizeBytesInit = 2^24,
+//  CacheGrowth = 2^17,
+//  HashBytes = 64,
+//  j = 0},
+//  Reap[
+//   While[j < n,
+//    Module[{i =
+//     Floor[(CacheSizeBytesInit + CacheGrowth * j) / HashBytes]},
+//     While[! PrimeQ[i], i--];
+//      Sow[i*HashBytes]; j++]]]][[2]][[1]]
+//
 // GetCacheSizes[2048]
 
 const uint64_t cache_sizes[2048] = {
