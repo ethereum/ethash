@@ -1,8 +1,4 @@
 #include <Python.h>
-#include <alloca.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <time.h>
 #include "../libethash/ethash.h"
 #include "../libethash/internal.h"
 
@@ -19,7 +15,6 @@
 static PyObject *
 mkcache_bytes(PyObject *self, PyObject *args) {
     unsigned long block_number;
-    unsigned long cache_size;
 
     if (!PyArg_ParseTuple(args, "k", &block_number))
         return 0;
