@@ -43,7 +43,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/pow"
 )
 
 var (
@@ -126,7 +125,7 @@ type Light struct {
 }
 
 // Verify checks whether the block's nonce is valid.
-func (l *Light) Verify(block pow.Block) bool {
+func (l *Light) Verify(block Block) bool {
 	// TODO: do ethash_quick_verify before getCache in order
 	// to prevent DOS attacks.
 	blockNum := block.NumberU64()
@@ -333,7 +332,7 @@ func (pow *Full) getDAG(blockNum uint64) (d *dag) {
 	return d
 }
 
-func (pow *Full) Search(block pow.Block, stop <-chan struct{}, index int) (nonce uint64, mixDigest []byte) {
+func (pow *Full) Search(block Block, stop <-chan struct{}, index int) (nonce uint64, mixDigest []byte) {
 	dag := pow.getDAG(block.NumberU64())
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
