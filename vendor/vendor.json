@@ -9,24 +9,6 @@
 			"revisionTime": "2017-03-22T18:48:02Z"
 		},
 		{
-			"checksumSHA1": "kNzV1C05L06KodIVQqiDdUKvyhs=",
-			"path": "github.com/ethereum/go-ethereum/common",
-			"revision": "cc13d576f07fb6803e09fb42880591a67b8b0ef6",
-			"revisionTime": "2017-04-07T08:03:11Z"
-		},
-		{
-			"checksumSHA1": "NIN7nslnw4fUJlVcuxf5anvxAKQ=",
-			"path": "github.com/ethereum/go-ethereum/common/hexutil",
-			"revision": "cc13d576f07fb6803e09fb42880591a67b8b0ef6",
-			"revisionTime": "2017-04-07T08:03:11Z"
-		},
-		{
-			"checksumSHA1": "bjgs3560KVbG7FymmpyvBNg64ME=",
-			"path": "github.com/ethereum/go-ethereum/common/math",
-			"revision": "cc13d576f07fb6803e09fb42880591a67b8b0ef6",
-			"revisionTime": "2017-04-07T08:03:11Z"
-		},
-		{
 			"checksumSHA1": "exEIOkzQrq9M+59RLaXEwhDxGUo=",
 			"path": "github.com/ethereum/go-ethereum/crypto",
 			"revision": "cc13d576f07fb6803e09fb42880591a67b8b0ef6",
