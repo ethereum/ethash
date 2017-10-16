@@ -36,7 +36,7 @@ GNU General Public License for more details.
 The GNU General Public License is available in the [LICENSE](LICENSE) file.
 
 Ethash contains components licended under the GNU Lesser General Public License
-v3.0, the GNU Lesser Public License v3.0+, and other (GPL3-compatible) licenses.
+v3.0, the GNU Lesser Public License v3.0(or any later version), and other (GPL3-compatible) licenses.
 All of these licenses are included in the file [LICENSE](LICENSE) in the main 
 directory.
 
