@@ -46,11 +46,11 @@ License: GPL
 
 File: libethash/compiler.h
 Copyright: 2014 Matthew Wampler-Doty matthew.wampler.doty@gmail.com
-License: GPL3+
+License: GPL3 or any later version
 
 File: libethash/data_sizes.h
 Copyright: 2015 Matthew Wampler-Doty matthew.wampler.doty@gmail.com, Lefteris Karapetsas, chriseth
-License: GPL3+
+License: GPL3 or any later version
 
 File: libethash/endian.h
 Copyright: 2015 2016 Matthew Wampler-Doty matthew.wampler.doty@gmail.com, Lefteris Karapetsas, Marek Kotewicz, Péter Szilágyi, Steven Dee
@@ -58,15 +58,15 @@ License: GPL
 
 File: libethash/ethash.h
 Copyright: 2015 Matthew Wampler-Doty matthew.wampler.doty@gmail.com, Lefteris Karapetsas, chriseth, Gav Wood
-License: GPL3+
+License: GPL3 or any later version
 
 File: libethash/fnv.h
 Copyright: 2015 Matthew Wampler-Doty matthew.wampler.doty@gmail.com, Gustav-Simonsson, Lefteris Karapetsas
-License: GPL3+
+License: GPL3 or any later version
 
 File: libethash/internal.c
 Copyright: 2015 Tim Hughes <tim@twistedfury.com>
-License: GPL3+
+License: GPL3 or any later version
 
 File: libethash/internal.h
 Copyright: 2015 Matthew Wampler-Doty matthew.wampler.doty@gmail.com, Tim Hughes, Gustav Simonsson, Lefteris Karapetsas, Felix Lange
@@ -74,19 +74,19 @@ License: GPL
 
 File: libethash/io.c libethash/mmap.h libethash/util_win32.c
 Copyright: 2015 Lefteris Karapetsas
-License: GPL3+
+License: GPL3 or any later version
 
 File: libethash/io.h
 Copyright: 2015 Lefteris Karapetsas, Gustav Simonsson, 
-License: GPL3+
+License: GPL3 or any later version
 
 File: libethash/io_posix.c
 Copyright: 2015 Lefteris Karapetsas, subtly <https://github.com/subtly>
-License: GPL3+
+License: GPL3 or any later version
 
 File: libethash/io_win32.c
 Copyright: 2015 Lefteris Karapetsas, subtly <https://github.com/subtly>, Gustav Simonsson, 
-License: GPL3+
+License: GPL3 or any later version
 
 File: libethash/mmap_win32.c
 Copyright:  Mike Frysinger <vapier@gentoo.org>
@@ -98,11 +98,11 @@ License: GPL with request
 
 File: libethash/sha3_cryptopp.cpp
 Copyright: 2015 Tim Hughes
-License: GPL3+
+License: GPL3 or any later version
 
 File: libethash/sha3_cryptopp.h libethash/util.h
 Copyright: Matthew Wampler-Doty matthew.wampler.doty@gmail.com, Lefteris Karapetsas
-License: GPL3+
+License: GPL3 or any later version
 
 File: python/core.c
 Copyright: Vitalik Buterin, Matthew Wampler-Doty matthew.wampler.doty@gmail.com,Gustav Simonsson, reorder <github.com/reorder>, Ouziel Slama
