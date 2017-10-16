@@ -20,3 +20,23 @@ The main thing above all is code consistency.
 - Keep the line lengths reasonable. No hard limit on 80 characters but don't go further
   than 110. Some people work with multiple buffers next to each other.
   Make them like you :)
+
+## Copyleft
+
+Ethash is Free Software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+Ethash is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+The GNU General Public License is available in the [LICENSE](LICENSE) file.
+
+Ethash contains components licended under the GNU Lesser General Public License
+v3.0, the GNU Lesser Public License v3.0(or any later version), and other (GPL3-compatible) licenses.
+All of these licenses are included in the file [LICENSE](LICENSE) in the main 
+directory.
+
