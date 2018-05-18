@@ -40,6 +40,8 @@
 #define ETHASH_DAG_MAGIC_NUM_SIZE 8
 #define ETHASH_DAG_MAGIC_NUM 0xFEE1DEADBADDCAFE
 
+#define PROGPOW_MIX_BYTES 256
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -128,6 +130,23 @@ ethash_return_value_t ethash_full_compute(
 	ethash_h256_t const header_hash,
 	uint64_t nonce
 );
+
+/**
+ * Calculate the full client data
+ *
+ * @param full           The full client handler
+ * @param header_hash    The header hash to pack into the mix
+ * @param nonce          The nonce to pack into the mix
+ * @param block_number   The current block_number
+ * @return               An object of ethash_return_value to hold the return value
+ */
+ethash_return_value_t progpow_full_compute(
+	ethash_full_t full,
+	ethash_h256_t const header_hash,
+	uint64_t nonce,
+	uint64_t block_number
+);
+
 /**
  * Get a pointer to the full DAG data
  */
