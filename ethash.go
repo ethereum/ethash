@@ -179,7 +179,7 @@ func (l *Light) VerifyShare(block Block, shareDiff *big.Int) (bool, bool, int64,
 
 // Verify checks whether the block's nonce is valid.
 func (l *Light) Verify(block Block) (bool) {
-	_, ok, _ := l.VerifyShare(block, block.Difficulty())
+	_, ok, _, _ := l.VerifyShare(block, block.Difficulty())
 	return ok
 }
 
