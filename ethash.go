@@ -125,7 +125,7 @@ type Light struct {
 }
 
 // Verify checks whether the share's nonce is valid.
-func (l *Light) VerifyShare(block Block, shareDiff *big.Int) (bool, bool, int64) {
+func (l *Light) VerifyShare(block Block, shareDiff *big.Int) (bool, bool, int64, common.Hash) {
 	// For return arguments
 	zeroHash := common.Hash{}
 
@@ -134,7 +134,7 @@ func (l *Light) VerifyShare(block Block, shareDiff *big.Int) (bool, bool, int64)
 	blockNum := block.NumberU64()
 	if blockNum >= epochLength*2048 {
 		log.Debug(fmt.Sprintf("block number %d too high, limit is %d", epochLength*2048))
-		return false, false, 0
+		return false, false, 0, zeroHash
 	}
 
 	blockDiff := block.Difficulty()
@@ -145,12 +145,12 @@ func (l *Light) VerifyShare(block Block, shareDiff *big.Int) (bool, bool, int64)
 	*/
 	if blockDiff.Cmp(common.Big0) == 0 {
 		log.Debug("invalid block difficulty")
-		return false, false, 0
+		return false, false, 0, zeroHash
 	}
 
 	if shareDiff.Cmp(common.Big0) == 0 {
 		log.Debug("invalid share difficulty")
-		return false, false, 0
+		return false, false, 0, zeroHash
 	}
 
 	cache := l.getCache(blockNum)
@@ -161,12 +161,12 @@ func (l *Light) VerifyShare(block Block, shareDiff *big.Int) (bool, bool, int64)
 	// Recompute the hash using the cache.
 	ok, mixDigest, result := cache.compute(uint64(dagSize), block.HashNoNonce(), block.Nonce())
 	if !ok {
-		return false, false, 0
+		return false, false, 0, zeroHash
 	}
 
 	// avoid mixdigest malleability as it's not included in a block's "hashNononce"
 	if blkMix := block.MixDigest(); blkMix != zeroHash && blkMix != mixDigest {
-		return false, false, 0
+		return false, false, 0, zeroHash
 	}
 
 	// The actual check.
@@ -174,7 +174,7 @@ func (l *Light) VerifyShare(block Block, shareDiff *big.Int) (bool, bool, int64)
 	shareTarget := new(big.Int).Div(maxUint256, shareDiff)
 	actualDiff := new(big.Int).Div(maxUint256, result.Big())
 	
-	return result.Big().Cmp(shareTarget) <= 0, result.Big().Cmp(blockTarget) <= 0, actualDiff.Int64()
+	return result.Big().Cmp(shareTarget) <= 0, result.Big().Cmp(blockTarget) <= 0, actualDiff.Int64(), mixDigest
 }
 
 // Verify checks whether the block's nonce is valid.
