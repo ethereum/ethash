@@ -1,5 +1,9 @@
 #include <Python.h>
-#include <alloca.h>
+#if defined(__linux__)
+    #include <alloca.h>
+#elif defined(_WIN32) || defined(WIN32)
+    #include <malloc.h>
+#endif
 #include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
