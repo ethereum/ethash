@@ -163,7 +163,7 @@ func (l *Light) Verify(block Block) (ok bool, computedDiff *big.Int)  {
 
 	// The actual check.
 	target := new(big.Int).Div(maxUint256, difficulty)
-	return result.Big().Cmp(target) <= 0, result.Big()
+	return result.Big().Cmp(target) <= 0, new(big.Int).Div(maxUint256, result.Big())
 }
 
 func h256ToHash(in C.ethash_h256_t) common.Hash {
