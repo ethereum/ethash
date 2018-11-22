@@ -106,6 +106,7 @@ ethash_light_t ethash_light_new_internal(uint64_t cache_size, ethash_h256_t cons
  * @param full_size      The size of the full data in bytes.
  * @param header_hash    The header hash to pack into the mix
  * @param nonce          The nonce to pack into the mix
+ * @param block_number   The block_number
  * @return               The resulting hash.
  */
 ethash_return_value_t ethash_light_compute_internal(
@@ -113,6 +114,29 @@ ethash_return_value_t ethash_light_compute_internal(
 	uint64_t full_size,
 	ethash_h256_t const header_hash,
 	uint64_t nonce
+);
+
+void keccak_f800_round(uint32_t st[25], const int r);
+uint64_t keccak_f800(hash32_t header, uint64_t seed, uint32_t *result);
+uint32_t progpowMath(uint32_t a, uint32_t b, uint32_t r);
+void merge(uint32_t *a, uint32_t b, uint32_t r);
+
+/**
+ * Calculate the light client data of the ProgPow. Internal version.
+ *
+ * @param light          The light client handler
+ * @param full_size      The size of the full data in bytes.
+ * @param header_hash    The header hash to pack into the mix
+ * @param nonce          The nonce to pack into the mix
+ * @param block_number   The block_number
+ * @return               The resulting hash.
+ */
+ethash_return_value_t progpow_light_compute_internal(
+	ethash_light_t light,
+	uint64_t full_size,
+	ethash_h256_t const header_hash,
+	uint64_t nonce,
+	uint64_t block_number
 );
 
 struct ethash_full {

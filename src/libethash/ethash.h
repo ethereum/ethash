@@ -46,6 +46,11 @@
 extern "C" {
 #endif
 
+typedef struct
+{
+	uint32_t uint32s[32 / sizeof(uint32_t)];
+} hash32_t;
+
 /// Type of a seedhash/blockhash e.t.c.
 typedef struct ethash_h256 { uint8_t b[32]; } ethash_h256_t;
 
@@ -132,7 +137,23 @@ ethash_return_value_t ethash_full_compute(
 );
 
 /**
- * Calculate the full client data
+ * Calculate the light client data of the ProgPow
+ *
+ * @param light          The light client handler
+ * @param header_hash    The header hash to pack into the mix
+ * @param nonce          The nonce to pack into the mix
+ * @param block_number   The block_number
+ * @return               an object of ethash_return_value_t holding the return values
+ */
+ethash_return_value_t progpow_light_compute(
+	ethash_light_t light,
+	ethash_h256_t const header_hash,
+	uint64_t nonce,
+	uint64_t block_number
+);
+
+/**
+ * Calculate the full client data of the ProgPoW
  *
  * @param full           The full client handler
  * @param header_hash    The header hash to pack into the mix
