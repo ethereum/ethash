@@ -51,7 +51,7 @@ IF (Boost_FOUND)
         set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++11 ")
    endif()
 
-    add_executable (Test "./test.cpp" ${HEADERS})
+    add_executable (Test test.cpp test_progpow.cpp ${HEADERS})
     target_link_libraries(Test ${ETHHASH_LIBS})
     target_link_libraries(Test ${Boost_FILESYSTEM_LIBRARIES})
     target_link_libraries(Test ${Boost_SYSTEM_LIBRARIES})
