@@ -130,7 +130,7 @@ func (l *Light) Verify(block Block) bool {
 	// to prevent DOS attacks.
 	blockNum := block.NumberU64()
 	if blockNum >= epochLength*2048 {
-		log.Debug(fmt.Sprintf("block number %d too high, limit is %d", epochLength*2048))
+		log.Debug(fmt.Sprintf("block number %d too high, limit is %d", blockNum, epochLength*2048))
 		return false
 	}
 
