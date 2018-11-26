@@ -213,21 +213,22 @@ BOOST_AUTO_TEST_CASE(test_progpow_keccak_f800) {
 		const std::string header_string = blockhashToHexString(&headerhash);
 		BOOST_REQUIRE_MESSAGE(true,
 				"\nheader: " << header_string.c_str() << "\n");
-		uint32_t result[8];
+		hash32_t result;
 		for (int i = 0; i < 8; i++)
-			result[i] = 0;
+			result.uint32s[i] = 0;
 
 		hash32_t header;
 		memcpy((void *)&header, (void *)&headerhash, sizeof(headerhash));
 		uint64_t nonce = 0x0;
 		// keccak(header..nonce)
-		uint64_t seed = keccak_f800(header, nonce, result);
+		hash32_t seed_256 = keccak_f800_progpow(header, nonce, result);
+		uint64_t seed = (uint64_t)ethash_swap_u32(seed_256.uint32s[0]) << 32 | ethash_swap_u32(seed_256.uint32s[1]);
 		uint64_t exp = 0x5dd431e5fbc604f4U;
 
 		BOOST_REQUIRE_MESSAGE(seed == exp,
-				"\nseed: " << seed << "\n");
+				"\nseed: " << seed << "exp: " << exp << "\n");
 		ethash_h256_t out;
-		memcpy((void *)&out, (void *)&result, sizeof(result));
+		memcpy((void *)&out, (void *)&seed_256, sizeof(result));
 		const std::string out_string = blockhashToHexString(&out);
 		BOOST_REQUIRE_MESSAGE(out_string == seedexp,
 				"\nresult: " << out_string.c_str() << "\n");

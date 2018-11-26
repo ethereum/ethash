@@ -176,7 +176,7 @@ void keccak_f800_round(uint32_t st[25], const int r)
 
 // Implementation of the Keccak sponge construction (with padding omitted)
 // The width is 800, with a bitrate of 576, and a capacity of 224.
-uint64_t keccak_f800(hash32_t header, uint64_t seed, uint32_t *result)
+hash32_t keccak_f800_progpow(hash32_t header, uint64_t seed, hash32_t digest)
 {
 	uint32_t st[25];
 
@@ -187,7 +187,7 @@ uint64_t keccak_f800(hash32_t header, uint64_t seed, uint32_t *result)
 	st[8] = seed;
 	st[9] = seed >> 32;
 	for (int i = 0; i < 8; i++)
-		st[10+i] = result[i];
+		st[10+i] = digest.uint32s[i];
 
 	for (int r = 0; r < 21; r++) {
 		keccak_f800_round(st, r);
@@ -195,11 +195,12 @@ uint64_t keccak_f800(hash32_t header, uint64_t seed, uint32_t *result)
 	// last round can be simplified due to partial output
 	keccak_f800_round(st, 21);
 
-	for (int i = 0; i < 8; ++i) {
-		result[i] = st[i];
+	hash32_t ret;
+	for (int i = 0; i < 8; i++) {
+		ret.uint32s[i] = st[i];
 	}
 
-	return (uint64_t)ethash_swap_u32(st[0]) << 32 | ethash_swap_u32(st[1]);
+	return ret;
 }
 
 typedef struct {
@@ -211,12 +212,14 @@ typedef struct {
 // http://www.cse.yorku.ca/~oz/marsaglia-rng.html
 uint32_t kiss99(kiss99_t * st)
 {
-	uint32_t znew = (st->z = 36969 * (st->z & 65535) + (st->z >> 16));
-	uint32_t wnew = (st->w = 18000 * (st->w & 65535) + (st->w >> 16));
-	uint32_t MWC = ((znew << 16) + wnew);
-	uint32_t SHR3 = (st->jsr ^= (st->jsr << 17), st->jsr ^= (st->jsr >> 13), st->jsr ^= (st->jsr << 5));
-	uint32_t CONG = (st->jcong = 69069 * st->jcong + 1234567);
-	return ((MWC^CONG) + SHR3);
+	st->z = 36969 * (st->z & 65535) + (st->z >> 16);
+	st->w = 18000 * (st->w & 65535) + (st->w >> 16);
+	uint32_t MWC = ((st->z << 16) + st->w);
+	st->jsr ^= (st->jsr << 17);
+	st->jsr ^= (st->jsr >> 13);
+	st->jsr ^= (st->jsr << 5);
+	st->jcong = 69069 * st->jcong + 1234567;
+	return ((MWC^st->jcong) + st->jsr);
 }
 
 void fill_mix(
@@ -438,12 +441,14 @@ static bool progpow_hash(
 	}
 
 	uint32_t mix[PROGPOW_LANES][PROGPOW_REGS];
-	uint32_t result[8];
+	hash32_t digest;
 	for (int i = 0; i < 8; i++)
-		result[i] = 0;
+		digest.uint32s[i] = 0;
 
 	// keccak(header..nonce)
-	uint64_t seed = keccak_f800(header, nonce, result);
+	hash32_t seed_256 = keccak_f800_progpow(header, nonce, digest);
+	// endian swap so byte 0 of the hash is the MSB of the value
+	uint64_t seed = (uint64_t)ethash_swap_u32(seed_256.uint32s[0]) << 32 | ethash_swap_u32(seed_256.uint32s[1]);
 
 	// initialize mix for all lanes
 	for (int l = 0; l < PROGPOW_LANES; l++)
@@ -467,16 +472,16 @@ static bool progpow_hash(
 	}
 	// Reduce all lanes to a single 256-bit result
 	for (int i = 0; i < 8; i++)
-		result[i] = 0x811c9dc5;
+		digest.uint32s[i] = 0x811c9dc5;
 
 	for (int l = 0; l < PROGPOW_LANES; l++)
-		fnv1a(&result[l%8], lane_hash[l]);
+		fnv1a(&digest.uint32s[l%8], lane_hash[l]);
 
 	memset((void *)&ret->mix_hash, 0, sizeof(ret->mix_hash));
-	memcpy(&ret->mix_hash, result, sizeof(result));
+	memcpy(&ret->mix_hash, (void *)&digest, sizeof(digest));
 	memset((void *)&ret->result, 0, sizeof(ret->result));
-	keccak_f800(header, seed, result);
-	memcpy((void *)&ret->result, (void *)&result, sizeof(ret->result));
+	digest = keccak_f800_progpow(header, seed, digest);
+	memcpy((void *)&ret->result, (void *)&digest, sizeof(ret->result));
 
 	return true;
 }
