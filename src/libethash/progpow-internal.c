@@ -240,7 +240,7 @@ void fill_mix(
 		mix[i] = kiss99(&st);
 }
 
-kiss99_t progPowInit(uint64_t prog_seed, uint32_t mix_seq_dst[PROGPOW_REGS], uint32_t mix_seq_cache[PROGPOW_REGS])
+kiss99_t progPowInit(uint64_t prog_seed, uint32_t mix_seq_dst[PROGPOW_REGS], uint32_t mix_seq_src[PROGPOW_REGS])
 {
 	kiss99_t prog_rnd;
 	uint32_t fnv_hash = 0x811c9dc5;
@@ -255,7 +255,7 @@ kiss99_t progPowInit(uint64_t prog_seed, uint32_t mix_seq_dst[PROGPOW_REGS], uin
 	for (int i = 0; i < PROGPOW_REGS; i++)
 	{
 		mix_seq_dst[i] = i;
-		mix_seq_cache[i] = i;
+		mix_seq_src[i] = i;
 	}
 	for (int i = PROGPOW_REGS - 1; i > 0; i--)
 	{
@@ -263,7 +263,7 @@ kiss99_t progPowInit(uint64_t prog_seed, uint32_t mix_seq_dst[PROGPOW_REGS], uin
 		j = kiss99(&prog_rnd) % (i + 1);
 		swap(&(mix_seq_dst[i]), &(mix_seq_dst[j]));
 		j = kiss99(&prog_rnd) % (i + 1);
-		swap(&(mix_seq_cache[i]), &(mix_seq_cache[j]));
+		swap(&(mix_seq_src[i]), &(mix_seq_src[j]));
 	}
 	return prog_rnd;
 }
@@ -304,15 +304,6 @@ uint32_t progpowMath(uint32_t a, uint32_t b, uint32_t r)
 	return 0;
 }
 
-// Helper to get the next value in the per-program random sequence
-#define rnd()    (kiss99(&prog_rnd))
-// Helper to pick a random mix location
-#define mix_src() (rnd() % PROGPOW_REGS)
-// Helper to access the sequence of mix destinations
-#define mix_dst() (mix_seq_dst[(mix_seq_dst_cnt++)%PROGPOW_REGS])
-// Helper to access the sequence of cache sources
-#define mix_cache() (mix_seq_cache[(mix_seq_cache_cnt++)%PROGPOW_REGS])
-
 void progPowLoop(
 	const uint64_t prog_seed,
 	const uint32_t loop,
@@ -327,7 +318,7 @@ void progPowLoop(
 	uint32_t offset_g = mix[loop%PROGPOW_LANES][0] % (64 * dag_words / (PROGPOW_LANES*PROGPOW_DAG_LOADS));
 
 	// global load to sequential locations
-	uint32_t data_g[PROGPOW_DAG_LOADS];
+	uint32_t data_g[PROGPOW_LANES][PROGPOW_DAG_LOADS];
 	uint32_t dag_data[PROGPOW_LANES*PROGPOW_DAG_LOADS];
 	if (g_dag) {
 		for (int i = 0; i < PROGPOW_DAG_LOADS; i++) {
@@ -353,49 +344,61 @@ void progPowLoop(
 	else
 		max_i = PROGPOW_CNT_MATH;
 
-	// Lanes can execute in parallel and will be convergent
-	for (int l = 0; l < PROGPOW_LANES; l++)
+	// Initialize the program seed and sequences
+	// When mining these are evaluated on the CPU and compiled away
+	uint32_t mix_seq_dst[PROGPOW_REGS];
+	uint32_t mix_seq_src[PROGPOW_REGS];
+	uint32_t mix_seq_dst_cnt = 0;
+	uint32_t mix_seq_src_cnt = 0;
+	kiss99_t prog_rnd = progPowInit(prog_seed, mix_seq_dst, mix_seq_src);
+
+	for (int i = 0; i < max_i; i++)
 	{
-		// initialize the seed and mix destination sequence
-		uint32_t mix_seq_dst[PROGPOW_REGS];
-		uint32_t mix_seq_cache[PROGPOW_REGS];
-		uint32_t mix_seq_dst_cnt = 0;
-		uint32_t mix_seq_cache_cnt = 0;
-		kiss99_t prog_rnd = progPowInit(prog_seed, mix_seq_dst, mix_seq_cache);
-
-		for (int i = 0; i < max_i; i++)
+		if (i < PROGPOW_CNT_CACHE)
 		{
-			if (i < PROGPOW_CNT_CACHE)
+			// Cached memory access
+			// lanes access random 32-bit locations within the first portion of the DAG
+			int src = mix_seq_src[(mix_seq_src_cnt++)%PROGPOW_REGS];
+			int dst = mix_seq_dst[(mix_seq_dst_cnt++)%PROGPOW_REGS];
+			int sel = kiss99(&prog_rnd);
+			for (int l = 0; l < PROGPOW_LANES; l++)
 			{
-				// Cached memory access
-				// lanes access random 32-bit locations within the first portion of the DAG
-				uint32_t offset = mix[l][mix_cache()] % PROGPOW_CACHE_WORDS;
-				uint32_t data = c_dag[offset];
-				merge(&(mix[l][mix_dst()]), data, rnd());
-			}
-			if (i < PROGPOW_CNT_MATH)
-			{
-				// Random Math
-				uint32_t src1 = mix_src();
-				uint32_t src2 = mix_src();
-				uint32_t r = rnd();
-
-				uint32_t data = progpowMath(mix[l][src1], mix[l][src2], r);
-				// compiler error for this case
-				//uint32_t data = progpowMath(mix[l][mix_src()], mix[l][mix_src()], rnd());
-				merge(&(mix[l][mix_dst()]), data, rnd());
+				uint32_t offset = mix[l][src] % PROGPOW_CACHE_WORDS;
+				merge(&(mix[l][dst]), c_dag[offset], sel);
 			}
 		}
-
+		if (i < PROGPOW_CNT_MATH)
+		{
+			// Random Math
+			uint32_t src1 = kiss99(&prog_rnd) % PROGPOW_REGS;
+			uint32_t src2 = kiss99(&prog_rnd) % PROGPOW_REGS;
+			uint32_t sel1 = kiss99(&prog_rnd);
+			uint32_t dst = mix_seq_dst[(mix_seq_dst_cnt++)%PROGPOW_REGS];
+			int sel2 = kiss99(&prog_rnd);
+			for (int l = 0; l < PROGPOW_LANES; l++)
+			{
+				uint32_t data = progpowMath(mix[l][src1], mix[l][src2], sel1);
+				merge(&(mix[l][dst]), data, sel2);
+			}
+		}
+	}
+	for (int l = 0; l < PROGPOW_LANES; l++)
+	{
+		// global load to the 256 byte DAG entry
+		// every lane can access every part of the entry
 		uint32_t index = ((l ^ loop) % PROGPOW_LANES) * PROGPOW_DAG_LOADS;
 		for (int i = 0; i < PROGPOW_DAG_LOADS; i++)
-			data_g[i] = dag_data[index+i];
+			data_g[l][i] = dag_data[index+i];
+	}
 
-		// Consume the global load data at the very end of the loop to allow full latency hiding
-		// Always merge into mix[0] to feed the offset calculation
-		merge(&(mix[l][0]), data_g[0], rnd());
-		for (int i = 1; i < PROGPOW_DAG_LOADS; i++)
-			merge(&(mix[l][mix_dst()]), data_g[i], rnd());
+	// Consume the global load data at the very end of the loop to allow full latency hiding
+	// Always merge into mix[0] to feed the offset calculation
+	for (int i = 0; i < PROGPOW_DAG_LOADS; i++)
+	{
+		int dst = (i==0) ? 0 : mix_seq_dst[(mix_seq_dst_cnt++)%PROGPOW_REGS];
+		int sel = kiss99(&prog_rnd);
+		for (int l = 0; l < PROGPOW_LANES; l++)
+			merge(&(mix[l][dst]), data_g[l][i], sel);
 	}
 }
 
