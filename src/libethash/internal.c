@@ -56,7 +56,7 @@ uint64_t ethash_get_cachesize(uint64_t const block_number)
 // Follows Sergio's "STRICT MEMORY HARD HASHING FUNCTIONS" (2014)
 // https://bitslog.files.wordpress.com/2013/12/memohash-v0-3.pdf
 // SeqMemoHash(s, R, N)
-bool static ethash_compute_cache_nodes(
+static bool ethash_compute_cache_nodes(
 	node* const nodes,
 	uint64_t cache_size,
 	ethash_h256_t const* seed
@@ -108,6 +108,9 @@ void ethash_calculate_dag_item(
 	__m128i xmm1 = ret->xmm[1];
 	__m128i xmm2 = ret->xmm[2];
 	__m128i xmm3 = ret->xmm[3];
+#elif defined(__MIC__)
+	__m512i const fnv_prime = _mm512_set1_epi32(FNV_PRIME);
+	__m512i zmm0 = ret->zmm[0];
 #endif
 
 	for (uint32_t i = 0; i != ETHASH_DATASET_PARENTS; ++i) {
@@ -130,6 +133,14 @@ void ethash_calculate_dag_item(
 			ret->xmm[1] = xmm1;
 			ret->xmm[2] = xmm2;
 			ret->xmm[3] = xmm3;
+		}
+		#elif defined(__MIC__)
+		{
+			zmm0 = _mm512_mullo_epi32(zmm0, fnv_prime);
+
+			// have to write to ret as values are used to compute index
+			zmm0 = _mm512_xor_si512(zmm0, parent->zmm[0]);
+			ret->zmm[0] = zmm0;
 		}
 		#else
 		{
@@ -207,10 +218,10 @@ static bool ethash_hash(
 
 		for (unsigned n = 0; n != MIX_NODES; ++n) {
 			node const* dag_node;
+			node tmp_node;
 			if (full_nodes) {
 				dag_node = &full_nodes[MIX_NODES * index + n];
 			} else {
-				node tmp_node;
 				ethash_calculate_dag_item(&tmp_node, index * MIX_NODES + n, light);
 				dag_node = &tmp_node;
 			}
@@ -227,6 +238,14 @@ static bool ethash_hash(
 				mix[n].xmm[2] = _mm_xor_si128(xmm2, dag_node->xmm[2]);
 				mix[n].xmm[3] = _mm_xor_si128(xmm3, dag_node->xmm[3]);
 			}
+			#elif defined(__MIC__)
+			{
+				// __m512i implementation via union
+				//	Each vector register (zmm) can store sixteen 32-bit integer numbers
+				__m512i fnv_prime = _mm512_set1_epi32(FNV_PRIME);
+				__m512i zmm0 = _mm512_mullo_epi32(fnv_prime, mix[n].zmm[0]);
+				mix[n].zmm[0] = _mm512_xor_si512(zmm0, dag_node->zmm[0]);
+			}
 			#else
 			{
 				for (unsigned w = 0; w != NODE_WORDS; ++w) {
@@ -238,6 +257,22 @@ static bool ethash_hash(
 
 	}
 
+// Workaround for a GCC regression which causes a bogus -Warray-bounds warning.
+// The regression was introduced in GCC 4.8.4, fixed in GCC 5.0.0 and backported to GCC 4.9.3 but
+// never to the GCC 4.8.x line.
+//
+// See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56273
+//
+// This regression is affecting Debian Jesse (8.5) builds of cpp-ethereum (GCC 4.9.2) and also
+// manifests in the doublethinkco armel v5 cross-builds, which use crosstool-ng and resulting
+// in the use of GCC 4.8.4.  The Tizen runtime wants an even older GLIBC version - the one from
+// GCC 4.6.0!
+
+#if defined(__GNUC__) && (__GNUC__ < 5)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#endif // define (__GNUC__)
+
 	// compress mix
 	for (uint32_t w = 0; w != MIX_WORDS; w += 4) {
 		uint32_t reduction = mix->words[w + 0];
@@ -246,6 +281,10 @@ static bool ethash_hash(
 		reduction = reduction * FNV_PRIME ^ mix->words[w + 3];
 		mix->words[w / 4] = reduction;
 	}
+
+#if defined(__GNUC__) && (__GNUC__ < 5)
+#pragma GCC diagnostic pop
+#endif // define (__GNUC__)
 
 	fix_endian_arr32(mix->words, MIX_WORDS / 4);
 	memcpy(&ret->mix_hash, mix->bytes, 32);
@@ -300,7 +339,11 @@ ethash_light_t ethash_light_new_internal(uint64_t cache_size, ethash_h256_t cons
 	if (!ret) {
 		return NULL;
 	}
+#if defined(__MIC__)
+	ret->cache = _mm_malloc((size_t)cache_size, 64);
+#else
 	ret->cache = malloc((size_t)cache_size);
+#endif
 	if (!ret->cache) {
 		goto fail_free_light;
 	}
@@ -312,7 +355,11 @@ ethash_light_t ethash_light_new_internal(uint64_t cache_size, ethash_h256_t cons
 	return ret;
 
 fail_free_cache_mem:
+#if defined(__MIC__)
+	_mm_free(ret->cache);
+#else
 	free(ret->cache);
+#endif
 fail_free_light:
 	free(ret);
 	return NULL;
@@ -399,31 +446,47 @@ ethash_full_t ethash_full_new_internal(
 		return NULL;
 	}
 	ret->file_size = (size_t)full_size;
-	switch (ethash_io_prepare(dirname, seed_hash, &f, (size_t)full_size, false)) {
-	case ETHASH_IO_FAIL:
-		// ethash_io_prepare will do all ETHASH_CRITICAL() logging in fail case
+
+	enum ethash_io_rc err = ethash_io_prepare(dirname, seed_hash, &f, (size_t)full_size, false);
+	if (err == ETHASH_IO_FAIL)
 		goto fail_free_full;
-	case ETHASH_IO_MEMO_MATCH:
-		if (!ethash_mmap(ret, f)) {
-			ETHASH_CRITICAL("mmap failure()");
-			goto fail_close_file;
-		}
-		return ret;
-	case ETHASH_IO_MEMO_SIZE_MISMATCH:
+
+	if (err == ETHASH_IO_MEMO_SIZE_MISMATCH) {
 		// if a DAG of same filename but unexpected size is found, silently force new file creation
 		if (ethash_io_prepare(dirname, seed_hash, &f, (size_t)full_size, true) != ETHASH_IO_MEMO_MISMATCH) {
 			ETHASH_CRITICAL("Could not recreate DAG file after finding existing DAG with unexpected size.");
 			goto fail_free_full;
 		}
-		// fallthrough to the mismatch case here, DO NOT go through match
-	case ETHASH_IO_MEMO_MISMATCH:
+		// we now need to go through the mismatch case, NOT the match case
+		err = ETHASH_IO_MEMO_MISMATCH;
+	}
+
+	if (err == ETHASH_IO_MEMO_MISMATCH || err == ETHASH_IO_MEMO_MATCH) {
 		if (!ethash_mmap(ret, f)) {
 			ETHASH_CRITICAL("mmap failure()");
 			goto fail_close_file;
 		}
-		break;
+
+		if (err == ETHASH_IO_MEMO_MATCH) {
+#if defined(__MIC__)
+			node* tmp_nodes = _mm_malloc((size_t)full_size, 64);
+			//copy all nodes from ret->data
+			//mmapped_nodes are not aligned properly
+			uint32_t const countnodes = (uint32_t) ((size_t)ret->file_size / sizeof(node));
+			//fprintf(stderr,"ethash_full_new_internal:countnodes:%d",countnodes);
+			for (uint32_t i = 1; i != countnodes; ++i) {
+				tmp_nodes[i] = ret->data[i];
+			}
+			ret->data = tmp_nodes;
+#endif
+			return ret;
+		}
 	}
 
+
+#if defined(__MIC__)
+	ret->data = _mm_malloc((size_t)full_size, 64);
+#endif
 	if (!ethash_compute_full_data(ret->data, full_size, light, callback)) {
 		ETHASH_CRITICAL("Failure at computing DAG data.");
 		goto fail_free_full_data;
@@ -448,6 +511,9 @@ ethash_full_t ethash_full_new_internal(
 fail_free_full_data:
 	// could check that munmap(..) == 0 but even if it did not can't really do anything here
 	munmap(ret->data, (size_t)full_size);
+#if defined(__MIC__)
+	_mm_free(ret->data);
+#endif
 fail_close_file:
 	fclose(ret->file);
 fail_free_full:
