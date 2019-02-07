@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 import os
+import sys
+
 from setuptools import setup, Extension
 sources = [
     'src/python/core.c',
@@ -32,7 +34,7 @@ pyethash = Extension('pyethash',
                      sources=sources,
                      depends=depends,
                      extra_compile_args=["-Isrc/", "-std=gnu99"],
-                     extra_link_args=["shell32.lib"])
+                     extra_link_args=["shell32.lib"] if sys.platform.startswith("win") else [])
 
 setup(
     name='pyethash',
