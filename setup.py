@@ -34,10 +34,9 @@ depends = [
     'src/libethash/util.h',
 ]
 
-
 ccargs=[
-    "-Isrc/",
-    "-Wall"
+    "/Isrc/",
+    "/Wall"
 ] if WIN32 else [
     "-Isrc/",
     "-std=gnu99",
