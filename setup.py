@@ -3,6 +3,9 @@ import os
 import sys
 
 from setuptools import setup, Extension
+
+WIN32 = sys.platform.startswith("win")
+
 sources = [
     'src/python/core.c',
     'src/libethash/io.c',
@@ -30,11 +33,24 @@ depends = [
     'src/libethash/sha3.h',
     'src/libethash/util.h',
 ]
+
+
+ccargs=[
+    "/Isrc/",
+    "/Wall"
+] if WIN32 else [
+    "-Isrc/",
+    "-std=gnu99",
+    "-Wall"
+]
+
+ldargs=["shell32.lib"] if WIN32 else []
+
 pyethash = Extension('pyethash',
                      sources=sources,
                      depends=depends,
-                     extra_compile_args=["-Isrc/", "-std=gnu99"],
-                     extra_link_args=["shell32.lib"] if sys.platform.startswith("win") else [])
+                     extra_compile_args=ccargs,
+                     extra_link_args=ldargs)
 
 setup(
     name='pyethash',
