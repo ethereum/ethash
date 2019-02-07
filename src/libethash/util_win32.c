@@ -18,6 +18,8 @@
  * @author Tim Hughes <tim@twistedfury.com>
  * @date 2015
  */
+#ifdef _MSC_VER
+
 #include <stdarg.h>
 #include <stdio.h>
 #include "util.h"
@@ -36,3 +38,5 @@ void debugf(char const* str, ...)
 	buf[sizeof(buf)-1] = '\0';
 	OutputDebugStringA(buf);
 }
+
+#endif
