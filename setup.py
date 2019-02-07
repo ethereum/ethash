@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import os
-from distutils.core import setup, Extension
+from setuptools import setup, Extension
 sources = [
     'src/python/core.c',
     'src/libethash/io.c',
