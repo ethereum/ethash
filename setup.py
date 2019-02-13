@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 import os
+import sys
+
 from distutils.core import setup, Extension
 sources = [
     'src/python/core.c',
@@ -28,10 +30,22 @@ depends = [
     'src/libethash/sha3.h',
     'src/libethash/util.h',
 ]
+
+WIN32 = sys.platform.startswith("win")
+
+ccargs=[
+    "/Isrc/",
+    "/Wall"
+] if WIN32 else [
+    "-Isrc/",
+    "-std=gnu99",
+    "-Wall"
+]
+
 pyethash = Extension('pyethash',
                      sources=sources,
                      depends=depends,
-                     extra_compile_args=["-Isrc/", "-std=gnu99", "-Wall"])
+                     extra_compile_args=ccargs)
 
 setup(
     name='pyethash',
