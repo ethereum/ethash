@@ -2,10 +2,7 @@
 import os
 import sys
 
-from setuptools import setup, Extension
-
-WIN32 = sys.platform.startswith("win")
-
+from distutils.core import setup, Extension
 sources = [
     'src/python/core.c',
     'src/libethash/io.c',
@@ -34,6 +31,8 @@ depends = [
     'src/libethash/util.h',
 ]
 
+WIN32 = sys.platform.startswith("win")
+
 ccargs=[
     "/Isrc/",
     "/Wall"
@@ -43,13 +42,10 @@ ccargs=[
     "-Wall"
 ]
 
-ldargs=["shell32.lib"] if WIN32 else []
-
 pyethash = Extension('pyethash',
                      sources=sources,
                      depends=depends,
-                     extra_compile_args=ccargs,
-                     extra_link_args=ldargs)
+                     extra_compile_args=ccargs)
 
 setup(
     name='pyethash',
