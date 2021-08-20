@@ -1,4 +1,4 @@
-module github.com/ethereum/ethash
+module github.com/LuxorLabs/ethash
 
 go 1.16
 
