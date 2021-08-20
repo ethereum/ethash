@@ -57,10 +57,10 @@ RM = /opt/homebrew/Cellar/cmake/3.20.2/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /Users/nickh/code/Go/src/github.com/ethereum/ethash
+CMAKE_SOURCE_DIR = /Users/nickh/code/Go/src/github.com/LuxorLabs/ethash
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /Users/nickh/code/Go/src/github.com/ethereum/ethash
+CMAKE_BINARY_DIR = /Users/nickh/code/Go/src/github.com/LuxorLabs/ethash
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ edit_cache/fast: edit_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/nickh/code/Go/src/github.com/ethereum/ethash/CMakeFiles /Users/nickh/code/Go/src/github.com/ethereum/ethash//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/nickh/code/Go/src/github.com/LuxorLabs/ethash/CMakeFiles /Users/nickh/code/Go/src/github.com/LuxorLabs/ethash//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/nickh/code/Go/src/github.com/ethereum/ethash/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/nickh/code/Go/src/github.com/LuxorLabs/ethash/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
