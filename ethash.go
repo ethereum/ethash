@@ -41,8 +41,8 @@ import (
 	"unsafe"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
+	"golang.org/x/crypto/sha3"
 )
 
 var (
@@ -433,7 +433,16 @@ func GetSeedHash(blockNum uint64) ([]byte, error) {
 
 func makeSeedHash(epoch uint64) (sh common.Hash) {
 	for ; epoch > 0; epoch-- {
-		sh = crypto.Sha3Hash(sh[:])
+		sh = sha3Hash(sh[:])
 	}
 	return sh
+}
+
+func sha3Hash(data ...[]byte) (h common.Hash) {
+	hasher := sha3.NewLegacyKeccak256()
+	for _, d := range data {
+		hasher.Write(d)
+	}
+	hasher.Sum(h[:0])
+	return h
 }
