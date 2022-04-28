@@ -14,6 +14,7 @@
 #include <io.h>
 #include <windows.h>
 #include "mmap.h"
+#pragma comment(lib, "Shell32.lib")
 
 #ifdef __USE_FILE_OFFSET64
 # define DWORD_HI(x) (x >> 32)
