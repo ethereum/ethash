@@ -13,5 +13,7 @@ include src/libethash/endian.h
 include src/libethash/ethash.h
 include src/libethash/fnv.h
 include src/libethash/internal.h
+include src/libethash/io.h
+include src/libethash/mmap.h
 include src/libethash/sha3.h
 include src/libethash/util.h
