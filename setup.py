@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import os
-from distutils.core import setup, Extension
+from setuptools import setup, Extension
 sources = [
     'src/python/core.c',
     'src/libethash/io.c',
@@ -31,7 +31,7 @@ depends = [
 pyethash = Extension('pyethash',
                      sources=sources,
                      depends=depends,
-                     extra_compile_args=["-Isrc/", "-std=gnu99", "-Wall"])
+                     extra_compile_args=["-Isrc/", "-std=gnu99"])
 
 setup(
     name='pyethash',

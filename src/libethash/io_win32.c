@@ -29,13 +29,21 @@
 
 FILE* ethash_fopen(char const* file_name, char const* mode)
 {
+#if __GNUC__
+	return fopen(file_name, mode);
+#else
 	FILE* f;
 	return fopen_s(&f, file_name, mode) == 0 ? f : NULL;
+#endif
 }
 
 char* ethash_strncat(char* dest, size_t dest_size, char const* src, size_t count)
 {
+#if __GNUC__
+	return strlen(dest) + count + 1 <= dest_size ? strncat(dest, src, count) : NULL;
+#else
 	return strncat_s(dest, dest_size, src, count) == 0 ? dest : NULL;
+#endif
 }
 
 bool ethash_mkdir(char const* dirname)
