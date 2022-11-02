@@ -1,7 +1,6 @@
 #define PY_SSIZE_T_CLEAN
 
 #include <Python.h>
-#include <alloca.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
