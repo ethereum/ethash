@@ -1,10 +1,12 @@
 #define PY_SSIZE_T_CLEAN
 
 #include <Python.h>
+#ifndef _MSC_VER
 #include <alloca.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
+#endif
 #include "../libethash/ethash.h"
 #include "../libethash/internal.h"
 
