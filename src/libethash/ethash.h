@@ -40,9 +40,16 @@
 #define ETHASH_DAG_MAGIC_NUM_SIZE 8
 #define ETHASH_DAG_MAGIC_NUM 0xFEE1DEADBADDCAFE
 
+#define PROGPOW_MIX_BYTES 256
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef struct
+{
+	uint32_t uint32s[32 / sizeof(uint32_t)];
+} hash32_t;
 
 /// Type of a seedhash/blockhash e.t.c.
 typedef struct ethash_h256 { uint8_t b[32]; } ethash_h256_t;
@@ -128,6 +135,39 @@ ethash_return_value_t ethash_full_compute(
 	ethash_h256_t const header_hash,
 	uint64_t nonce
 );
+
+/**
+ * Calculate the light client data of the ProgPow
+ *
+ * @param light          The light client handler
+ * @param header_hash    The header hash to pack into the mix
+ * @param nonce          The nonce to pack into the mix
+ * @param block_number   The block_number
+ * @return               an object of ethash_return_value_t holding the return values
+ */
+ethash_return_value_t progpow_light_compute(
+	ethash_light_t light,
+	ethash_h256_t const header_hash,
+	uint64_t nonce,
+	uint64_t block_number
+);
+
+/**
+ * Calculate the full client data of the ProgPoW
+ *
+ * @param full           The full client handler
+ * @param header_hash    The header hash to pack into the mix
+ * @param nonce          The nonce to pack into the mix
+ * @param block_number   The current block_number
+ * @return               An object of ethash_return_value to hold the return value
+ */
+ethash_return_value_t progpow_full_compute(
+	ethash_full_t full,
+	ethash_h256_t const header_hash,
+	uint64_t nonce,
+	uint64_t block_number
+);
+
 /**
  * Get a pointer to the full DAG data
  */

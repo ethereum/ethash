@@ -13,6 +13,7 @@ endif()
 set(FILES 	util.h
           	io.c
           	internal.c
+          	progpow-internal.c
           	ethash.h
           	endian.h
           	compiler.h
