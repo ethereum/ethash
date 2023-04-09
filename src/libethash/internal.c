@@ -447,7 +447,7 @@ ethash_full_t ethash_full_new_internal(
 
 fail_free_full_data:
 	// could check that munmap(..) == 0 but even if it did not can't really do anything here
-	munmap(ret->data, (size_t)full_size);
+	munmap(ret->data - ETHASH_DAG_MAGIC_NUM_SIZE, (size_t)full_size + ETHASH_DAG_MAGIC_NUM_SIZE);
 fail_close_file:
 	fclose(ret->file);
 fail_free_full:
@@ -469,7 +469,7 @@ ethash_full_t ethash_full_new(ethash_light_t light, ethash_callback_t callback)
 void ethash_full_delete(ethash_full_t full)
 {
 	// could check that munmap(..) == 0 but even if it did not can't really do anything here
-	munmap(full->data, (size_t)full->file_size);
+	munmap(full->data - ETHASH_DAG_MAGIC_NUM_SIZE, (size_t)full->file_size + ETHASH_DAG_MAGIC_NUM_SIZE);
 	if (full->file) {
 		fclose(full->file);
 	}
