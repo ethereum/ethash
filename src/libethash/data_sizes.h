@@ -35,18 +35,19 @@ extern "C" {
 
 // Generated with the following Mathematica Code:
 
-// GetCacheSizes[n_] := Module[{
-//        CacheSizeBytesInit = 2^24,
-//        CacheGrowth = 2^17,
-//        HashBytes = 64,
-//        j = 0},
-//       Reap[
-//         While[j < n,
-//           Module[{i =
-//             Floor[(CacheSizeBytesInit + CacheGrowth * j) / HashBytes]},
-//             While[! PrimeQ[i], i--];
-//             Sow[i*HashBytes]; j++]]]][[2]][[1]]
-
+// GetDataSizes[n_] := Module[{
+//  DataSetSizeBytesInit = 2^30,
+//  MixBytes = 128,
+//  DataSetGrowth = 2^23,
+//  j = 0},
+//  Reap[
+//   While[j < n,
+//    Module[{i =
+//     Floor[(DataSetSizeBytesInit + DataSetGrowth * j) / MixBytes]},
+//     While[! PrimeQ[i], i--];
+//      Sow[i*MixBytes]; j++]]]][[2]][[1]]
+//
+// GetDataSizes[2048]
 
 static const uint64_t dag_sizes[2048] = {
 	1073739904U, 1082130304U, 1090514816U, 1098906752U, 1107293056U,
@@ -461,21 +462,23 @@ static const uint64_t dag_sizes[2048] = {
 	18228444544U, 18236833408U, 18245220736U
 };
 
+// 2048 Epochs (~20 years) worth of tabulated cache sizes
 
 // Generated with the following Mathematica Code:
 
 // GetCacheSizes[n_] := Module[{
-//         DataSetSizeBytesInit = 2^30,
-//         MixBytes = 128,
-//         DataSetGrowth = 2^23,
-//         HashBytes = 64,
-//         CacheMultiplier = 1024,
-//         j = 0},
-//     Reap[
-//       While[j < n,
-//        Module[{i = Floor[(DataSetSizeBytesInit + DataSetGrowth * j) / (CacheMultiplier * HashBytes)]},
-//         While[! PrimeQ[i], i--];
-//         Sow[i*HashBytes]; j++]]]][[2]][[1]]
+//  CacheSizeBytesInit = 2^24,
+//  CacheGrowth = 2^17,
+//  HashBytes = 64,
+//  j = 0},
+//  Reap[
+//   While[j < n,
+//    Module[{i =
+//     Floor[(CacheSizeBytesInit + CacheGrowth * j) / HashBytes]},
+//     While[! PrimeQ[i], i--];
+//      Sow[i*HashBytes]; j++]]]][[2]][[1]]
+//
+// GetCacheSizes[2048]
 
 const uint64_t cache_sizes[2048] = {
 	16776896U, 16907456U, 17039296U, 17170112U, 17301056U, 17432512U, 17563072U,
