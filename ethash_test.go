@@ -79,10 +79,10 @@ var validBlocks = []*testBlock{
 
 var invalidZeroDiffBlock = testBlock{
 	number:      61440000,
-	hashNoNonce: crypto.Sha3Hash([]byte("foo")),
+	hashNoNonce: crypto.Keccak256Hash([]byte("foo")),
 	difficulty:  big.NewInt(0),
 	nonce:       0xcafebabec00000fe,
-	mixDigest:   crypto.Sha3Hash([]byte("bar")),
+	mixDigest:   crypto.Keccak256Hash([]byte("bar")),
 }
 
 func TestEthashVerifyValid(t *testing.T) {
